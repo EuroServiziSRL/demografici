@@ -1,0 +1,31 @@
+{
+  "name": "demografici",
+  "private": true,
+  "dependencies": {
+    "@babel/preset-react": "^7.0.0",
+    "@fortawesome/fontawesome-svg-core": "^1.2.20",
+    "@fortawesome/free-solid-svg-icons": "^5.10.0",
+    "@fortawesome/react-fontawesome": "^0.1.4",
+    "@rails/webpacker": "^4.0.2",
+    "babel-plugin-transform-react-remove-prop-types": "^0.4.24",
+    "core-js": "2",
+    "jquery": "^3.4.1",
+    "prop-types": "^15.7.2",
+    "react": "^16.8.6",
+    "react-bootstrap-table-next": "^3.1.5",
+    "react-dom": "^16.8.6",
+    "react-router": "^5.0.0",
+    "react-router-dom": "^5.0.0",
+    "react-select": "^3.0.4",
+    "resolve-url-loader": "^3.1.0",
+    "webpack-cli": "^3.3.2"
+  },
+  "devDependencies": {
+    "webpack-dev-server": "^3.3.1"
+  },
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/EuroServiziSRL/demografici",
+  "author": "irene <irene.giberna@soluzionipa.it>",
+  "license": "MIT"
+}

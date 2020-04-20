@@ -1,0 +1,45 @@
+/*
+ * This is a manifest file that'll be compiled into application.css, which will include all the files
+ * listed below.
+ *
+ * Any CSS and SCSS file within this directory, lib/assets/stylesheets, or any plugin's
+ * vendor/assets/stylesheets directory can be referenced here using a relative path.
+ *
+ * You're free to add application-wide styles to this file and they'll appear at the bottom of the
+ * compiled file so the styles you add here take precedence over styles defined in any other CSS/SCSS
+ * files in this directory. Styles in this file should be added after the last require_* statement.
+ * It is generally better to create a new file per style scope.
+ *
+ *= require_tree .
+ *= require_self
+ */
+
+body {
+  padding: 1px;
+}
+
+.hidden{
+  display: none;
+}
+
+#versamenti li div, #pagamentiImu li div, #pagamentiTasi li div, #immobiliTari li div, #immobiliImu li div, #immobiliTasi li div {
+  text-align: center;
+}
+#versamenti li div:nth-of-type(1), #immobiliImu li div:nth-of-type(1), #immobiliTasi li div:nth-of-type(1), #immobiliTari li div:nth-of-type(1) {
+  text-align: left;
+}
+#versamenti li:not(.table-header) div:nth-of-type(7), 
+#versamenti li:not(.table-header) div:nth-of-type(8), 
+#immobiliImu li:not(.table-header) div:nth-of-type(4), 
+#immobiliTasi li:not(.table-header) div:nth-of-type(4), 
+#pagamentiImu li:not(.table-header) div:nth-of-type(3), 
+#pagamentiImu li:not(.table-header) div:nth-of-type(4), 
+#pagamentiImu li:not(.table-header) div:nth-of-type(5), 
+#pagamentiTasi li:not(.table-header) div:nth-of-type(3), 
+#pagamentiTasi li:not(.table-header) div:nth-of-type(4),
+#pagamentiTasi li:not(.table-header) div:nth-of-type(5),
+#pagamentiTari li:not(.table-header) div:nth-of-type(2),
+#pagamentiTari li:not(.table-header) div:nth-of-type(3),
+#pagamentiTari li:not(.table-header) div:nth-of-type(4) {
+  text-align: right;
+}
