@@ -8,6 +8,12 @@ gem 'rails', '= 5.2.3'
 # Use mysql as the database for Active Record
 gem 'mysql2', '= 0.5.2'
 
+gem 'rake', '= 12.3.3'
+gem 'loofah', '= 2.5.0'
+gem 'nokogiri', '= 1.10.9'
+gem 'rubyzip', '= 1.3.0'
+
+
 # Use SCSS for stylesheets
 gem 'sass-rails', '= 5.0.7'
 # Use Uglifier as compressor for JavaScript assets
@@ -16,7 +22,8 @@ gem 'uglifier', '= 4.1.20'
 gem 'webpacker', '= 4.0.2'
 # See https://github.com/rails/execjs#readme for more supported runtimes
 # gem 'mini_racer', platforms: :ruby
-gem 'rack-cors', '= 1.0.3'
+gem 'rack', '= 2.2.2'
+gem 'rack-cors', '= 1.0.5'
 
 # Use CoffeeScript for .coffee assets and views
 gem 'coffee-rails', '= 4.2.2'
@@ -41,7 +48,7 @@ gem 'bootsnap', '= 1.4.4', require: false
 group :development do
   # Access an interactive console on exception pages or by calling 'console' anywhere in the code.
   gem 'web-console', '>= 3.3.0'
-  gem 'puma', '= 3.11.4'
+  gem 'puma', '= 3.12.4'
   gem 'listen', '>= 3.0.5', '< 3.2'
   gem 'byebug', platforms: [:mri, :mingw, :x64_mingw]
   # Spring speeds up development by keeping your application running in the background. Read more: https://github.com/rails/spring
