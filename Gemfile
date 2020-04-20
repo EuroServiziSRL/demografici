@@ -16,7 +16,7 @@ gem 'uglifier', '= 4.1.20'
 gem 'webpacker', '= 4.0.2'
 # See https://github.com/rails/execjs#readme for more supported runtimes
 # gem 'mini_racer', platforms: :ruby
-gem 'rack-cors', '= 1.0.3'
+gem 'rack-cors', '1.0.5'
 
 # Use CoffeeScript for .coffee assets and views
 gem 'coffee-rails', '= 4.2.2'
