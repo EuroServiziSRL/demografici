@@ -12,15 +12,54 @@ class ApplicationController < ActionController::Base
     #carico cf in variabile per usarla sulla view
     @cf_utente_loggato = session[:cf]
 
-
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
 
   end
 
+  # richiesta da backoffice ente - autenticazione??
+  def richiedi_prenotazioni
+    response = {
+      "array_json": [{
+        "tenant": "jkjriroior",
+        "codice_fiscale": session[:cf],
+        "codice_certificato": "xxxxx",
+        "bollo": "1/0",
+        "diritti_segreteria": "1/0",
+        "uso": "descrizione",
+        "richiedente_cf": session[:cf],
+        "richiesta": "rujklnjkdosi"
+     }]
+    }  
+    response = response.to_json  
+    render :json => response
+  end
+
+  # richiesta da backoffice ente - autenticazione??
+  def ricevi_certificato      
+    render plain: "OK"
+  end
+
+  def authenticate  
+    params = {
+       "targetResource": "https://api.civilianextuat.it/", 
+       "tenantId": "#{session[:user]["api_demografici"]["tenant"]}",
+       "clientId": "#{session[:user]["api_demografici"]["client_id"]}",
+       "secret": "#{session[:user]["api_demografici"]["secret"]}"
+    }
+    #logger.debug params
+    result = HTTParty.post("https://login.microsoftonline.com/#{session[:user]["api_demografici"]["tenant"]}/oauth2/token", 
+    :body => params.to_json,
+    :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json'  } )
+
+    if !result["result"].nil? && result["result"].length>0
+      session[:token] = result["result"]["token"]
+    end
+    
+    render :json => result
+  end  
   
   def sconosciuto
   end
-
   
   #da fare
   def error_dati
