@@ -1,9 +1,21 @@
 development:
   adapter: mysql2
   encoding: utf8
-  database: centralizzato
-  host: 127.0.0.1
+  database: demografici
+  host: 10.0.23.4
+  port: 3306
   pool: 5
-  username: root
-  password: 
+  username: demografici
+  password: Dem0.420.os!
+  socket: /tmp/mysql.sock
+
+production:
+  adapter: mysql2
+  encoding: utf8
+  database: demografici
+  host: 10.0.23.4
+  port: 3306
+  pool: 5
+  username: demografici
+  password: Dem0.420.os!
   socket: /tmp/mysql.sock
