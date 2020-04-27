@@ -1,0 +1,2 @@
+class DemograficiTraccium < ApplicationRecord
+end
