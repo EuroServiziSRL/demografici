@@ -43,13 +43,13 @@ class ApiController < ActionController::Base
 
     if autenticato["esito"]=="ko"
       esito << {
-        "codice_esito": "003-Errore generico",
+        "codice_esito": "001-Errore di autenticazione",
         "errore_descrizione": autenticato["msg_errore"]
       }
     else
       if params[:tenant].nil?
         esito << {
-          "codice_esito": "003-Errore generico",
+          "codice_esito": "002-Dati mancanti",
           "errore_descrizione": "è necessario specificare un tenant"
         }
       else
@@ -136,23 +136,23 @@ class ApiController < ActionController::Base
 
     if autenticato["esito"]=="ko"
       array_json << {
-        "codice_esito": "003-Errore generico",
+        "codice_esito": "001-Errore di autenticazione",
         "errore_descrizione": autenticato["msg_errore"]
       }
     else
       if params[:tenant].nil?
         array_json << {
-          "codice_esito": "003-Errore generico",
+          "codice_esito": "002-Dati mancanti",
           "errore_descrizione": "è necessario specificare un tenant"
         }
       elsif params[:richiesta].nil?
         array_json << {
-          "codice_esito": "003-Errore generico",
+          "codice_esito": "002-Dati mancanti",
           "errore_descrizione": "è necessario specificare una richiesta"
         }    
       elsif params[:certificato].nil?
         array_json << {
-          "codice_esito": "003-Errore generico",
+          "codice_esito": "002-Dati mancanti",
           "errore_descrizione": "il certificato non può essere vuoto"
         }
       else
@@ -167,7 +167,7 @@ class ApiController < ActionController::Base
           }
         elsif richiesta_certificato.documento.present?
           array_json << {
-            "codice_esito": "001-Certificato presente"
+            "codice_esito": "004-Certificato presente"
           }
         else
           basedir = File.dirname("data")
