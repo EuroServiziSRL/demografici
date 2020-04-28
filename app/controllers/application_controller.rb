@@ -3,6 +3,14 @@ require 'uri'
 require "base64"
 require 'openssl'
 
+## auth su api
+# https://login.microsoftonline.com/97d6a602-2492-4f4c-9585-d2991eb3bf4c/oauth2/token
+# L’ambiente di Test su UAT è UAT281: ( DEDA UAT281 - DEMO DEMOGRAFIA 2 – id 348 )
+# Application ID:
+# aebe50cd-bbc0-4bf5-94ba-4e70590bcf1a
+# Secret:
+# w9=jyc0bA.sBVLX@aHD:87lPZlS4r=7x
+
 class ApplicationController < ActionController::Base
   include ApplicationHelper
   before_action :get_dominio_sessione_utente, :get_layout_portale
@@ -12,15 +20,61 @@ class ApplicationController < ActionController::Base
     #carico cf in variabile per usarla sulla view
     @cf_utente_loggato = session[:cf]
 
-
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
 
   end
+  
+  def get_demografici_token  
+    params = {
+       "targetResource": "https://api.civilianextuat.it/", 
+       "tenantId": "#{session[:user]["api_demografici"]["tenant"]}",
+       "clientId": "#{session[:user]["api_demografici"]["client_id"]}",
+       "secret": "#{session[:user]["api_demografici"]["secret"]}"
+    }
+    #logger.debug params
+    result = HTTParty.post("https://login.microsoftonline.com/#{session[:user]["api_demografici"]["tenant"]}/oauth2/token", 
+    :body => params.to_json,
+    :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json'  } )
 
+    if !result["result"].nil? && result["result"].length>0
+      session[:token] = result["result"]["token"]
+    end
+    
+    render :json => result
+  end  
+
+  # richiesta da portale cittadino
+  def inserisci_richiesta
+    # ricevo dal portale del cittadino una richiesta di certificato
+    # il portale deve inviarmi il tenant
+    # inserisco in certificati la richiesta ricevuta con stato appropriato 
+    # richiesto se !bollo&&!segreteria, da pagare se bollo||segreteria
+    # restituisco risultato inserimento e id richiesta
+    # se da pagare, poi il portale farà un redirect su pagamenti
+
+    nuovo_certificato = {
+      "tenant": params[:tenant],
+      "codice_fiscale": params[:codice_fiscale],
+      "codice_certificato": params[:codice_certificato], # ottenuti da compilazione form da parte del cittadino, questi verranno ottenuti da ws che restituisce elenco tipi certificato
+      "bollo": params[:bollo], # ottenuti da compilazione form da parte del cittadino, sì/no
+      "diritti_segreteria": params[:diritti_segreteria], # ottenuti da compilazione form da parte del cittadino, sì/no
+      "uso": params[:uso], # ottenuti da compilazione form da parte del cittadino, probabilmente recuperati da ws?
+      "richiedente_cf": params[:richiedente_cf],
+    }
+
+  end
+
+  # richiesta da portale cittadino
+  def aggiorna_richiesta
+    # ricevo dal cittadino un aggiornamento di richiesta di certificato
+    # ad esempio quando ha pagato un certificato con bollo||segreteria
+    # il portale deve inviarmi il tenant
+
+    
+  end
   
   def sconosciuto
   end
-
   
   #da fare
   def error_dati

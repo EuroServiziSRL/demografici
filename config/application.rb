@@ -1,10 +1,11 @@
 require_relative 'boot'
 
 #require 'rails/all' Non uso questo, non serve acvtiverecord per il db
-require "action_controller/railtie"
-require "action_mailer/railtie"
-require "sprockets/railtie"
-require "rails/test_unit/railtie"
+# require "action_controller/railtie"
+# require "action_mailer/railtie"
+# require "sprockets/railtie"
+# require "rails/test_unit/railtie"
+require 'rails/all' # e invece ora il db ci serve
 
 
 # Require the gems listed in Gemfile, including any gems
