@@ -134,7 +134,7 @@ class ApiController < ActionController::Base
 
     array_json = []
 
-    if autenticato["esito"]=="ko"
+    if false && autenticato["esito"]=="ko"
       array_json << {
         "codice_esito": "001-Errore di autenticazione",
         "errore_descrizione": autenticato["msg_errore"]
@@ -170,18 +170,11 @@ class ApiController < ActionController::Base
             "codice_esito": "004-Certificato presente"
           }
         else
-          basedir = File.dirname("data")
-          unless File.directory?(basedir)
-            FileUtils.mkdir_p(basedir)
-          end
-    
-          tenantPath = File.join("data", params[:tenant])
-          unless File.directory?(tenantPath)
-            FileUtils.mkdir_p(tenantPath)
-          end
-    
+          basedir = createPath( [params[:tenant], Time.now.year.to_s, Time.now.month.to_s] )
+          puts basedir
+
           # creo file 
-          path = File.join("data", params[:tenant], params[:richiesta]+"_certificato")
+          path = File.join(basedir, richiesta_certificato.codice_certificato[/^([0-9]{1,2})/,1]+"_"+richiesta_certificato.codice_fiscale+".pdf")
           File.open(path, "wb") { |f| f.write(Base64.decode64(params[:certificato])) }
           richiesta_certificato.documento = path
           richiesta_certificato.stato = "da_pagare"
@@ -240,6 +233,23 @@ class ApiController < ActionController::Base
   end
 
   private
+
+  def createPath(tree)
+    path = File.dirname("data")
+    unless File.directory?(path)
+      FileUtils.mkdir_p(path)
+    end
+
+    path = File.join(path, "data")
+
+    tree.each do |dir|
+      path = File.join(path, dir)
+      unless File.directory?(path)
+        FileUtils.mkdir_p(path)
+      end
+    end
+    return path
+  end
 
   # funzione per test
   def rand_in_range(from, to)
