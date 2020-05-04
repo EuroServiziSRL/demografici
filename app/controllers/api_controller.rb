@@ -71,14 +71,20 @@ class ApiController < ActionController::Base
     
         # compongo risposta
         richieste_certificati.each do |richiesta_certificato|
+          array_codici = eval richiesta_certificato.codici_certificato
           prenotazioni << {
             "tenant": richiesta_certificato.tenant,
             "codice_fiscale": richiesta_certificato.codice_fiscale,
-            "codice_certificato": richiesta_certificato.codice_certificato, # ottenuti da compilazione form da parte del cittadino, questi verranno ottenuti da ws che restituisce elenco tipi certificato
+            "codici_certificato": array_codici, # ottenuti da compilazione form da parte del cittadino, questi verranno ottenuti da ws che restituisce elenco tipi certificato
             "bollo": richiesta_certificato.bollo, # ottenuti da compilazione form da parte del cittadino, sì/no
-            "diritti_segreteria": richiesta_certificato.diritti_segreteria, # ottenuti da compilazione form da parte del cittadino, sì/no
+            "diritti_importo": richiesta_certificato.diritti_importo, # ottenuti da compilazione form da parte del cittadino, sì/no
             "uso": richiesta_certificato.uso, # ottenuti da compilazione form da parte del cittadino, probabilmente recuperati da ws?
             "richiedente_cf": richiesta_certificato.richiedente_cf,
+            "richiedente_nome": richiesta_certificato.richiedente_nome,
+            "richiedente_cognome": richiesta_certificato.richiedente_cognome,
+            "richiedente_data_nascita": richiesta_certificato.richiedente_data_nascita,
+            "richiedente_doc_riconoscimento": richiesta_certificato.richiedente_doc_riconoscimento,
+            "richiedente_doc_data": richiesta_certificato.richiedente_doc_data,
             "richiesta": richiesta_certificato.id
           }
           if searchParams[:stato] == "nuovo"
@@ -158,9 +164,9 @@ class ApiController < ActionController::Base
       else
         searchParams[:id] = params[:richiesta]
         searchParams[:stato] = "richiesto"
-        richiesta_certificato = Certificati.find(params[:richiesta])
+        richiesta_certificato = Certificati.find_by_id(params[:richiesta])
   
-        if richiesta_certificato.blank?
+        if richiesta_certificato.blank? || richiesta_certificato.nil?
           array_json << {
             "codice_esito": "003-Errore generico",
             "errore_descrizione": "richiesta non trovata"
@@ -174,10 +180,21 @@ class ApiController < ActionController::Base
           puts basedir
 
           # creo file 
-          path = File.join(basedir, richiesta_certificato.codice_certificato[/^([0-9]{1,2})/,1]+"_"+richiesta_certificato.codice_fiscale+".pdf")
+          prefix = richiesta_certificato.codici_certificato
+          prefix = prefix.gsub('[','').gsub(']','').gsub(' ','').gsub(',','.')
+
+          importo = 0
+          if !richiesta_certificato.bollo.nil?
+            importo = importo+richiesta_certificato.bollo
+          end
+          if !richiesta_certificato.diritti_importo.nil?
+            importo = importo+richiesta_certificato.diritti_importo
+          end
+
+          path = File.join(basedir, prefix+"_"+richiesta_certificato.codice_fiscale+".pdf")
           File.open(path, "wb") { |f| f.write(Base64.decode64(params[:certificato])) }
           richiesta_certificato.documento = path
-          richiesta_certificato.stato = "da_pagare"
+          richiesta_certificato.stato = ( importo>0 ? "da_pagare" : "pagato" )
           richiesta_certificato.data_inserimento = Time.now
           richiesta_certificato.save
           array_json << {
@@ -202,18 +219,42 @@ class ApiController < ActionController::Base
   def genera_prenotazioni_test
     array_json = []
     x = 0
-    nomi_certificati = ['1 - Anagrafico di nascita', '2 - Anagrafico di morte', '3 - Anagrafico di matrimonio', '4 - Cancellazione anagrafica', '5 - Cittadinanza', '7 - Esistenza in vita', '8 - Residenza', '10 - Residenza AIRE', '11 - Stato civile', '12 - Stato di famiglia', '13 - Stato di famiglia e di stato civile', '14 - Residenza in convivenza', '15 - Stato di famiglia AIRE', '16 - Stato di famiglia con rapporti di parentela', '17 - di Stato Libero', '18 - Anagrafico di Unione Civile', '19 - di Contratto di Convivenza'] 
+    nomi_certificati = ['Anagrafico di nascita', 'Anagrafico di morte', 'Anagrafico di matrimonio', 'Cancellazione anagrafica', 'Cittadinanza', 'Esistenza in vita', 'Residenza', 'Residenza AIRE', 'Stato civile', 'Stato di famiglia', 'Stato di famiglia e di stato civile', 'Residenza in convivenza', 'Stato di famiglia AIRE', 'Stato di famiglia con rapporti di parentela', 'di Stato Libero', 'Anagrafico di Unione Civile', 'di Contratto di Convivenza'] 
+    nomi = ['Mario','Anna','Giuseppe']
+    cognomi = ['Rossi','Bianchi','Verdi']
+    docs = ['patente','carta d\'identità','passaporto']
+    initials = ['RSSMRI','BNCNNA','VRDGSP']
+
     while x < 10      
-      nome_random = rand(nomi_certificati.length)
-      cf_generato = random_cf
+      certificato_random = rand(nomi_certificati.length)
+      richiedente_random = rand(3)
+      richiedente_diverso = rand_bool
+      cf_certificato = random_cf("")
+      certificati_random = []
+      y = 0
+      while y < rand_in_range(0,5)
+        certificati_random.push(rand(nomi_certificati.length))
+        y = y+ 1
+      end
+      bollo = ( rand_bool ? 0 : rand(1.2...16.9).round(1) )
+      bollo_esenzione = nil
+      if bollo == 0 
+        bollo_esenzione = rand_in_range(1,10).round()
+      end
       certificato = {
         tenant: "97d6a602-2492-4f4c-9585-d2991eb3bf4c",
-        codice_fiscale: cf_generato,
-        codice_certificato: nomi_certificati[nome_random],
-        bollo: rand_bool,
-        diritti_segreteria: rand_bool,
+        codice_fiscale: cf_certificato,
+        codici_certificato: certificati_random,
+        bollo: bollo,
+        bollo_esenzione: bollo_esenzione,
+        diritti_importo: ( rand_bool ? 0 : rand(1.2...16.9).round(1) ),
         uso: "",
-        richiedente_cf: ( rand_bool ? cf_generato : random_cf ),
+        richiedente_cf: ( richiedente_diverso ? cf_certificato : random_cf(initials[richiedente_random]) ),
+        richiedente_nome: ( richiedente_diverso ? nil : nomi[richiedente_random] ),
+        richiedente_cognome: ( richiedente_diverso ? nil : cognomi[richiedente_random] ),
+        richiedente_doc_riconoscimento: ( richiedente_diverso ? nil : docs[richiedente_random] ),
+        richiedente_doc_data: ( richiedente_diverso ? nil : rand_time(5.years.ago, 30.days.ago) ),
+        richiedente_data_nascita: ( richiedente_diverso ? nil : rand_time(80.years.ago,18.years.ago) ),
         # richiesta: "",
         stato: "nuovo",
         # data_inserimento: "",
@@ -221,8 +262,8 @@ class ApiController < ActionController::Base
         # email: "",
         id_utente: rand(1000),
         # documento: "",
-        nome_certificato: nomi_certificati[nome_random],
       }
+
       Certificati.create(certificato)
       array_json << certificato
    
@@ -267,15 +308,20 @@ class ApiController < ActionController::Base
   end
 
   # funzione per test
-  def random_cf
+  def random_cf(initial)
     o = [('A'..'Z')].map(&:to_a).flatten
-    string = (0...6).map { o[rand(o.length)] }.join + rand(99).to_s + o[rand(o.length)] + rand(71).to_s + o[rand(o.length)] + rand(999).to_s + o[rand(o.length)]
+    if initial.nil? || initial == ""
+      initial = (0...6).map { o[rand(o.length)] }.join
+    end
+    string = initial + rand(99).to_s + o[rand(o.length)] + rand(71).to_s + o[rand(o.length)] + rand(999).to_s + o[rand(o.length)]
     return string
   end
 
   def autentica_ente
     puts "autentica_ente"
-    if !request.headers['HTTP_AUTHORIZATION'].blank? #authorization con token jwt
+    if Rails.env.development?
+      return { 'esito' => 'ok' }
+    elsif !request.headers['HTTP_AUTHORIZATION'].blank? #authorization con token jwt
       token_jwt = request.headers['HTTP_AUTHORIZATION'].gsub('Bearer ','')
       jwt_decoded = []
       begin
