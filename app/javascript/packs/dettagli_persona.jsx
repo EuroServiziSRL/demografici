@@ -32,15 +32,15 @@ function displayForm(rows, width) {
       if( typeof(fields[f].label) == "undefined" ) { fields[f].label = ucfirst(fields[f].name); }
       var labelClass = "col-lg-"+fields[f].labelSize+" control-label";
       var valueClass = "col-lg-"+fields[f].valueSize;
-      fieldsHtml.push(<label htmlFor={fields[f].name} className={labelClass}>{fields[f].label}</label>)
+      fieldsHtml.push(<label key={"label"+f.toString()} htmlFor={fields[f].name} className={labelClass}>{fields[f].label}</label>)
       if(fields[f].html) {
-        fieldsHtml.push(<div className={valueClass} id={fields[f].name}>{fields[f].value}</div>)
+        fieldsHtml.push(<div key={"div"+f.toString()} className={valueClass} id={fields[f].name}>{fields[f].value}</div>)
       } else {
-        fieldsHtml.push(<div className={valueClass}><p id={fields[f].name} className="form-control-static">{fields[f].value}</p></div>)
+        fieldsHtml.push(<div key={"div"+f.toString()} className={valueClass}><p id={fields[f].name} className="form-control-static">{fields[f].value}</p></div>)
       }
               
     }
-    rowsHtml.push(<div className="form-group"> {fieldsHtml} </div>)
+    rowsHtml.push(<div key={"row"+r.toString()} className="form-group"> {fieldsHtml} </div>)
   }
   return rowsHtml;
 }
@@ -166,14 +166,14 @@ class DettagliPersona extends React.Component{
 
   render(){
     var datiAnagrafica = this.state.datiAnagrafica;
-    console.log(datiAnagrafica);
+    // console.log(datiAnagrafica);
     var returnVal = <div className="alert alert-warning">Dati contribuente non presenti nel sistema</div>
     if(datiAnagrafica!=null) {
       var datiCittadino = [[
           { name: "nominativo", value: datiAnagrafica.cognome+" "+datiAnagrafica.nome },
           { name: "indirizzo", value: <span>{datiAnagrafica.indirizzo}{todo("normale che sia vuoto?")}</span> },
         ], [
-          { name: "status", value: datiAnagrafica.posizioneAnagrafica },
+          { name: "status", value: datiAnagrafica.posizioneAnagrafica }, // verificare se tabella corrispondenza, fare anche a mano
           { name: "codiceCittadino", label: "Numero individuale", value: datiAnagrafica.codiceCittadino },
         ]
       ];
@@ -184,7 +184,7 @@ class DettagliPersona extends React.Component{
         ], [
           { name: "codiceFiscale", label: "Codice Fiscale", value: datiAnagrafica.codiceFiscale },
           { name: "dataNascita", label: "Data di nascita", value: datiAnagrafica.dataNascita },
-          { name: "codiceIstatComuneNascitaItaliano", label: "Comune di nascita", value: <span>{datiAnagrafica.codiceIstatComuneNascitaItaliano}{todo("da dove si prende la descrizione?")}</span> },
+          { name: "codiceIstatComuneNascitaItaliano", label: "Comune di nascita", value: datiAnagrafica.codiceIstatComuneNascitaItaliano }, // da tabella da aggiungere in db, usare codice istat
         ], [
           { name: "indirizzo", label: "Via di residenza", value: <span>{datiAnagrafica.indirizzo}{todo("uguale a indirizzo?", "warning")}</span> },
           { name: "descrizioneCittadinanza", label: "Cittadinanza", value: datiAnagrafica.descrizioneCittadinanza },
@@ -195,6 +195,7 @@ class DettagliPersona extends React.Component{
           { name: "", value: "" },
         ]
       ];
+      // da mostrare se almeno uno datiCartaIdentita, datiVeicoli, datiPatente
       var documenti = [[
           { name: "numero", value: datiAnagrafica.numero },
           { name: "stato", value: todo("manca l'informazione","danger") },
@@ -205,22 +206,25 @@ class DettagliPersona extends React.Component{
       var famigliaFormatted = false;
       if(datiAnagrafica.famiglia){
         famigliaFormatted = []
-        for (var componente in famiglia) {
+        for (var componente in datiAnagrafica.famiglia) {
           famigliaFormatted.push({
             preText: null,
             text: datiAnagrafica.famiglia[componente].cognome+" "+datiAnagrafica.famiglia[componente].nome,
-            postText: <span>{datiAnagrafica.famiglia[componente].codiceRelazioneParentelaANPR}{todo("da dove si prende la descrizione?")}</span>,
+            postText: datiAnagrafica.famiglia[componente].codiceRelazioneParentelaANPR,
             url: dominio+"/dettagli_persona?codice_fiscale="+datiAnagrafica.famiglia[componente].codiceFiscale,
             linked: true
           });
         }
       }
+      console.log(famigliaFormatted);
       var famiglia = [[
           { name: "codiceFamiglia", label: "Famiglia N.", value: datiAnagrafica.codiceFamiglia },
           { name: "numeroComponenti", label: "Numero componenti", value: datiAnagrafica.famiglia?datiAnagrafica.famiglia.length:1 },
           { name: "componenti", value: displayList(famigliaFormatted), html: true }
         ]
       ];
+      // fare schede per matrimonio/divorzio/vedovanza etc
+      // vedi dettagli_persona.shtml per le varie schede
       var matrimonio = [];
       if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.matrimonio) {
         var datiMatrimonio = datiAnagrafica.datiStatoCivile.matrimonio;
@@ -253,7 +257,7 @@ class DettagliPersona extends React.Component{
           famigliaFormatted.push({
             preText: null,
             text: datiAnagrafica.famiglia[componente].cognome+" "+datiAnagrafica.famiglia[componente].nome,
-            postText: <span>{datiAnagrafica.famiglia[componente].codiceRelazioneParentelaANPR}{todo("da dove si prende la descrizione?")}</span>,
+            postText: <span>{datiAnagrafica.famiglia[componente].codiceRelazioneParentelaANPR}{todo("da dove si prende la descrizione?")}</span>, // prendere da apposita tabella, ordinare per codice
             url: dominio+"/dettagli_persona?codice_fiscale="+datiAnagrafica.famiglia[componente].codiceFiscale
           })
         }

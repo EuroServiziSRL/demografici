@@ -1,5 +1,8 @@
 window.appType = "external";
 
+// aggiungere seleziona esenzione
+// carta libera togliere l'uso
+
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 // import $ from 'jquery';
