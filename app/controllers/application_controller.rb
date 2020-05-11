@@ -21,6 +21,7 @@ class ApplicationController < ActionController::Base
   def index
     #carico cf in variabile per usarla sulla view
     @cf_utente_loggato = session[:cf]
+    @nome = session[:user]["nome"]
     @page_app = "dettagli_persona"
     
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
@@ -29,6 +30,7 @@ class ApplicationController < ActionController::Base
 
   def dettagli_persona
     @page_app = "dettagli_persona"
+    @nome = session[:user]["nome"]
 
     session[:interroga_cf] = params["codice_fiscale"]
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
@@ -36,6 +38,7 @@ class ApplicationController < ActionController::Base
 
   def richiedi_certificato
     @page_app = "richiedi_certificato"
+    @nome = session[:user]["nome"]
 
     # session[:interroga_cf] = params["codice_fiscale"]
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
@@ -288,6 +291,7 @@ class ApplicationController < ActionController::Base
             if Rails.env.development? 
               html_layout = html_layout.gsub("</body>","<span class='hidden test'></span></body>")
             end
+            html_layout = html_layout.gsub("</body>","<span class='hidden' id='nome_utente'><%=@nome%></span></body>")
             #parte che include il js della parte react sul layout CHE VA ALLA FINE, ALTRIMENTI REACT NON VA
             html_layout = html_layout.gsub("</body>","<%= javascript_pack_tag @page_app %> </body>")
             path_dir_layout = "#{Rails.root}/app/views/layouts/layout_portali/"
