@@ -140,7 +140,7 @@ class ApiController < ActionController::Base
 
     array_json = []
 
-    if false && autenticato["esito"]=="ko"
+    if autenticato["esito"]=="ko"
       array_json << {
         "codice_esito": "001-Errore di autenticazione",
         "errore_descrizione": autenticato["msg_errore"]
@@ -272,6 +272,8 @@ class ApiController < ActionController::Base
     response = array_json.to_json  
     render :json => response
   end
+
+  # def inserisci_prenotazione
 
   private
 

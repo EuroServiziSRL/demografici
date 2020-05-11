@@ -13,35 +13,118 @@ require 'openssl'
 
 class ApplicationController < ActionController::Base
   include ApplicationHelper
+  @@api_resource = "https://api.civilianextuat.it"
+  @@api_url = "#{@@api_resource}/Demografici/"
   before_action :get_dominio_sessione_utente, :get_layout_portale
   
   #ROOT della main_app
   def index
     #carico cf in variabile per usarla sulla view
-    @cf_utente_loggato = session[:cf]
+    # session["cf"] = "MRTCCL65E07L736D"
+    # @cf_utente_loggato = session[:cf]
+    # if session[:user].nil?
+      # session[:user] = {"api_demografici": {
+      #   "tenant": "97d6a602-2492-4f4c-9585-d2991eb3bf4c",
+      #   "client_id": "aebe50cd-bbc0-4bf5-94ba-4e70590bcf1a",
+      #   "client_secret": "w9=jyc0bA.sBVLX@aHD:87lPZlS4r=7x",
+      #   "resource": "http://api.civilianextuat.it",
+      # }}
+    # end
+    @page_app = "dettagli_persona"
 
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
 
   end
-  
-  def get_demografici_token  
-    params = {
-       "targetResource": "https://api.civilianextuat.it/", 
-       "tenantId": "#{session[:user]["api_demografici"]["tenant"]}",
-       "clientId": "#{session[:user]["api_demografici"]["client_id"]}",
-       "secret": "#{session[:user]["api_demografici"]["secret"]}"
-    }
-    #logger.debug params
-    result = HTTParty.post("https://login.microsoftonline.com/#{session[:user]["api_demografici"]["tenant"]}/oauth2/token", 
-    :body => params.to_json,
-    :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json'  } )
 
-    if !result["result"].nil? && result["result"].length>0
-      session[:token] = result["result"]["token"]
+  def dettagli_persona
+    @page_app = "dettagli_persona"
+
+    session[:interroga_cf] = params["codice_fiscale"]
+    render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
+  end
+
+  def richiedi_certificato
+    @page_app = "richiedi_certificato"
+
+    # session[:interroga_cf] = params["codice_fiscale"]
+    render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
+  end
+  
+  def authenticate  
+    params = {}
+
+    params["tenant"] = '97d6a602-2492-4f4c-9585-d2991eb3bf4c'
+    params["client_id"] = 'aebe50cd-bbc0-4bf5-94ba-4e70590bcf1a'
+    params["client_secret"] = 'w9=jyc0bA.sBVLX@aHD:87lPZlS4r=7x'
+    params["resource"] = "#{@@api_resource.sub("https","http")}"
+    params["grant_type"] = 'client_credentials'
+    
+    oauthURL = "https://login.microsoftonline.com/#{params["tenant"]}/oauth2/token";
+    result = HTTParty.post(oauthURL, 
+      :body => params.to_query,
+      :headers => { 'Content-Type' => 'application/x-www-form-urlencoded','Accept' => 'application/json'  } 
+    )
+
+    if !result["access_token"].nil? && result["access_token"].length > 0
+      session[:token] = result["access_token"]
     end
     
+    # result["url"] = oauthURL
+    # result["params"] = params
+
     render :json => result
   end  
+
+  def ricerca_individui
+    puts "session is:";
+    puts session
+    # params = { "mostraDatiIscrizione": "true",  "codiceFiscale": "#{session[:cf]}", "nomeCognome": "#{session[:nome]} #{session[:cognome]}" }
+    # params = { "mostraDatiIscrizione": "true",  "codiceFiscale": "ZNNCDD51P20C794V", "nomeCognome": "CANDIDO ZANONI" }
+    # params = { "codiceFiscale": "ZNNCDD51P20C794V" } # pochi dati
+    # params = { "codiceFiscale": "TLLLRA56E46B153E" } # deceduta, no famiglia
+    # params = { "codiceFiscale": "RGTVRB33C53B153U" }
+    # params = { "codiceFiscale": "GRFJNU74M26Z148Q" }
+    # params = { "codiceFiscale": "DPLKTY68L54Z140P" }
+    params = { "codiceFiscale": session[:interroga_cf] }
+
+    params[:MostraMaternita] = true
+    params[:MostraConiuge] = true
+    params[:MostraDatidecesso] = true
+    params[:MostraCartaIdentita] = true
+    params[:MostraTitoloSoggiorno] = true
+    params[:MostraProfessione] = true
+    params[:MostraTitoloStudio] = true
+    params[:MostraPatente] = true
+    params[:MostraVeicoli] = true
+    params[:MostraDatiStatoCivile] = true
+
+    puts params
+
+    result = HTTParty.post(
+      "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
+      :body => params.to_json,
+      :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } 
+    )    
+    # result = result.response.body
+    result = JSON.parse(result.response.body)
+    result = result[0]
+    if !result.nil? && result.length > 0
+      session[:cf] = result["codiceFiscale"]
+      params = { 
+        "codiceAggregazione": result["codiceFamiglia"], 
+        # "codiceFiscaleComponente": result["codiceFiscale"] # non li mostra tutti se metto cf
+      }
+      puts params
+      resultFamiglia = HTTParty.post(
+        "#{@@api_url}/Anagrafe/RicercaComponentiFamiglia?v=1.0", 
+        :body => params.to_json,
+        :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } 
+      )    
+      result["famiglia"] = JSON.parse(resultFamiglia.response.body)
+    end
+
+    render :json => result
+  end
 
   # richiesta da portale cittadino
   def inserisci_richiesta
@@ -74,6 +157,7 @@ class ApplicationController < ActionController::Base
   end
   
   def sconosciuto
+    render html: '<DOCTYPE html><html><head><title>Pagina non trovata</title></head><body>Pagina non trovata</body></html>'.html_safe
   end
   
   #da fare
@@ -84,62 +168,93 @@ class ApplicationController < ActionController::Base
 
   def get_dominio_sessione_utente
     #permetto di usare tutti i parametri e li converto in hash
+    puts "get_dominio_sessione_utente"
     hash_params = params.permit!.to_hash
+    puts hash_params
     if !hash_params['c_id'].blank? && session[:client_id] != hash_params['c_id']
+      puts "resetting session"
       reset_session
     end
     if session.blank? || session[:user].blank? #controllo se ho fatto login
+      puts "session is blank"
       #se ho la sessione vuota devo ottenere una sessione dal portale
       #se arriva un client_id (parametro c_id) e id_utente lo uso per richiedere sessione
       if !hash_params['c_id'].blank? && !hash_params['u_id'].blank?
+        puts "received c_id and u_id"
 
         #ricavo dominio da oauth2
         url_oauth2_get_info = "https://login.soluzionipa.it/oauth/application/get_info_cid/"+hash_params['c_id']
-        #url_oauth2_get_info = "http://localhost:3001/oauth/application/get_info_cid/"+hash_params['c_id'] #PER TEST
         result_info_ente = HTTParty.get(url_oauth2_get_info,
           :headers => { 'Content-Type' => 'application/json', 'Accept' => 'application/json' } )
         hash_result_info_ente = result_info_ente.parsed_response
+        puts "get_info_cid result:"
+        puts hash_result_info_ente
         @dominio = hash_result_info_ente['url_ente']
         #@dominio = "https://civilianext.soluzionipa.it/portal" #per test
         session[:dominio] = @dominio
         #creo jwt per avere sessione utente
         hash_jwt_app = {
-          iss: 'demografici.soluzionipa.it', #dominio finale dell'app demografici
+          iss: (Rails.env.development?'localhost':'demografici.soluzionipa.it'), #dominio finale dell'app demografici
           id_app: 'demografici',
           id_utente: hash_params['u_id'],
           sid: hash_params['sid'],
           api_next: true
         }
+        puts "hash_jwt_app:"
+        puts hash_jwt_app
         jwt = JsonWebToken.encode(hash_jwt_app)
-        #richiesta in post a get_login_session con authorization bearer
+        puts "jwt:"
+        puts jwt
 
-        result = HTTParty.post(@dominio+"/autenticazione/get_login_session.json", 
-          :body => hash_params,
-          :headers => { 'Authorization' => 'Bearer '+jwt } )
-        hash_result = result.parsed_response
-        #se ho risultato con stato ok ricavo dati dal portale e salvo in sessione 
-        #impostare durata sessione in application.rb: ora dura 30 minuti
-        if !hash_result.blank? && !hash_result["stato"].nil? && hash_result["stato"] == 'ok'
-          jwt_data = JsonWebToken.decode(hash_result['token'])
-          session[:user] = jwt_data #uso questo oggetto per capire se utente connesso!
-          session[:cf] = jwt_data[:cf]
-          @nome = jwt_data[:nome] 
-          @cognome = jwt_data[:cognome]
-          session[:client_id] = hash_params['c_id']
-          # TODO gestire meglio il dominio
-          solo_dom = @dominio.gsub("/portal","")
-          
+        if Rails.env.development? 
+          session[:user] = true
+          session[:cf] = "MRTCCL65E07L736D"
+          session[:interroga_cf] = "MRTCCL65E07L736D"
+          @nome = "CECILIO" 
+          @cognome = "MIRTHES"
+          session[:client_id] = 1
         else
-          #se ho problemi ritorno su portale con parametro di errore
-          unless @dominio.blank?
-            redirect_to @dominio+"/?err"
-            return
+
+          #richiesta in post a get_login_session con authorization bearer
+          puts "POSTing to "+@dominio+"/autenticazione/get_login_session.json"
+
+          result = HTTParty.post(@dominio+"/autenticazione/get_login_session.json", 
+            :body => hash_params,
+            :headers => { 'Authorization' => 'Bearer '+jwt } )
+          hash_result = result.parsed_response
+          puts "get_login_session result:"
+          puts result
+          puts hash_result
+          #se ho risultato con stato ok ricavo dati dal portale e salvo in sessione 
+          #impostare durata sessione in application.rb: ora dura 30 minuti
+          if !hash_result.blank? && !hash_result["stato"].nil? && hash_result["stato"] == 'ok'
+            jwt_data = JsonWebToken.decode(hash_result['token'])
+            session[:user] = jwt_data #uso questo oggetto per capire se utente connesso!
+            puts "setting cf to "+jwt_data[:cf];
+            session[:cf] = jwt_data[:cf]
+            session[:interroga_cf] = jwt_data[:cf]
+            @nome = jwt_data[:nome] 
+            @cognome = jwt_data[:cognome]
+            session[:client_id] = hash_params['c_id']
+            # TODO gestire meglio il dominio
+            solo_dom = @dominio.gsub("/portal","")
+            
           else
-            redirect_to sconosciuto_url
-            return   
+            #se ho problemi ritorno su portale con parametro di errore
+            unless @dominio.blank?
+              return "dominio not blank"
+              redirect_to @dominio+"/?err"
+              return
+            else
+              return "dominio blank"
+              redirect_to sconosciuto_url
+              return   
+            end
+            
           end
-          
+
         end
+
       else
 
         unless @dominio.blank?
@@ -203,8 +318,11 @@ class ApplicationController < ActionController::Base
             <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload' %>"
             html_layout = html_layout.gsub("</head>", head_da_iniettare+"</head>").gsub("id=\"portal_container\">", "id=\"portal_container\"><%=yield%>")
             html_layout = html_layout.sub("<script",js_da_iniettare+" <script")
+            if Rails.env.development? 
+              html_layout = html_layout.gsub("</body>","<span class='hidden test'></span></body>")
+            end
             #parte che include il js della parte react sul layout CHE VA ALLA FINE, ALTRIMENTI REACT NON VA
-            html_layout = html_layout.gsub("</body>","<%= javascript_pack_tag 'app_demografici' %> </body>")
+            html_layout = html_layout.gsub("</body>","<%= javascript_pack_tag @page_app %> </body>")
             path_dir_layout = "#{Rails.root}/app/views/layouts/layout_portali/"
             File.open(path_dir_layout+nome_file, "w") { |file| file.puts html_layout.force_encoding(Encoding::UTF_8).encode(Encoding::UTF_8) }
         end

@@ -1,5 +1,8 @@
 Rails.application.routes.draw do
   get '/' => 'application#index', :as => :index
+  get '/dettagli_persona' => 'application#dettagli_persona', :as => :dettagli_persona
+  get '/authenticate' => 'application#authenticate', :as => :authenticate
+  get '/ricerca_individui' => 'application#ricerca_individui', :as => :ricerca_individui
   post '/api/richiedi_prenotazioni' => 'api#richiedi_prenotazioni', :as => :richiedi_prenotazioni
   post '/api/ricevi_certificato' => 'api#ricevi_certificato', :as => :ricevi_certificato
   get '/api/genera_prenotazioni_test' => 'api#genera_prenotazioni_test', :as => :genera_prenotazioni_test

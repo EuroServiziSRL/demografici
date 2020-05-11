@@ -22,24 +22,8 @@ body {
   display: none;
 }
 
-#versamenti li div, #pagamentiImu li div, #pagamentiTasi li div, #immobiliTari li div, #immobiliImu li div, #immobiliTasi li div {
-  text-align: center;
-}
-#versamenti li div:nth-of-type(1), #immobiliImu li div:nth-of-type(1), #immobiliTasi li div:nth-of-type(1), #immobiliTari li div:nth-of-type(1) {
-  text-align: left;
-}
-#versamenti li:not(.table-header) div:nth-of-type(7), 
-#versamenti li:not(.table-header) div:nth-of-type(8), 
-#immobiliImu li:not(.table-header) div:nth-of-type(4), 
-#immobiliTasi li:not(.table-header) div:nth-of-type(4), 
-#pagamentiImu li:not(.table-header) div:nth-of-type(3), 
-#pagamentiImu li:not(.table-header) div:nth-of-type(4), 
-#pagamentiImu li:not(.table-header) div:nth-of-type(5), 
-#pagamentiTasi li:not(.table-header) div:nth-of-type(3), 
-#pagamentiTasi li:not(.table-header) div:nth-of-type(4),
-#pagamentiTasi li:not(.table-header) div:nth-of-type(5),
-#pagamentiTari li:not(.table-header) div:nth-of-type(2),
-#pagamentiTari li:not(.table-header) div:nth-of-type(3),
-#pagamentiTari li:not(.table-header) div:nth-of-type(4) {
-  text-align: right;
+.panel-tabbed {
+  border-top: 0px;
+  border-top-right-radius: 0px;
+  border-top-left-radius: 0px;
 }
