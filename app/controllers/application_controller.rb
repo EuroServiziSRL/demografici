@@ -20,18 +20,9 @@ class ApplicationController < ActionController::Base
   #ROOT della main_app
   def index
     #carico cf in variabile per usarla sulla view
-    # session["cf"] = "MRTCCL65E07L736D"
-    # @cf_utente_loggato = session[:cf]
-    # if session[:user].nil?
-      # session[:user] = {"api_demografici": {
-      #   "tenant": "97d6a602-2492-4f4c-9585-d2991eb3bf4c",
-      #   "client_id": "aebe50cd-bbc0-4bf5-94ba-4e70590bcf1a",
-      #   "client_secret": "w9=jyc0bA.sBVLX@aHD:87lPZlS4r=7x",
-      #   "resource": "http://api.civilianextuat.it",
-      # }}
-    # end
+    @cf_utente_loggato = session[:cf]
     @page_app = "dettagli_persona"
-
+    
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
 
   end
@@ -167,72 +158,49 @@ class ApplicationController < ActionController::Base
   private
 
   def get_dominio_sessione_utente
-    #permetto di usare tutti i parametri e li converto in hash
-    puts "get_dominio_sessione_utente"
-    hash_params = params.permit!.to_hash
-    puts hash_params
-    if !hash_params['c_id'].blank? && session[:client_id] != hash_params['c_id']
-      puts "resetting session"
-      reset_session
-    end
-    if session.blank? || session[:user].blank? #controllo se ho fatto login
-      puts "session is blank"
-      #se ho la sessione vuota devo ottenere una sessione dal portale
-      #se arriva un client_id (parametro c_id) e id_utente lo uso per richiedere sessione
-      if !hash_params['c_id'].blank? && !hash_params['u_id'].blank?
-        puts "received c_id and u_id"
-
-        #ricavo dominio da oauth2
-        url_oauth2_get_info = "https://login.soluzionipa.it/oauth/application/get_info_cid/"+hash_params['c_id']
-        result_info_ente = HTTParty.get(url_oauth2_get_info,
-          :headers => { 'Content-Type' => 'application/json', 'Accept' => 'application/json' } )
-        hash_result_info_ente = result_info_ente.parsed_response
-        puts "get_info_cid result:"
-        puts hash_result_info_ente
-        @dominio = hash_result_info_ente['url_ente']
-        #@dominio = "https://civilianext.soluzionipa.it/portal" #per test
-        session[:dominio] = @dominio
-        #creo jwt per avere sessione utente
-        hash_jwt_app = {
-          iss: (Rails.env.development?'localhost':'demografici.soluzionipa.it'), #dominio finale dell'app demografici
-          id_app: 'demografici',
-          id_utente: hash_params['u_id'],
-          sid: hash_params['sid'],
-          api_next: true
-        }
-        puts "hash_jwt_app:"
-        puts hash_jwt_app
-        jwt = JsonWebToken.encode(hash_jwt_app)
-        puts "jwt:"
-        puts jwt
-
-        if Rails.env.development? 
-          session[:user] = true
-          session[:cf] = "MRTCCL65E07L736D"
-          session[:interroga_cf] = "MRTCCL65E07L736D"
-          @nome = "CECILIO" 
-          @cognome = "MIRTHES"
-          session[:client_id] = 1
-        else
-
+    begin
+      #permetto di usare tutti i parametri e li converto in hash
+      hash_params = params.permit!.to_hash
+      if !hash_params['c_id'].blank? && session[:client_id] != hash_params['c_id']
+        reset_session
+      end
+      if session.blank? || session[:user].blank? #controllo se ho fatto login
+        #se ho la sessione vuota devo ottenere una sessione dal portale
+        #se arriva un client_id (parametro c_id) e id_utente lo uso per richiedere sessione
+        if !hash_params['c_id'].blank? && !hash_params['u_id'].blank?
+          
+          #ricavo dominio da oauth2
+          url_oauth2_get_info = "https://login.soluzionipa.it/oauth/application/get_info_cid/"+hash_params['c_id']
+          #url_oauth2_get_info = "http://localhost:3001/oauth/application/get_info_cid/"+hash_params['c_id'] #PER TEST
+          result_info_ente = HTTParty.get(url_oauth2_get_info,
+            :headers => { 'Content-Type' => 'application/json', 'Accept' => 'application/json' } )
+          hash_result_info_ente = result_info_ente.parsed_response
+          @dominio = hash_result_info_ente['url_ente']
+          raise "Dominio non censito su applicazioni Oauth" if @dominio.blank?
+          #@dominio = "https://civilianext.soluzionipa.it/portal" #per test
+          session[:dominio] = @dominio
+          #creo jwt per avere sessione utente
+          hash_jwt_app = {
+            iss: 'demografici.soluzionipa.it', #dominio finale dell'app demografici
+            id_app: 'demografici',
+            id_utente: hash_params['u_id'],
+            sid: hash_params['sid'],
+            api_next: true
+          }
+          jwt = JsonWebToken.encode(hash_jwt_app)
           #richiesta in post a get_login_session con authorization bearer
-          puts "POSTing to "+@dominio+"/autenticazione/get_login_session.json"
 
           result = HTTParty.post(@dominio+"/autenticazione/get_login_session.json", 
             :body => hash_params,
             :headers => { 'Authorization' => 'Bearer '+jwt } )
           hash_result = result.parsed_response
-          puts "get_login_session result:"
-          puts result
-          puts hash_result
+
           #se ho risultato con stato ok ricavo dati dal portale e salvo in sessione 
           #impostare durata sessione in application.rb: ora dura 30 minuti
           if !hash_result.blank? && !hash_result["stato"].nil? && hash_result["stato"] == 'ok'
             jwt_data = JsonWebToken.decode(hash_result['token'])
             session[:user] = jwt_data #uso questo oggetto per capire se utente connesso!
-            puts "setting cf to "+jwt_data[:cf];
             session[:cf] = jwt_data[:cf]
-            session[:interroga_cf] = jwt_data[:cf]
             @nome = jwt_data[:nome] 
             @cognome = jwt_data[:cognome]
             session[:client_id] = hash_params['c_id']
@@ -242,34 +210,33 @@ class ApplicationController < ActionController::Base
           else
             #se ho problemi ritorno su portale con parametro di errore
             unless @dominio.blank?
-              return "dominio not blank"
               redirect_to @dominio+"/?err"
               return
             else
-              return "dominio blank"
               redirect_to sconosciuto_url
               return   
             end
             
           end
+        else
+
+          unless @dominio.blank?
+            #mando a fare autenticazione sul portal
+            redirect_to @dominio+"/autenticazione"
+            return
+          else
+            redirect_to sconosciuto_url
+            return    
+          end
 
         end
 
       else
-
-        unless @dominio.blank?
-          #mando a fare autenticazione sul portal
-          redirect_to @dominio+"/autenticazione"
-          return
-        else
-          redirect_to sconosciuto_url
-          return    
-        end
-        
+        @dominio = session[:dominio] || "dominio non presente"
       end
-
-    else
-      @dominio = session[:dominio] || "dominio non presente"
+    rescue => exc
+      logger.error exc.message
+      logger.error exc.backtrace.join("\n")
     end
   end
 
