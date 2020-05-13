@@ -69,13 +69,13 @@ class DemograficiForm extends React.Component{
       for(var f in fields) {
         if( typeof(fields[f].labelCols) == "undefined" ) { fields[f].labelCols = labelCols; }
         if( typeof(fields[f].valueSize) == "undefined" ) { fields[f].valueSize = valueSize; }
-        if( typeof(fields[f].label) == "undefined" ) { fields[f].label = ucfirst(fields[f].name); }
         if(fields[f].name!=null) {
+          var labelClass = "col-lg-"+fields[f].labelCols+" control-label";
+          if( typeof(fields[f].label) == "undefined" ) { fields[f].label = ucfirst(fields[f].name); }
           fieldsHtml.push(<label key={"label"+f.toString()} htmlFor={fields[f].name} className={labelClass}>{fields[f].label}</label>)
         } else {
           valueSize = fieldCols;
         }
-        var labelClass = "col-lg-"+fields[f].labelCols+" control-label";
         var valueClass = "col-lg-"+fields[f].valueSize;
         if(fields[f].html) {
           fieldsHtml.push(<div key={"div"+f.toString()} className={valueClass} id={fields[f].name}>{fields[f].value}</div>)
