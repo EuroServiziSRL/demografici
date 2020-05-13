@@ -1,0 +1,2 @@
+class Comuni < ApplicationRecord
+end

@@ -1,0 +1,2 @@
+class RelazioniParentela < ApplicationRecord
+end

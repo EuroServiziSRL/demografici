@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_05_04_120337) do
+ActiveRecord::Schema.define(version: 2020_05_13_140817) do
 
   create_table "certificatis", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
     t.string "tenant"
@@ -36,6 +36,28 @@ ActiveRecord::Schema.define(version: 2020_05_04_120337) do
     t.date "richiedente_doc_data"
     t.decimal "diritti_importo", precision: 10
     t.string "codici_certificato"
+    t.string "descrizione_errore"
+  end
+
+  create_table "comunis", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+    t.date "dataistituzione"
+    t.date "datacessazione"
+    t.integer "codistat"
+    t.string "codcatastale"
+    t.string "denominazione_it"
+    t.string "denomtraslitterata"
+    t.string "altradenominazione"
+    t.string "altradenomtraslitterata"
+    t.integer "idprovincia"
+    t.integer "idregione"
+    t.string "idprefettura"
+    t.string "stato"
+    t.string "siglaprovincia"
+    t.string "fonte"
+    t.date "dataultimoagg"
+    t.integer "cod_denom"
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
   end
 
   create_table "demografici_traccia", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
@@ -50,6 +72,36 @@ ActiveRecord::Schema.define(version: 2020_05_04_120337) do
     t.string "tipologia_richiesta"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "esenzione_bollos", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+    t.string "descrizione"
+    t.boolean "esenzione_diritto_di_segreteria"
+    t.integer "ordinamento"
+    t.date "datainiziovalidita"
+    t.date "datafinevalidita"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "relazioni_parentelas", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+    t.integer "id_relazione", null: false
+    t.string "descrizione"
+    t.integer "ordinamento"
+    t.date "datainiziovalidita"
+    t.date "datafinevalidita"
+    t.string "note"
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+  end
+
+  create_table "tipo_certificatos", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+    t.string "descrizione"
+    t.integer "ordinamento"
+    t.date "datainiziovalidita"
+    t.date "datafinevalidita"
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
   end
 
 end

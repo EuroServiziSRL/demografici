@@ -1,0 +1,2 @@
+class EsenzioneBollo < ApplicationRecord
+end

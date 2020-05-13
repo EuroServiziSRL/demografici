@@ -1,0 +1,15 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  descrizione: MyString
+  esenzione_diritto_di_segreteria: false
+  ordinamento: 1
+  datainiziovalidita: 2020-05-13
+  datafinevalidita: 2020-05-13
+
+two:
+  descrizione: MyString
+  esenzione_diritto_di_segreteria: false
+  ordinamento: 1
+  datainiziovalidita: 2020-05-13
+  datafinevalidita: 2020-05-13

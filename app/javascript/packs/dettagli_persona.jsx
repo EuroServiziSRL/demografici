@@ -13,52 +13,15 @@ import { faCircleNotch } from '@fortawesome/free-solid-svg-icons'
 
 var dominio = window.location.protocol+"//"+window.location.hostname+(window.location.port!=""?":"+window.location.port:"");
 var test = false;
+var descrizioniStatus = {"D":"deceduto", "R":"residente", "A":"residente AIRE"}
 
-function displayForm(rows, width) {
-  // console.log(cell);
-  if( typeof(width) == "undefined" ) { width = 12; }
-  var rowsHtml = []
-  
-  for(var r in rows) {
-    var fieldsHtml = [];
-    var fields = rows[r];
-    var fieldSize = width/fields.length;
-    var labelSize = Math.floor(fieldSize/3);
-    if(labelSize>2) { labelSize = 2; } // senò è enorme dai
-    var valueSize = fieldSize-labelSize;
-    for(var f in fields) {
-      if( typeof(fields[f].labelSize) == "undefined" ) { fields[f].labelSize = labelSize; }
-      if( typeof(fields[f].valueSize) == "undefined" ) { fields[f].valueSize = valueSize; }
-      if( typeof(fields[f].label) == "undefined" ) { fields[f].label = ucfirst(fields[f].name); }
-      var labelClass = "col-lg-"+fields[f].labelSize+" control-label";
-      var valueClass = "col-lg-"+fields[f].valueSize;
-      fieldsHtml.push(<label key={"label"+f.toString()} htmlFor={fields[f].name} className={labelClass}>{fields[f].label}</label>)
-      if(fields[f].html) {
-        fieldsHtml.push(<div key={"div"+f.toString()} className={valueClass} id={fields[f].name}>{fields[f].value}</div>)
-      } else {
-        fieldsHtml.push(<div key={"div"+f.toString()} className={valueClass}><p id={fields[f].name} className="form-control-static">{fields[f].value}</p></div>)
-      }
-              
-    }
-    rowsHtml.push(<div key={"row"+r.toString()} className="form-group"> {fieldsHtml} </div>)
+function dateToUser(dateTimeString) {
+  var formatted = "";
+  if(dateTimeString) {
+    var date = new Date(dateTimeString.replace(/-/g,"/").replace(/T/g," "));
+    formatted = date.toLocaleDateString("IT");
   }
-  return rowsHtml;
-}
-
-function displayList(list) {
-  var listItems = []
-  if(list && list[0]) {
-    if(list[0].linked) {
-      listItems.push(list.map((item, index) => <a  className="list-group-item" key={index.toString()} href={item.url}>{item.preText?<span>{item.preText}</span> :""}{item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a>  ));
-    } else {
-      listItems.push(list.map((item, index) => <li className="list-group-item" key={index.toString()}>{item.preText?<span>{item.preText}</span> :""}<a href={item.url}>{item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a></li>  ));
-    }
-  }
-  if(list && list[0] && list[0].linked) {
-    return <div className="list-group">{listItems}</div>
-  } else {
-    return <ul className="list-group">{listItems}</ul>
-  }
+  return formatted;
 }
 
 function todo(message, type) {
@@ -69,18 +32,123 @@ function todo(message, type) {
 }
 
 function ucfirst(str){
-  return str.replace(/(\b)([a-zA-Z])/,
+  return str?str.replace(/(\b)([a-zA-Z])/,
     function(firstLetter){
       return   firstLetter.toUpperCase();
-    });
+    }):"";
+}
+
+class DemograficiForm extends React.Component{
+  cols = 12
+  maxLabelCols = 2
+  rows = []
+
+  constructor(props){
+    super(props);
+    console.log("DemograficiForm received props");
+    console.log(props);
+    if( typeof(props.cols) != "undefined" ) { this.cols = props.cols; }
+    if( typeof(props.maxLabelCols) != "undefined" ) { this.maxLabelCols = props.maxLabelCols; }
+    this.rows = props.rows
+    console.log("constructor end");
+  }
+
+  render() {
+    console.log("rendering DemograficiForm");
+    console.log("rows");
+    console.log(this.rows);
+    var rowsHtml = []
+    
+    for(var r in this.rows) {
+      var fieldsHtml = [];
+      var fields = this.rows[r];
+      var fieldCols = this.cols/fields.length;
+      var labelCols = Math.floor(fieldCols/3);
+      if(labelCols>2) { labelCols = this.maxLabelCols; } // senò è enorme dai
+      var valueSize = fieldCols-labelCols;
+      for(var f in fields) {
+        if( typeof(fields[f].labelCols) == "undefined" ) { fields[f].labelCols = labelCols; }
+        if( typeof(fields[f].valueSize) == "undefined" ) { fields[f].valueSize = valueSize; }
+        if( typeof(fields[f].label) == "undefined" ) { fields[f].label = ucfirst(fields[f].name); }
+        if(fields[f].name!=null) {
+          fieldsHtml.push(<label key={"label"+f.toString()} htmlFor={fields[f].name} className={labelClass}>{fields[f].label}</label>)
+        } else {
+          valueSize = fieldCols;
+        }
+        var labelClass = "col-lg-"+fields[f].labelCols+" control-label";
+        var valueClass = "col-lg-"+fields[f].valueSize;
+        if(fields[f].html) {
+          fieldsHtml.push(<div key={"div"+f.toString()} className={valueClass} id={fields[f].name}>{fields[f].value}</div>)
+        } else {
+          fieldsHtml.push(<div key={"div"+f.toString()} className={valueClass}><p id={fields[f].name} className="form-control-static">{fields[f].value}</p></div>)
+        }
+                
+      }
+      rowsHtml.push(<div key={"row"+r.toString()} className="form-group"> {fieldsHtml} </div>)
+    }
+    return rowsHtml;
+  }
+}
+class DemograficiList extends React.Component{
+  list = []
+  linked = false
+
+  constructor(props){
+    super(props);
+    console.log("DemograficiList received props");
+    console.log(props);
+    this.list = props.list;
+    this.linked = props.linked;
+    console.log("constructor end");
+  }
+
+  render() {
+    console.log("rendering DemograficiList");
+    console.log("list");
+    console.log(this.list);
+    console.log("linked");
+    console.log(this.linked);
+    var listItems = [];
+    var html;
+    if(this.list && this.list[0]) {
+      if(this.linked) {
+        listItems.push(this.list.map((item, index) => <a className="list-group-item" key={index.toString()} href={item.url}>{item.preText?<span>{item.preText}</span> :""}{item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a>  ));
+      } else {
+        listItems.push(this.list.map((item, index) => <li className="list-group-item" key={index.toString()}>{item.preText?<span>{item.preText}</span> :""}<a href={item.url}>{item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a></li>  ));
+      }
+    }
+    if(this.linked) {
+      html = <div className="list-group">{listItems}</div>
+    } else {
+      html = <ul className="list-group">{listItems}</ul>
+    }
+    console.log(html);
+    return(html);
+  }
 }
 
 class DettagliPersona extends React.Component{
+  tabs= {
+    "scheda_anagrafica":[],
+    "decesso":[],
+    "matrimonio":[],
+    "divorzio":[],
+    "vedovanza":[],
+    "unione_civile":[],
+    "scioglimento_unione_civile":[],
+    "elettorale":[],
+    "documenti":[],
+    "famiglia":[],
+    "autocertificazioni":[],
+    "richiedi_certificato":[],
+  }
 
   state = {
-    datiAnagrafica:false,
-    token:false,
-  }
+    token:false, 
+    dati:{},   
+    datiCittadino: [],
+    loading: true
+  } 
 
   constructor(props){
     super(props);
@@ -119,23 +187,19 @@ class DettagliPersona extends React.Component{
       if(response.hasError) {
       } else {
         switch(response.permessi) {
+          // TODO gestire permessi visualizzazione
           case "ricercare_anagrafiche":
-            // TODO
             break;
           case "ricercare_anagrafiche_no_sensibili":
-            // TODO
             break;
           case "elencare_anagrafiche":
-            // TODO
             break;
           case "professionisti":
-            // TODO
             break;
           case "vedere_solo_famiglia":
-            // TODO
             break;
           default:
-            self.ricercaIndividuiSelf();
+            self.ricercaIndividui();
             break;
         }
       }
@@ -145,124 +209,221 @@ class DettagliPersona extends React.Component{
     });
   } 
 
-  ricercaIndividuiSelf() {
+  ricercaIndividui() {
+    this.state.loading = true;
+    for(var tabName in this.tabs) {
+      this.state.dati[tabName] = [];
+    }
     var self = this;
-    console.log("ricercaIndividuiSelf...");
+    console.log("ricercaIndividui...");
     $.get(dominio+"/ricerca_individui", {}).done(function( response ) {
-      console.log("ricercaIndividuiSelf response is loaded");
+      console.log("ricercaIndividui response is loaded");
       console.log(response);
       if(response.hasError) {
         console.log("response error");
       } else {
         var state = self.state;
-        state.datiAnagrafica = response;
+        state.debug = response;
+        response = self.formatData(response);
+        state.loading = false;
+        state.dati = response.dati;
+        state.datiCittadino = response.datiCittadino;
         self.setState(state);
       }
     }).fail(function(response) {
-      console.log("ricercaIndividuiSelf fail!");
+      console.log("ricercaIndividui fail!");
       console.log(response);
     });
   }
 
-  render(){
-    var datiAnagrafica = this.state.datiAnagrafica;
-    // console.log(datiAnagrafica);
-    var returnVal = <div className="alert alert-warning">Dati contribuente non presenti nel sistema</div>
-    if(datiAnagrafica!=null) {
-      var datiCittadino = [[
-          { name: "nominativo", value: datiAnagrafica.cognome+" "+datiAnagrafica.nome },
-          { name: "indirizzo", value: <span>{datiAnagrafica.indirizzo}{todo("normale che sia vuoto?")}</span> },
-        ], [
-          { name: "status", value: datiAnagrafica.posizioneAnagrafica }, // verificare se tabella corrispondenza, fare anche a mano
-          { name: "codiceCittadino", label: "Numero individuale", value: datiAnagrafica.codiceCittadino },
-        ]
-      ];
-      var anagrafica = [[
-          { name: "cognome", value: datiAnagrafica.cognome },
-          { name: "nome", value: datiAnagrafica.nome },
-          { name: "sesso", value: datiAnagrafica.sesso },
-        ], [
-          { name: "codiceFiscale", label: "Codice Fiscale", value: datiAnagrafica.codiceFiscale },
-          { name: "dataNascita", label: "Data di nascita", value: datiAnagrafica.dataNascita },
-          { name: "codiceIstatComuneNascitaItaliano", label: "Comune di nascita", value: datiAnagrafica.codiceIstatComuneNascitaItaliano }, // da tabella da aggiungere in db, usare codice istat
-        ], [
-          { name: "indirizzo", label: "Via di residenza", value: <span>{datiAnagrafica.indirizzo}{todo("uguale a indirizzo?", "warning")}</span> },
-          { name: "descrizioneCittadinanza", label: "Cittadinanza", value: datiAnagrafica.descrizioneCittadinanza },
-          { name: "statoCivile", label: "Stato civile", value: datiAnagrafica.datiStatoCivile?datiAnagrafica.datiStatoCivile.statoCivile:"" },
-        ], [
-          { name: "codiceTitoloStudio", label: "Titolo studio", value: datiAnagrafica.datiTitoloStudio?datiAnagrafica.datiTitoloStudio.codiceTitoloStudio:"" },
-          { name: "codiceProfessione", label: "Professione", value: datiAnagrafica.datiProfessione?datiAnagrafica.datiProfessione.codiceProfessione:"" },
-          { name: "", value: "" },
-        ]
-      ];
-      // da mostrare se almeno uno datiCartaIdentita, datiVeicoli, datiPatente
-      var documenti = [[
-          { name: "numero", value: datiAnagrafica.numero },
-          { name: "stato", value: todo("manca l'informazione","danger") },
-          { name: "dataRilascio", label: "In data", value: datiAnagrafica.dataRilascio },
-          { name: "scadenza", value: todo("manca l'informazione","danger") },
-        ]
-      ];
-      var famigliaFormatted = false;
-      if(datiAnagrafica.famiglia){
-        famigliaFormatted = []
-        for (var componente in datiAnagrafica.famiglia) {
-          famigliaFormatted.push({
-            preText: null,
-            text: datiAnagrafica.famiglia[componente].cognome+" "+datiAnagrafica.famiglia[componente].nome,
-            postText: datiAnagrafica.famiglia[componente].codiceRelazioneParentelaANPR,
-            url: dominio+"/dettagli_persona?codice_fiscale="+datiAnagrafica.famiglia[componente].codiceFiscale,
-            linked: true
-          });
-        }
+  formatData(datiAnagrafica) {
+    var result = {"dati":{}};
+    result.datiCittadino = [[
+        { name: "nominativo", value: datiAnagrafica.cognome+" "+datiAnagrafica.nome },
+        { name: "indirizzo", value: datiAnagrafica.indirizzo },
+      ], [
+        // TODO chiedere elenco stati a giambanco
+        { name: "status", value: descrizioniStatus[datiAnagrafica.posizioneAnagrafica] },
+        { name: "codiceCittadino", label: "Numero individuale", value: datiAnagrafica.codiceCittadino },
+      ]
+    ];
+    result.dati.scheda_anagrafica = [[
+        { name: "cognome", value: datiAnagrafica.cognome },
+        { name: "nome", value: datiAnagrafica.nome },
+        { name: "sesso", value: datiAnagrafica.sesso },
+      ], [
+        { name: "codiceFiscale", label: "Codice Fiscale", value: datiAnagrafica.codiceFiscale },
+        { name: "dataNascita", label: "Data di nascita", value: datiAnagrafica.dataNascita },
+        { name: "comuneNascitaDescrizione", label: "Comune di nascita", value: datiAnagrafica.comuneNascitaDescrizione }, 
+      ], [
+        { name: "indirizzo", label: "Via di residenza", value: datiAnagrafica.indirizzo },
+        { name: "descrizioneCittadinanza", label: "Cittadinanza", value: datiAnagrafica.descrizioneCittadinanza },
+        { name: "statoCivile", label: "Stato civile", value: datiAnagrafica.datiStatoCivile?datiAnagrafica.datiStatoCivile.statoCivile:"" },
+      ], [
+        { name: "codiceTitoloStudio", label: "Titolo studio", value: datiAnagrafica.datiTitoloStudio?datiAnagrafica.datiTitoloStudio.codiceTitoloStudio:"" },
+        { name: "codiceProfessione", label: "Professione", value: datiAnagrafica.datiProfessione?datiAnagrafica.datiProfessione.codiceProfessione:"" },
+        { name: "", value: "" },
+      ]
+    ];
+
+    result.dati.documenti = [];
+
+    // if(test) {
+    //   result.dati.documenti.push([
+    //     { name: "numero", value: documento.numero },
+    //     { name: "stato", value: todo("manca l'informazione","danger") },
+    //     { name: "dataRilascio", label: "In data", value: dateToUser(documento.dataRilascio) },
+    //     { name: "scadenza", value: todo("manca l'informazione","danger") },
+    //   ]);
+    // }
+
+    if(datiAnagrafica.datiCartaIdentita && datiAnagrafica.datiCartaIdentita.length) {
+      var documento = datiAnagrafica.datiCartaIdentita;
+      var rilasciataDa = "";
+      if(documento.comuneRilascio) { rilasciataDa = "Comune di "+documento.comuneRilascio; }
+      else if(documento.consolatoRilascio) { rilasciataDa = "Comune di "+documento.consolatoRilascio; }
+      result.dati.documenti.push([
+        { name: "tipoDocumento", label: "Tipo", value: "Carta d'identit&agrave;" },
+        { name: "numero", value: documento.numero },
+        { name: "comuneRilascio", label: "Rilasciata da", value: rilasciataDa },
+        // { name: "stato", value: todo("manca l'informazione","danger") },
+        { name: "dataRilascio", label: "In data", value: dateToUser(documento.dataRilascio) },
+        // { name: "scadenza", value: todo("manca l'informazione","danger") },
+      ]);
+    }
+
+    if(datiAnagrafica.datiTitoloSoggiorno && datiAnagrafica.datiTitoloSoggiorno.length) {
+      var documento = datiAnagrafica.datiTitoloSoggiorno;
+      var rilasciataDa = "";
+      if(documento.comuneRilascio) { rilasciataDa = "Comune di "+documento.comuneRilascio; }
+      else if(documento.consolatoRilascio) { rilasciataDa = "Comune di "+documento.consolatoRilascio; }
+      result.dati.documenti.push([
+        { name: "tipoDocumento", label: "Tipo", value: "Titolo di soggiorno" },
+        { name: "numero", value: documento.numero },
+        { name: "comuneRilascio", label: "Rilasciato da", value: rilasciataDa },
+        { name: "dataRilascio", label: "In data", value: dateToUser(documento.dataRilascio) },
+      ]);
+    }
+
+    if(datiAnagrafica.datiVeicoli && datiAnagrafica.datiVeicoli.length) {
+      var documento = datiAnagrafica.datiVeicoli;
+      result.dati.documenti.push([
+        { name: "possessoVeicoli", label: "Possesso veicoli", value: documento.possesso },
+        { name: "", value: "" },
+        { name: "", value: "" },
+        { name: "", value: "" },
+      ]);
+    }
+
+    if(datiAnagrafica.datiPatente && datiAnagrafica.datiPatente.length) {
+      var documento = datiAnagrafica.datiPatente;
+      result.dati.documenti.push([
+        { name: "possessoPatente", label: "Possesso patente", value: documento.possesso },
+        { name: "", value: "" },
+        { name: "", value: "" },
+        { name: "", value: "" },
+      ]);
+    }
+
+    var famigliaFormatted = false;
+    if(datiAnagrafica.famiglia){
+      famigliaFormatted = []
+      for (var componente in datiAnagrafica.famiglia) {
+        famigliaFormatted.push({
+          preText: null,
+          text: datiAnagrafica.famiglia[componente].cognome+" "+datiAnagrafica.famiglia[componente].nome,
+          postText: datiAnagrafica.famiglia[componente].relazioneParentela,
+          url: dominio+"/dettagli_persona?codice_fiscale="+datiAnagrafica.famiglia[componente].codiceFiscale
+        });
       }
-      console.log(famigliaFormatted);
-      var famiglia = [[
-          { name: "codiceFamiglia", label: "Famiglia N.", value: datiAnagrafica.codiceFamiglia },
-          { name: "numeroComponenti", label: "Numero componenti", value: datiAnagrafica.famiglia?datiAnagrafica.famiglia.length:1 },
-          { name: "componenti", value: displayList(famigliaFormatted), html: true }
-        ]
-      ];
-      // fare schede per matrimonio/divorzio/vedovanza etc
-      // vedi dettagli_persona.shtml per le varie schede
-      var matrimonio = [];
-      if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.matrimonio) {
-        var datiMatrimonio = datiAnagrafica.datiStatoCivile.matrimonio;
-        matrimonio.push([
-          { name: "coniuge", value: (datiMatrimonio.coniuge.cognome?datiMatrimonio.coniuge.cognome:"")+" "+(datiMatrimonio.coniuge.nome?datiMatrimonio.coniuge.nome:"") },
-          { name: "comune", value: datiMatrimonio.comune },
-          { name: "dataMatrimonio", name: "Data matrimonio", value: datiMatrimonio.data },
-        ]);
-      }
-      if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.divorzio) {
-        var datiDivorzio = datiAnagrafica.datiStatoCivile.divorzio;
-        matrimonio.push([
-          { name: "dataDivorzio", name: "Data divorzio", value: datiDivorzio.data },
-          { name: "tribunale", value: datiDivorzio.tribunale },
-          { name: "", value: "" },
-        ]);
-      }
-      var autocertificazioni = [];
-      if(test) {
-        var testList = [{
-          preText: "Nome documento ",
-          text: <span>scarica documento <i className='fa fa-download'></i></span>,
-          postText: todo("da dove si prende?","danger"),
-          url: dominio+"/autocertificazionei?codice_fiscale="+datiAnagrafica.codiceFiscale+"&nome=Nome documento"
-        }]
-        autocertificazioni = [[
-          { name:"listaAutocertificazioni", value: displayList(testList), html: true }
-        ]]
-        for (var componente in famiglia) {
-          famigliaFormatted.push({
-            preText: null,
-            text: datiAnagrafica.famiglia[componente].cognome+" "+datiAnagrafica.famiglia[componente].nome,
-            postText: <span>{datiAnagrafica.famiglia[componente].codiceRelazioneParentelaANPR}{todo("da dove si prende la descrizione?")}</span>, // prendere da apposita tabella, ordinare per codice
-            url: dominio+"/dettagli_persona?codice_fiscale="+datiAnagrafica.famiglia[componente].codiceFiscale
-          })
-        }
-      }
-      var elettorale = [[
+    }
+    console.log(famigliaFormatted);
+    result.dati.famiglia = [[
+        { name: "codiceFamiglia", label: "Famiglia N.", value: datiAnagrafica.codiceFamiglia },
+        { name: "numeroComponenti", label: "Numero componenti", value: datiAnagrafica.famiglia?datiAnagrafica.famiglia.length:1 },
+      ],[
+        { name: "componenti", value: <DemograficiList list={famigliaFormatted} linked="true"/>, html: true },
+        { name: "", value: "" },
+      ]
+    ];
+    
+    result.dati.decesso = [];
+    if(datiAnagrafica.datiDecesso) {
+      var datiDecesso = datiAnagrafica.datiDecesso;
+      result.dati.decesso.push([
+        { name: "comuneDecesso", name: "Comune", value: datiDecesso.comune },
+        { name: "dataDecesso", name: "Data", value: dateToUser(datiDecesso.data) },
+        { name: "", value: "" },
+        { name: "", value: "" },
+      ]);
+    }
+    
+    result.dati.matrimonio = [];
+    if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.matrimonio) {
+      var datiMatrimonio = datiAnagrafica.datiStatoCivile.matrimonio;
+      result.dati.matrimonio.push([
+        { name: "coniugeMatrimonio", name: "Coniuge", value: (datiMatrimonio.coniuge.cognome?datiMatrimonio.coniuge.cognome:"")+" "+(datiMatrimonio.coniuge.nome?datiMatrimonio.coniuge.nome:"") },
+        { name: "comuneMatrimonio", name: "Comune", value: datiMatrimonio.comune },
+        { name: "dataMatrimonio", name: "Data", value: dateToUser(datiMatrimonio.data) },
+      ]);
+    }
+
+    result.dati.divorzio = [];
+    if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.divorzio) {
+      var datiDivorzio = datiAnagrafica.datiStatoCivile.divorzio;
+      result.dati.divorzio.push([
+        { name: "coniugeDivorzio", name: "Coniuge", value: (datiDivorzio.coniuge.cognome?datiDivorzio.coniuge.cognome:"")+" "+(datiDivorzio.coniuge.nome?datiDivorzio.coniuge.nome:"") },
+        { name: "tribunale", value: datiDivorzio.tribunale },
+        { name: "dataDivorzio", name: "Data", value: dateToUser(datiDivorzio.data) },
+      ]);
+    }
+
+    result.dati.vedovanza = [];
+    if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.vedovanza) {
+      var datiVedovanza = datiAnagrafica.datiStatoCivile.vedovanza;
+      result.dati.vedovanza.push([
+        { name: "coniugeVedovanza", name: "Coniuge", value: (datiVedovanza.coniuge.cognome?datiVedovanza.coniuge.cognome:"")+" "+(datiVedovanza.coniuge.nome?datiVedovanza.coniuge.nome:"") },
+        { name: "comuneVedovanza", name: "Comune", value: datiVedovanza.comune },
+        { name: "dataVedovanza", name: "Data", value: dateToUser(datiVedovanza.data) },
+      ]);
+    }
+
+    result.dati.unione_civile = [];
+    if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.unioneCivile) {
+      var datiUnioneCivile = datiAnagrafica.datiStatoCivile.unioneCivile;
+      result.dati.unione_civile.push([
+        { name: "coniugeUnioneCivile", name: "Unito civilmente", value: (datiUnioneCivile.unitoCivilmente.cognome?datiUnioneCivile.unitoCivilmente.cognome:"")+" "+(datiUnioneCivile.unitoCivilmente.nome?datiUnioneCivile.unitoCivilmente.nome:"") },
+        { name: "comuneUnioneCivile", name: "Comune", value: datiUnioneCivile.comune },
+        { name: "dataUnioneCivile", name: "Data", value: dateToUser(datiUnioneCivile.data) },
+      ]);
+    }
+
+    result.dati.scioglimento_unione_civile = [];
+    if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.scioglimentoUnione) {
+      var datiScioglimento = datiAnagrafica.datiStatoCivile.scioglimentoUnione;
+      result.dati.scioglimento_unione_civile.push([
+        { name: "coniugeScioglimentoUnione", name: "Unito civilmente", value: (datiUniondatiScioglimentoeCivile.unitoCivilmente.cognome?datiScioglimento.unitoCivilmente.cognome:"")+" "+(datiScioglimento.unitoCivilmente.nome?datiScioglimento.unitoCivilmente.nome:"") },
+        { name: "comuneScioglimentoUnione", name: "Comune", value: datiScioglimento.comune },
+        { name: "dataScioglimentoUnione", name: "Data", value: dateToUser(datiScioglimento.data) },
+      ]);
+    }
+
+    result.dati.autocertificazioni = [];
+    if(test) {
+      var testList = [{
+        preText: "Nome documento ",
+        text: <span>scarica documento <i className='fa fa-download'></i></span>,
+        postText: todo("da dove si prende?","danger"),
+        url: dominio+"/autocertificazionei?codice_fiscale="+datiAnagrafica.codiceFiscale+"&nome=Nome documento"
+      }]
+      result.dati.autocertificazioni = [[
+        { name:"listaAutocertificazioni", value: <DemograficiList list={testList}/>, html: true }
+      ]]
+    }
+
+    result.dati.elettorale = [];
+    if(test) {
+      result.dati.elettorale = [[
           { name: "statusElettore", label: "Stato elettore", value: todo("da dove si prende?","danger") },
           { name: "iscrizione", value: todo("da dove si prende?","danger") },
           { name: "fascicolo", value: todo("da dove si prende?","danger") }
@@ -272,83 +433,107 @@ class DettagliPersona extends React.Component{
           { name: "sezionale", value: todo("da dove si prende?","danger") }
         ]
       ];
+    }
 
+    var selectTipiCertificato = []
+    selectTipiCertificato.push(<option value="" disabled hidden>scegli il tipo di certificato da richiedere</option>)
+    for(var t in tipiCertificato) {
+      selectTipiCertificato.push(<option value={tipiCertificato[t].id}>{tipiCertificato[t].descrizione}</option>)
+    }
+    selectTipiCertificato = <select className="form-control" defaultValue="" name="tipoCertificato">{selectTipiCertificato}</select>
+
+    var selectEsenzioni = []
+    selectEsenzioni.push(<option value="">nessuna esenzione</option>)
+    for(var e in esenzioniBollo) {
+      selectEsenzioni.push(<option value={esenzioniBollo[e].id}>{esenzioniBollo[e].descrizione}</option>)
+    }
+    selectEsenzioni = <select className="form-control" defaultValue="" name="esenzioneBollo">{selectEsenzioni}</select>
+
+    result.dati.richiedi_certificato = [[
+      { name:null, value: <p className="alert alert-info">Per i certificati diretti alla Pubblica Amministrazione ed Enti Erogatori di Pubblici Servizi (ASL, ENEL, POSTE, PREFETTURA, INPS, SUCCESSIONE ...) dev'essere compilata l'Autocertificazione.</p>, html: true }
+    ],[
+      { name:"nomeCognomeRichiesta", label: "Si richiede il certificato per", value: datiAnagrafica.cognome+" "+datiAnagrafica.nome },
+      { name:"tipoCertificato", label: "Tipo certificato", value: selectTipiCertificato, html: true }
+    ],[
+      { name:"cartaLiberaBollo", label: "Il certificato dovrà essere rilasciato in Carta Libera o in Bollo?", value: <div>
+        <label className="radio-inline">
+              <input type="radio" name="dati[bollo]" id="carta_libera" defaultValue="false"/>Carta Libera
+            </label>
+            <label className="radio-inline">
+              <input type="radio" name="dati[bollo]" id="bollo" defaultValue="true" defaultChecked="checked"/>
+              Bollo
+            </label>
+      </div>, html: true },
+     { name:"tipoEsenzione", label: "Esenzione", value: selectEsenzioni, html: true }
+    ],[
+      { name:null, value: <p className="alert alert-info">In caso di certificato in Bollo, è necessario acquistare la marca da bollo preventivamente presso un punto vendita autorizzato; il numero identificativo, composto da 14 cifre, andrà poi riportato nel campo sottostante.</p>, html: true }
+    ],[
+      { name:"identificativoBollo", label: "Inserire l'identificativo del bollo", value: <input className="form-control" type="text" name="dati[bollo_numero]" defaultValue="" placeholder="01234567891234"/>, html: true },
+      { name: "", value: "" }
+    ],[
+      { name:"", value: <input type="submit" name="invia" className="btn btn-default" value="Invia richiesta"/>, html: true }
+    ]]
+
+    return result;
+  }
+
+  displayTabs() {
+    var tabsHtml = [];
+    var className = "active";
+    for(var tabName in this.tabs) {
+      if(this.state.dati[tabName].length) {
+        var label = ucfirst(tabName.replace(/_/g," "));
+        tabsHtml.push(<li key={tabName} role="presentation" className={className}><a href={"#"+tabName} aria-controls={tabName} role="tab" data-toggle={tabName}>{label}</a></li>);
+        className = "";
+      }
+    }
+    return <ul className="nav nav-tabs">{tabsHtml}</ul>
+  }
+
+  displayPanels() {
+    var panelsHtml = [];
+    var className = "";
+    for(var tabName in this.tabs) {
+      if(this.state.dati[tabName].length) {
+        panelsHtml.push(<div role="tabpanel" key={"panel_"+tabName} className={"tab-pane"+className} id={tabName}>
+          <div className="panel panel-default panel-tabbed">
+            <div className="panel-body form-horizontal">
+              <DemograficiForm rows={this.state.dati[tabName]} maxLabelCols={tabName=="certificazione"?4:2}/>
+            </div>
+          </div>
+        </div>);
+        className = " hidden";
+      }
+    }
+    
+    return <div className="tab-content">{panelsHtml}</div>
+  }
+
+  render() {
+    // console.log(datiAnagrafica);
+    var found = this.state.datiCittadino && this.state.datiCittadino!=null && this.state.datiCittadino.length;
+    var returnVal = <div className="alert alert-warning">Dati contribuente non presenti nel sistema</div>
+    if(this.state.loading) {
+      returnVal = <div className="alert alert-info">Caricamento...</div>
+    }
+    else if(found) {
       returnVal =       <div itemID="app_tributi">
-      <h4>Dettagli persona</h4>
-      {datiAnagrafica?
-        <div className="form-horizontal">{displayForm(datiCittadino)}</div>:<p>Caricamento dati utente...</p>
-      }   
+        <h4>Dettagli persona</h4>
+        <div className="form-horizontal"><DemograficiForm rows={this.state.datiCittadino}/></div>
+        
+        <p></p>
+
+        <div>
       
-      <p></p>
+          {this.displayTabs()}
 
-      <div className={datiAnagrafica?"":"hide"}>
-        
-        <ul className="nav nav-tabs">
-          <li role="presentation" className="active"><a href="#anagrafica" aria-controls="anagrafica" role="tab" data-toggle="anagrafica">Scheda Anagrafica</a></li>
-          <li role="presentation"><a href="#matrimonio" aria-controls="matrimonio" role="tab" data-toggle="matrimonio">Matrimonio</a></li>
-          <li role="presentation"><a href="#elettorale" aria-controls="elettorale" role="tab" data-toggle="elettorale">Elettorale</a></li>
-          <li role="presentation"><a href="#documenti" aria-controls="documenti" role="tab" data-toggle="documenti">Documenti</a></li>
-          <li role="presentation"><a href="#famiglia" aria-controls="famiglia" role="tab" data-toggle="famiglia">Famiglia</a></li>
-          <li role="presentation"><a href="#autocertificazioni" aria-controls="autocertificazioni" role="tab" data-toggle="autocertificazioni">Autocertificazioni</a></li>
-        </ul>
-        
-        <div className="tab-content">
-        
-          <div role="tabpanel" className="tab-pane" id="anagrafica">
-            <div className="panel panel-default panel-tabbed">
-              <div className="panel-body form-horizontal">
-                {displayForm(anagrafica)}
-              </div>
-            </div>
-          </div>
-          
-          <div role="tabpanel" className="tab-pane" id="matrimonio">
-            <div className="panel panel-default panel-tabbed">
-              <div className="panel-body form-horizontal">
-                {displayForm(matrimonio)}
-              </div>
-            </div>
-          </div>
-          
-          <div role="tabpanel" className="tab-pane" id="elettorale">
-            <div className="panel panel-default panel-tabbed">
-              <div className="panel-body form-horizontal">
-                {displayForm(elettorale)}
-              </div>
-            </div>
-          </div>
-          
-          <div role="tabpanel" className="tab-pane" id="documenti">
-            <div className="panel panel-default panel-tabbed">
-              <div className="panel-body form-horizontal">
-                {displayForm(documenti)}
-              </div>
-            </div>
-          </div>
-          
-          <div role="tabpanel" className="tab-pane" id="famiglia">
-            <div className="panel panel-default panel-tabbed">
-              <div className="panel-body form-horizontal">
-                {displayForm(famiglia)}
-              </div>
-            </div>
-          </div>
-          
-          <div role="tabpanel" className="tab-pane" id="autocertificazioni">
-            <div className="panel panel-default panel-tabbed">
-              <div className="panel-body form-horizontal">
-                {displayForm(autocertificazioni)}
-              </div>
-            </div>
-          </div>
-        
-        </div>
+          {this.displayPanels()}
 
-      </div>
+        </div>  
 
-      {test?<pre style={{"whiteSpace": "break-spaces"}}><code>{datiAnagrafica?JSON.stringify(datiAnagrafica, null, 2):""}</code></pre>:""}
+        {test?<pre style={{"whiteSpace": "break-spaces"}}><code>{this.state.debug?JSON.stringify(this.state.debug, null, 2):""}</code></pre>:""}
 
-    </div>  
+      </div>  
     }
     return(returnVal);
   }
@@ -365,15 +550,11 @@ if(document.getElementById('app_demografici_container') !== null){
   console.log("hidden test is "+$(".hidden.test").length);
   test = $(".hidden.test").length;
 
-  $(".tab-pane").hide();  
-  
-  $("#anagrafica").show();
-  
-  $('.nav-tabs a').on('click',function (e) {
+  $('#portal_container').on('click', '.nav-tabs a', function(e){
     e.preventDefault();
-    $(".tab-pane").hide();
+    $(".tab-pane").addClass("hidden");
     $(".nav-tabs li").removeClass("active");
-    $("#"+$(this).data("toggle")).show()
+    $("#"+$(this).data("toggle")+".tab-pane").removeClass("hidden");
     $(this).parent().addClass("active");
-  })
+  });
 }

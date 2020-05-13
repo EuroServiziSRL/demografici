@@ -20,23 +20,59 @@ class ApplicationController < ActionController::Base
   #ROOT della main_app
   def index
     #carico cf in variabile per usarla sulla view
+    puts "logged user cf: "+session[:cf]
+    # puts "cf interrogazione: "+session[:interroga_cf]
     @cf_utente_loggato = session[:cf]
     @nome = session[:user]["nome"]
     @page_app = "dettagli_persona"
+
+    tipiCertificato = []
+    TipoCertificato.all.each do |tipoCertificato|
+      cert = { "id": tipoCertificato.id, "descrizione": tipoCertificato.descrizione }
+      tipiCertificato << cert
+    end
+    @tipiCertificato = tipiCertificato.to_json
+
+    esenzioniBollo = []
+    EsenzioneBollo.all.each do |esenzioneBollo|
+      esenzione = { "id": esenzioneBollo.id, "descrizione": esenzioneBollo.descrizione }
+      esenzioniBollo << esenzione
+    end
+    @esenzioniBollo = esenzioniBollo.to_json
     
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
 
   end
 
   def dettagli_persona
+    puts "logged user cf: "+session[:cf]
     @page_app = "dettagli_persona"
     @nome = session[:user]["nome"]
+    tipiCertificato = []
+    TipoCertificato.all.each do |tipoCertificato|
+      cert = { "id": tipoCertificato.id, "descrizione": tipoCertificato.descrizione }
+      tipiCertificato << cert
+    end
+    @tipiCertificato = tipiCertificato.to_json
 
-    session[:interroga_cf] = params["codice_fiscale"]
+    if params["codice_fiscale"] == session[:cf]
+      session[:interroga_cf] = nil
+    else
+      session[:interroga_cf] = params["codice_fiscale"]
+      puts "cf interrogazione: "+session[:interroga_cf]
+    end
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
   end
 
   def richiedi_certificato
+    @page_app = "richiedi_certificato"
+    @nome = session[:user]["nome"]
+
+    # session[:interroga_cf] = params["codice_fiscale"]
+    render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
+  end
+
+  def ricerca_anagrafiche
     @page_app = "richiedi_certificato"
     @nome = session[:user]["nome"]
 
@@ -70,8 +106,13 @@ class ApplicationController < ActionController::Base
   end  
 
   def ricerca_individui
-    puts "session is:";
-    puts session
+    
+    puts "logged user cf: "+session[:cf]
+    cf_ricerca = session[:interroga_cf]
+    if session[:interroga_cf].nil? || session[:interroga_cf].blank? 
+      cf_ricerca = session[:cf]
+    end
+    # puts "cf interrogazione: "+session[:interroga_cf]
     # params = { "mostraDatiIscrizione": "true",  "codiceFiscale": "#{session[:cf]}", "nomeCognome": "#{session[:nome]} #{session[:cognome]}" }
     # params = { "mostraDatiIscrizione": "true",  "codiceFiscale": "ZNNCDD51P20C794V", "nomeCognome": "CANDIDO ZANONI" }
     # params = { "codiceFiscale": "ZNNCDD51P20C794V" } # pochi dati
@@ -79,7 +120,7 @@ class ApplicationController < ActionController::Base
     # params = { "codiceFiscale": "RGTVRB33C53B153U" }
     # params = { "codiceFiscale": "GRFJNU74M26Z148Q" }
     # params = { "codiceFiscale": "DPLKTY68L54Z140P" }
-    params = { "codiceFiscale": session[:interroga_cf] }
+    params = { "codiceFiscale": cf_ricerca }
 
     params[:MostraMaternita] = true
     params[:MostraConiuge] = true
@@ -103,18 +144,36 @@ class ApplicationController < ActionController::Base
     result = JSON.parse(result.response.body)
     result = result[0]
     if !result.nil? && result.length > 0
+      comune = Comuni.where(codistat: result["codiceIstatComuneNascitaItaliano"]).first
+      puts comune
+      # TODO aggiungere tabella stati esteri e recuperare stato nascita come comune nascita ita
+      if !comune.blank? && !comune.nil?
+        result["comuneNascitaDescrizione"] = comune.denominazione_it
+      elsif !result["descrizioneComuneNascitaEstero"].blank?
+        result["comuneNascitaDescrizione"] = result["descrizioneComuneNascitaEstero"]+" ("+result["codiceIstatNazioneNascitaEstero"]+")"
+      else
+        result["comuneNascitaDescrizione"] = "";
+      end
       session[:cf] = result["codiceFiscale"]
       params = { 
         "codiceAggregazione": result["codiceFamiglia"], 
         # "codiceFiscaleComponente": result["codiceFiscale"] # non li mostra tutti se metto cf
       }
-      puts params
       resultFamiglia = HTTParty.post(
         "#{@@api_url}/Anagrafe/RicercaComponentiFamiglia?v=1.0", 
         :body => params.to_json,
         :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } 
       )    
-      result["famiglia"] = JSON.parse(resultFamiglia.response.body)
+      resultFamiglia = JSON.parse(resultFamiglia.response.body)
+      famiglia = []
+      resultFamiglia.each do |componente|
+        puts "looping through resultFamiglia, componente:"
+        puts componente
+        relazione = RelazioniParentela.where(id_relazione: componente["codiceRelazioneParentelaANPR"]).first
+        componente["relazioneParentela"] = relazione.descrizione
+        famiglia << componente
+      end
+      result["famiglia"] = famiglia
     end
 
     render :json => result
@@ -162,12 +221,15 @@ class ApplicationController < ActionController::Base
 
   def get_dominio_sessione_utente
     begin
+      # reset_session
       #permetto di usare tutti i parametri e li converto in hash
       hash_params = params.permit!.to_hash
       if !hash_params['c_id'].blank? && session[:client_id] != hash_params['c_id']
         reset_session
       end
       if session.blank? || session[:user].blank? #controllo se ho fatto login
+        puts "received hash params"
+        puts hash_params
         #se ho la sessione vuota devo ottenere una sessione dal portale
         #se arriva un client_id (parametro c_id) e id_utente lo uso per richiedere sessione
         if !hash_params['c_id'].blank? && !hash_params['u_id'].blank?
@@ -178,24 +240,33 @@ class ApplicationController < ActionController::Base
           result_info_ente = HTTParty.get(url_oauth2_get_info,
             :headers => { 'Content-Type' => 'application/json', 'Accept' => 'application/json' } )
           hash_result_info_ente = result_info_ente.parsed_response
+          puts "hash_result_info_ente"
+          puts hash_result_info_ente
+
           @dominio = hash_result_info_ente['url_ente']
           raise "Dominio non censito su applicazioni Oauth" if @dominio.blank?
           #@dominio = "https://civilianext.soluzionipa.it/portal" #per test
           session[:dominio] = @dominio
           #creo jwt per avere sessione utente
+          iss = 'demografici.soluzionipa.it'
+          if Rails.env.development?
+            iss = 'localhost:3000'
+          end
           hash_jwt_app = {
-            iss: 'demografici.soluzionipa.it', #dominio finale dell'app demografici
+            iss: iss, #dominio finale dell'app demografici
             id_app: 'demografici',
             id_utente: hash_params['u_id'],
             sid: hash_params['sid'],
             api_next: true
           }
+          puts hash_jwt_app
           jwt = JsonWebToken.encode(hash_jwt_app)
           #richiesta in post a get_login_session con authorization bearer
-
           result = HTTParty.post(@dominio+"/autenticazione/get_login_session.json", 
             :body => hash_params,
-            :headers => { 'Authorization' => 'Bearer '+jwt } )
+            :headers => { 'Authorization' => 'Bearer '+jwt },
+            :debug_output => $stdout 
+          )
           hash_result = result.parsed_response
 
           #se ho risultato con stato ok ricavo dati dal portale e salvo in sessione 
@@ -203,11 +274,14 @@ class ApplicationController < ActionController::Base
           if !hash_result.blank? && !hash_result["stato"].nil? && hash_result["stato"] == 'ok'
             jwt_data = JsonWebToken.decode(hash_result['token'])
             session[:user] = jwt_data #uso questo oggetto per capire se utente connesso!
+            puts "received hash"
+            puts jwt_data
+            puts "received cf is "+jwt_data[:cf]
             session[:cf] = jwt_data[:cf]
             @nome = jwt_data[:nome] 
             @cognome = jwt_data[:cognome]
             session[:client_id] = hash_params['c_id']
-            # TODO gestire meglio il dominio
+            # TODO gestire meglio il dominio, aspettiamo setup a db
             solo_dom = @dominio.gsub("/portal","")
             
           else
@@ -291,6 +365,7 @@ class ApplicationController < ActionController::Base
             if Rails.env.development? 
               html_layout = html_layout.gsub("</body>","<span class='hidden test'></span></body>")
             end
+            html_layout = html_layout.gsub("</body>","<script type='text/javascript'>var tipiCertificato = <%=@tipiCertificato.html_safe%>;var esenzioniBollo = <%=@esenzioniBollo.html_safe%>;</script></body>")
             html_layout = html_layout.gsub("</body>","<span class='hidden' id='nome_utente'><%=@nome%></span></body>")
             #parte che include il js della parte react sul layout CHE VA ALLA FINE, ALTRIMENTI REACT NON VA
             html_layout = html_layout.gsub("</body>","<%= javascript_pack_tag @page_app %> </body>")
