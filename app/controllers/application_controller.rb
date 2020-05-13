@@ -55,6 +55,13 @@ class ApplicationController < ActionController::Base
     end
     @tipiCertificato = tipiCertificato.to_json
 
+    esenzioniBollo = []
+    EsenzioneBollo.all.each do |esenzioneBollo|
+      esenzione = { "id": esenzioneBollo.id, "descrizione": esenzioneBollo.descrizione }
+      esenzioniBollo << esenzione
+    end
+    @esenzioniBollo = esenzioniBollo.to_json
+
     if params["codice_fiscale"] == session[:cf]
       session[:interroga_cf] = nil
     else
