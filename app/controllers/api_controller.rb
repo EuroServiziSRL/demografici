@@ -43,13 +43,13 @@ class ApiController < ActionController::Base
 
     if autenticato["esito"]=="ko"
       esito << {
-        "codice_esito": "001-Errore di autenticazione",
+        "codice_esito": "003-Errore generico",
         "errore_descrizione": autenticato["msg_errore"]
       }
     else
       if params[:tenant].nil?
         esito << {
-          "codice_esito": "002-Dati mancanti",
+          "codice_esito": "003-Errore generico",
           "errore_descrizione": "è necessario specificare un tenant"
         }
       else
@@ -142,23 +142,90 @@ class ApiController < ActionController::Base
 
     if autenticato["esito"]=="ko"
       array_json << {
-        "codice_esito": "001-Errore di autenticazione",
+        "codice_esito": "003-Errore generico",
         "errore_descrizione": autenticato["msg_errore"]
       }
     else
       if params[:tenant].nil?
         array_json << {
-          "codice_esito": "002-Dati mancanti",
+          "codice_esito": "003-Errore generico",
           "errore_descrizione": "è necessario specificare un tenant"
         }
       elsif params[:richiesta].nil?
         array_json << {
-          "codice_esito": "002-Dati mancanti",
+          "codice_esito": "003-Errore generico",
           "errore_descrizione": "è necessario specificare una richiesta"
-        }    
+        } 
+      elsif params[:codice_esito] == "001-Certificato presente" 
+
+        searchParams[:id] = params[:richiesta]
+        searchParams[:stato] = "richiesto"
+        richiesta_certificato = Certificati.find_by_id(params[:richiesta])  
+        if richiesta_certificato.blank? || richiesta_certificato.nil?
+          array_json << {
+            "codice_esito": "003-Errore generico",
+            "errore_descrizione": "richiesta non trovata"
+          }
+        else
+          richiesta_certificato.stato = "presente"
+          richiesta_certificato.data_inserimento = Time.now
+          richiesta_certificato.save
+          array_json << {
+            "codice_esito": "002-Richiesta aggiornata"
+          }
+        end
+
+      elsif params[:codice_esito] == "002-Certificato non emettibile" 
+
+        searchParams[:id] = params[:richiesta]
+        searchParams[:stato] = "richiesto"
+        richiesta_certificato = Certificati.find_by_id(params[:richiesta])  
+        if richiesta_certificato.blank? || richiesta_certificato.nil?
+          array_json << {
+            "codice_esito": "003-Errore generico",
+            "errore_descrizione": "richiesta non trovata"
+          }
+        elsif richiesta_certificato.documento.present?
+          array_json << {
+            "codice_esito": "001-Certificato presente"
+          }
+        else
+          richiesta_certificato.stato = "non_emettibile"
+          richiesta_certificato.data_inserimento = Time.now
+          richiesta_certificato.save
+          array_json << {
+            "codice_esito": "002-Richiesta aggiornata"
+          }
+        end
+
+
+      elsif params[:codice_esito] == "003-Errore generico" 
+
+        searchParams[:id] = params[:richiesta]
+        searchParams[:stato] = "richiesto"
+        richiesta_certificato = Certificati.find_by_id(params[:richiesta])  
+        if richiesta_certificato.blank? || richiesta_certificato.nil?
+          array_json << {
+            "codice_esito": "003-Errore generico",
+            "errore_descrizione": "richiesta non trovata"
+          }
+        elsif richiesta_certificato.documento.present?
+          array_json << {
+            "codice_esito": "001-Certificato presente"
+          }
+        else
+          richiesta_certificato.stato = "errore"
+          richiesta_certificato.descrizione_errore = params[:errore_descrizione]
+          richiesta_certificato.data_inserimento = Time.now
+          richiesta_certificato.save
+          array_json << {
+            "codice_esito": "002-Richiesta aggiornata"
+          }
+        end
+
       elsif params[:certificato].nil?
         array_json << {
-          "codice_esito": "002-Dati mancanti",
+          "codice_esito": "003-Errore generico",
           "errore_descrizione": "il certificato non può essere vuoto"
         }
       else
@@ -173,7 +240,7 @@ class ApiController < ActionController::Base
           }
         elsif richiesta_certificato.documento.present?
           array_json << {
-            "codice_esito": "004-Certificato presente"
+            "codice_esito": "001-Certificato presente"
           }
         else
           basedir = createPath( [params[:tenant], Time.now.year.to_s, Time.now.month.to_s] )
