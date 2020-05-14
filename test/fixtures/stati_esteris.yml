@@ -1,0 +1,41 @@
+# Read about fixtures at http://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  id: 1
+  denominazione: MyString
+  denominazioneistat: MyString
+  denominazioneistat_en: MyString
+  datainiziovalidita: 2020-05-14
+  datafinevalidita: 2020-05-14
+  codiso3166_1_alpha3: MyString
+  codmae: 1
+  codmin: 1
+  codat: MyString
+  codistat: MyString
+  cittadinanza: false
+  nascita: false
+  residenza: false
+  fonte: MyString
+  tipo: MyString
+  codisosovrano: MyString
+  dataultimoagg: 2020-05-14
+
+two:
+  id: 1
+  denominazione: MyString
+  denominazioneistat: MyString
+  denominazioneistat_en: MyString
+  datainiziovalidita: 2020-05-14
+  datafinevalidita: 2020-05-14
+  codiso3166_1_alpha3: MyString
+  codmae: 1
+  codmin: 1
+  codat: MyString
+  codistat: MyString
+  cittadinanza: false
+  nascita: false
+  residenza: false
+  fonte: MyString
+  tipo: MyString
+  codisosovrano: MyString
+  dataultimoagg: 2020-05-14

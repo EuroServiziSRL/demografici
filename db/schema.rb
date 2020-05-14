@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_05_13_140817) do
+ActiveRecord::Schema.define(version: 2020_05_14_072139) do
 
   create_table "certificatis", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
     t.string "tenant"
@@ -80,8 +80,8 @@ ActiveRecord::Schema.define(version: 2020_05_13_140817) do
     t.integer "ordinamento"
     t.date "datainiziovalidita"
     t.date "datafinevalidita"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
   end
 
   create_table "relazioni_parentelas", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
@@ -93,6 +93,28 @@ ActiveRecord::Schema.define(version: 2020_05_13_140817) do
     t.string "note"
     t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
     t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+  end
+
+  create_table "stati_esteris", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+    t.string "denominazione"
+    t.string "denominazioneistat"
+    t.string "denominazioneistat_en"
+    t.date "datainiziovalidita"
+    t.date "datafinevalidita"
+    t.string "codiso3166_1_alpha3"
+    t.integer "codmae"
+    t.integer "codmin"
+    t.string "codat"
+    t.string "codistat"
+    t.boolean "cittadinanza"
+    t.boolean "nascita"
+    t.boolean "residenza"
+    t.string "fonte"
+    t.string "tipo"
+    t.string "codisosovrano"
+    t.date "dataultimoagg"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "tipo_certificatos", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|

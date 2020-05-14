@@ -1,0 +1,2 @@
+class StatiEsteri < ApplicationRecord
+end
