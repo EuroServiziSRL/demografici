@@ -373,6 +373,9 @@ class ApplicationController < ActionController::Base
     else
       @demografici_data["test"] = false
     end
+    
+    @demografici_data = @demografici_data.to_json
+    @demografici_data = @demografici_data.html_safe
   end
 
   def get_dominio_sessione_utente
@@ -518,7 +521,7 @@ class ApplicationController < ActionController::Base
             <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload' %>"
             html_layout = html_layout.gsub("</head>", head_da_iniettare+"</head>").gsub("id=\"portal_container\">", "id=\"portal_container\"><%=yield%>")
             html_layout = html_layout.sub("<script",js_da_iniettare+" <script")
-            html_layout = html_layout.gsub("</body>","<script type='text/javascript'>var demograficiData = <%=@demografici_data.to_json.html_safe%>;</script></body>")
+            html_layout = html_layout.gsub("</body>","<script type='text/javascript'>var demograficiData = <%=@demografici_data%>;</script></body>")
             html_layout = html_layout.gsub("</body>","<span class='hidden' id='nome_utente'><%=@nome%></span></body>")
             #codice js comune a tutte le pagine
             html_layout = html_layout.gsub("</body>","<%= javascript_pack_tag 'demografici' %> </body>")
