@@ -15,31 +15,17 @@ class ApplicationController < ActionController::Base
   include ApplicationHelper
   @@api_resource = "https://api.civilianextuat.it"
   @@api_url = "#{@@api_resource}/Demografici/"
-  before_action :get_dominio_sessione_utente, :get_layout_portale
+  before_action :get_dominio_sessione_utente, :get_layout_portale, :carica_variabili_layout
   
   #ROOT della main_app
   def index
+    # 
     #carico cf in variabile per usarla sulla view
     puts "logged user cf: "+session[:cf]
     # puts "cf interrogazione: "+session[:interroga_cf]
     @cf_utente_loggato = session[:cf]
-    @nome = session[:user]["nome"]
     @page_app = "dettagli_persona"
-
-    tipiCertificato = []
-    TipoCertificato.all.each do |tipoCertificato|
-      cert = { "id": tipoCertificato.id, "descrizione": tipoCertificato.descrizione }
-      tipiCertificato << cert
-    end
-    @tipiCertificato = tipiCertificato.to_json
-
-    esenzioniBollo = []
-    EsenzioneBollo.all.each do |esenzioneBollo|
-      esenzione = { "id": esenzioneBollo.id, "descrizione": esenzioneBollo.descrizione }
-      esenzioniBollo << esenzione
-    end
-    @esenzioniBollo = esenzioniBollo.to_json
-    
+     
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
 
   end
@@ -47,33 +33,77 @@ class ApplicationController < ActionController::Base
   def dettagli_persona
     puts "logged user cf: "+session[:cf]
     @page_app = "dettagli_persona"
-    @nome = session[:user]["nome"]
-    tipiCertificato = []
-    TipoCertificato.all.each do |tipoCertificato|
-      cert = { "id": tipoCertificato.id, "descrizione": tipoCertificato.descrizione }
-      tipiCertificato << cert
-    end
-    @tipiCertificato = tipiCertificato.to_json
-
-    esenzioniBollo = []
-    EsenzioneBollo.all.each do |esenzioneBollo|
-      esenzione = { "id": esenzioneBollo.id, "descrizione": esenzioneBollo.descrizione }
-      esenzioniBollo << esenzione
-    end
-    @esenzioniBollo = esenzioniBollo.to_json
 
     if params["codice_fiscale"] == session[:cf]
       session[:interroga_cf] = nil
     else
       session[:interroga_cf] = params["codice_fiscale"]
-      puts "cf interrogazione: "+session[:interroga_cf]
+      puts "cf interrogazione: "+session[:interroga_cf].to_s
     end
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
   end
 
   def richiedi_certificato
+    # ricevo dal portale del cittadino una richiesta di certificato
+    # il portale deve inviarmi il tenant
+    # inserisco in certificati la richiesta ricevuta con stato appropriato 
+    # richiesto se !bollo&&!segreteria, da pagare se bollo||segreteria
+    # restituisco risultato inserimento e id richiesta
+    # se da pagare, poi il portale farà un redirect su pagamenti
+    cf_certificato = session[:cf]
+    if !session[:interroga_cf].nil? &&! session[:interroga_cf].blank? 
+      cf_certificato = session[:interroga_cf]
+    end
+
     @page_app = "richiedi_certificato"
-    @nome = session[:user]["nome"]
+
+    nome_certificato = ""
+    tipo_certificato = TipoCertificato.find_by_id(params[:tipoCertificato])  
+    if !tipo_certificato.blank? || !tipo_certificato.nil?
+      nome_certificato = tipo_certificato.descrizione
+    end
+
+    # TODO da dove prendiamo questi importi?
+    importo_bollo = rand(1.2...16.9).round(1)
+    puts "importo_bollo: "+importo_bollo.to_s
+    importo_segreteria = 0
+
+    if !params[:esenzioneBollo].nil? && !params[:esenzioneBollo].blank? &&  params[:esenzioneBollo] != "0"
+      puts "esenzione bollo"
+      importo_bollo = 0
+    end
+
+    if rand(2)>0
+      importo_segreteria = rand(5...20).round(1)
+    end
+
+    certificato = {
+      tenant: "97d6a602-2492-4f4c-9585-d2991eb3bf4c",
+      codice_fiscale: cf_certificato,
+      codici_certificato: [params[:tipoCertificato].to_i],
+      bollo: importo_bollo,
+      bollo_esenzione: params[:esenzioneBollo],
+      nome_certificato: nome_certificato,
+      # TODO aggiungere importo e uso
+      diritti_importo: importo_segreteria,
+      # uso: "",
+      richiedente_cf: session[:cf],
+      richiedente_nome: session[:nome],
+      richiedente_cognome: session[:cognome],
+      # TODO aggiungere dati documento e data nascita
+      # richiedente_doc_riconoscimento: ( richiedente_diverso ? nil : docs[richiedente_random] ),
+      # richiedente_doc_data: ( richiedente_diverso ? nil : rand_time(5.years.ago, 30.days.ago) ),
+      # richiedente_data_nascita: ( richiedente_diverso ? nil : rand_time(80.years.ago,18.years.ago) ),
+      # richiesta: "", # non usato
+      stato: "nuovo",
+      # data_inserimento: "", # data inserimento del certificato che verrà inserito dall'ente
+      data_prenotazione: Time.now,
+      email: session[:email],
+      id_utente: session["user"]["id"],
+      # documento: "", # il certificato che verrà inserito dall'ente
+    }
+
+    Certificati.create(certificato)    
 
     # session[:interroga_cf] = params["codice_fiscale"]
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
@@ -88,18 +118,26 @@ class ApplicationController < ActionController::Base
   end
   
   def authenticate  
-    params = {}
+    params = {
+      "resource": "#{@@api_resource.sub("https","http")}", 
+      "tenant": "#{session[:user]["api_next"]["tenant"]}",
+      "client_id": "#{session[:user]["api_next"]["client_id"]}",
+      "client_secret": "#{session[:user]["api_next"]["secret"]}",
+      "grant_type": 'client_credentials'
+    }
 
-    params["tenant"] = '97d6a602-2492-4f4c-9585-d2991eb3bf4c'
-    params["client_id"] = 'aebe50cd-bbc0-4bf5-94ba-4e70590bcf1a'
-    params["client_secret"] = 'w9=jyc0bA.sBVLX@aHD:87lPZlS4r=7x'
-    params["resource"] = "#{@@api_resource.sub("https","http")}"
-    params["grant_type"] = 'client_credentials'
+    # params["tenant"] = '97d6a602-2492-4f4c-9585-d2991eb3bf4c'
+    # params["client_id"] = 'aebe50cd-bbc0-4bf5-94ba-4e70590bcf1a'
+    # params["client_secret"] = 'w9=jyc0bA.sBVLX@aHD:87lPZlS4r=7x'
+    # puts params
+
     
-    oauthURL = "https://login.microsoftonline.com/#{params["tenant"]}/oauth2/token";
+    oauthURL = "https://login.microsoftonline.com/#{params[:tenant]}/oauth2/token";
+    # puts oauthURL
     result = HTTParty.post(oauthURL, 
       :body => params.to_query,
-      :headers => { 'Content-Type' => 'application/x-www-form-urlencoded','Accept' => 'application/json'  } 
+      :headers => { 'Content-Type' => 'application/x-www-form-urlencoded','Accept' => 'application/json'  } ,
+      :debug_output => $stdout
     )
 
     if !result["access_token"].nil? && result["access_token"].length > 0
@@ -118,6 +156,8 @@ class ApplicationController < ActionController::Base
     cf_ricerca = session[:interroga_cf]
     if session[:interroga_cf].nil? || session[:interroga_cf].blank? 
       cf_ricerca = session[:cf]
+    elsif session[:interroga_cf] == session[:cf]
+      cf_ricerca = session[:cf]
     end
     # puts "cf interrogazione: "+session[:interroga_cf]
     # params = { "mostraDatiIscrizione": "true",  "codiceFiscale": "#{session[:cf]}", "nomeCognome": "#{session[:nome]} #{session[:cognome]}" }
@@ -129,23 +169,24 @@ class ApplicationController < ActionController::Base
     # params = { "codiceFiscale": "DPLKTY68L54Z140P" }
     params = { "codiceFiscale": cf_ricerca }
 
-    params[:MostraMaternita] = true
-    params[:MostraConiuge] = true
-    params[:MostraDatidecesso] = true
-    params[:MostraCartaIdentita] = true
-    params[:MostraTitoloSoggiorno] = true
-    params[:MostraProfessione] = true
-    params[:MostraTitoloStudio] = true
-    params[:MostraPatente] = true
-    params[:MostraVeicoli] = true
-    params[:MostraDatiStatoCivile] = true
+    params[:mostraMaternita] = true
+    params[:mostraConiuge] = true
+    params[:mostraDatidecesso] = true
+    params[:mostraCartaIdentita] = true
+    params[:mostraTitoloSoggiorno] = true
+    params[:mostraProfessione] = true
+    params[:mostraTitoloStudio] = true
+    params[:mostraPatente] = true
+    params[:mostraVeicoli] = true
+    params[:mostraDatiStatoCivile] = true
 
     puts params
 
     result = HTTParty.post(
       "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
       :body => params.to_json,
-      :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } 
+      :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } ,
+      :debug_output => $stdout
     )    
     # result = result.response.body
     result = JSON.parse(result.response.body)
@@ -161,7 +202,7 @@ class ApplicationController < ActionController::Base
       else
         result["comuneNascitaDescrizione"] = "";
       end
-      session[:cf] = result["codiceFiscale"]
+      # session[:cf] = result["codiceFiscale"]
       params = { 
         "codiceAggregazione": result["codiceFamiglia"], 
         # "codiceFiscaleComponente": result["codiceFiscale"] # non li mostra tutti se metto cf
@@ -169,7 +210,8 @@ class ApplicationController < ActionController::Base
       resultFamiglia = HTTParty.post(
         "#{@@api_url}/Anagrafe/RicercaComponentiFamiglia?v=1.0", 
         :body => params.to_json,
-        :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } 
+        :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } ,
+        :debug_output => $stdout
       )    
       resultFamiglia = JSON.parse(resultFamiglia.response.body)
       famiglia = []
@@ -181,30 +223,98 @@ class ApplicationController < ActionController::Base
         famiglia << componente
       end
       result["famiglia"] = famiglia
+      result["csrf"] = form_authenticity_token
+
+      result["certificati"] = []
+      result["richiesteCertificati"] = []
+
+      puts cf_ricerca
+      puts session[:cf]
+      if cf_ricerca == session[:cf]
+        searchParams = {}
+        searchParams[:tenant] = session[:user]["api_next"]["tenant"]
+        searchParams[:id_utente] = session["user"]["id"]
+        puts searchParams
+        richieste_certificati = Certificati.where("tenant = :tenant AND id_utente = :id_utente", searchParams)
+        richieste_certificati.each do |richiesta_certificato|
+          importo = 0
+          if !richiesta_certificato.bollo.nil?
+            importo = importo+richiesta_certificato.bollo
+          end
+          if !richiesta_certificato.diritti_importo.nil?
+            importo = importo+richiesta_certificato.diritti_importo
+          end
+
+          if richiesta_certificato.stato == "pagato" || richiesta_certificato.stato == "da_pagare"
+            url = richiesta_certificato.documento
+            
+            if richiesta_certificato.stato == "da_pagare"
+              statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
+              if(!statoPagamenti.nil? && statoPagamenti["esito"]=="ok" && (statoPagamenti["esito"][0]["stato"]=="Pagato"))
+                # pagato, lascio scaricare il documento
+              else
+                date = richiesta_certificato.data_inserimento
+                formatted_date = date.strftime('%d/%m/%Y')
+                
+                parametri = {
+                  importo: "#{importo}",
+                  descrizione: "#{richiesta_certificato.nome_certificato} - n.#{richiesta_certificato.id}",
+                  codice_applicazione: "demografici", # TODO va bene questo codice applicazione?
+                  url_back: request.protocol + request.host_with_port,
+                  idext: richiesta_certificato.id,
+                  tipo_elemento: "certificato",
+                  nome_versante: session[:nome],
+                  cognome_versante: session[:cognome],
+                  codice_fiscale_versante: session[:cf],
+                  nome_pagatore: session[:nome],
+                  cognome_pagatore: session[:cognome],
+                  codice_fiscale_pagatore: session[:cf]
+                }
+                
+                queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore].map{ |chiave|
+                    val = parametri[chiave] 
+                    "#{chiave}=#{val}"
+                }.join('&')
+                
+  #               puts "query string for sha1 is [#{queryString.strip}]"
+  #               queryString = "importo=#{value["importoResiduo"].gsub(',', '.')}&descrizione=#{value["codiceAvvisoDescrizione"]} - n.#{value["numeroAvviso"]}&codice_applicazione=tributi&url_back=#{request.original_url}&idext=#{value["idAvviso"]}&tipo_elemento=pagamento_tari&nome_versante=#{session[:nome]}&cognome_versante=#{session[:cognome]}&codice_fiscale_versante=#{session[:cf]}&nome_pagatore=#{session[:nome]}&cognome_pagatore=#{session[:cognome]}&codice_fiscale_pagatore=#{session[:cf]}"
+                fullquerystring = URI.unescape(queryString)
+                qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
+                hqs = OpenSSL::Digest::SHA1.new(qs)
+  #               puts "hqs is [#{hqs}]"
+                url = "#{session[:dominio]}/servizi/pagamenti/"
+                if(statoPagamenti.nil? || !statoPagamenti["esito"]=="ok")
+                  url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa?#{queryString}"
+                end
+              end
+            end
+            result["certificati"] << { 
+              "id": richiesta_certificato.id, 
+              "nome_certificato": richiesta_certificato.nome_certificato, 
+              "codice_fiscale": richiesta_certificato.codice_fiscale, 
+              "stato": richiesta_certificato.stato, 
+              "documento": url,
+              "data_prenotazione": richiesta_certificato.data_prenotazione,
+              "data_inserimento": richiesta_certificato.data_inserimento,
+              "esenzione": richiesta_certificato.bollo_esenzione, 
+              "importo": importo
+            }
+          else
+            result["richiesteCertificati"] << { 
+              "id": richiesta_certificato.id, 
+              "nome_certificato": richiesta_certificato.nome_certificato, 
+              "codice_fiscale": richiesta_certificato.codice_fiscale, 
+              "stato": richiesta_certificato.stato, 
+              "data_prenotazione": richiesta_certificato.data_prenotazione,
+              "esenzione": richiesta_certificato.bollo_esenzione, 
+              "importo": importo
+            }
+          end
+        end
+      end
     end
 
     render :json => result
-  end
-
-  # richiesta da portale cittadino
-  def inserisci_richiesta
-    # ricevo dal portale del cittadino una richiesta di certificato
-    # il portale deve inviarmi il tenant
-    # inserisco in certificati la richiesta ricevuta con stato appropriato 
-    # richiesto se !bollo&&!segreteria, da pagare se bollo||segreteria
-    # restituisco risultato inserimento e id richiesta
-    # se da pagare, poi il portale farà un redirect su pagamenti
-
-    nuovo_certificato = {
-      "tenant": params[:tenant],
-      "codice_fiscale": params[:codice_fiscale],
-      "codice_certificato": params[:codice_certificato], # ottenuti da compilazione form da parte del cittadino, questi verranno ottenuti da ws che restituisce elenco tipi certificato
-      "bollo": params[:bollo], # ottenuti da compilazione form da parte del cittadino, sì/no
-      "diritti_segreteria": params[:diritti_segreteria], # ottenuti da compilazione form da parte del cittadino, sì/no
-      "uso": params[:uso], # ottenuti da compilazione form da parte del cittadino, probabilmente recuperati da ws?
-      "richiedente_cf": params[:richiedente_cf],
-    }
-
   end
 
   # richiesta da portale cittadino
@@ -225,6 +335,45 @@ class ApplicationController < ActionController::Base
   end
     
   private
+
+  def carica_variabili_layout
+    @nome = session[:user]["nome"]
+    @demografici_data = { "tipiCertificato" => {}, "esenzioniBollo" => {}  }
+
+    # tipiCertificato = []
+    # TipoCertificato.all.each do |tipoCertificato|
+    #   cert = { "id": tipoCertificato.id, "descrizione": tipoCertificato.descrizione }
+    #   tipiCertificato << cert
+    # end
+    # @tipiCertificato = tipiCertificato.to_json
+
+    # esenzioniBollo = []
+    # EsenzioneBollo.all.each do |esenzioneBollo|
+    #   esenzione = { "id": esenzioneBollo.id, "descrizione": esenzioneBollo.descrizione }
+    #   esenzioniBollo << esenzione
+    # end
+    # @esenzioniBollo = esenzioniBollo.to_json
+
+    tipiCertificato = []
+    TipoCertificato.all.each do |tipoCertificato|
+      cert = { "id": tipoCertificato.id, "descrizione": tipoCertificato.descrizione }
+      tipiCertificato << cert
+    end
+    @demografici_data["tipiCertificato"] = tipiCertificato
+
+    esenzioniBollo = []
+    EsenzioneBollo.all.each do |esenzioneBollo|
+      esenzione = { "id": esenzioneBollo.id, "descrizione": esenzioneBollo.descrizione }
+      esenzioniBollo << esenzione
+    end
+    @demografici_data["esenzioniBollo"] = esenzioniBollo
+
+    if Rails.env.development? 
+      @demografici_data["test"] = true
+    else
+      @demografici_data["test"] = false
+    end
+  end
 
   def get_dominio_sessione_utente
     begin
@@ -369,11 +518,10 @@ class ApplicationController < ActionController::Base
             <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track': 'reload' %>"
             html_layout = html_layout.gsub("</head>", head_da_iniettare+"</head>").gsub("id=\"portal_container\">", "id=\"portal_container\"><%=yield%>")
             html_layout = html_layout.sub("<script",js_da_iniettare+" <script")
-            if Rails.env.development? 
-              html_layout = html_layout.gsub("</body>","<span class='hidden test'></span></body>")
-            end
-            html_layout = html_layout.gsub("</body>","<script type='text/javascript'>var tipiCertificato = <%=@tipiCertificato.html_safe%>;var esenzioniBollo = <%=@esenzioniBollo.html_safe%>;</script></body>")
+            html_layout = html_layout.gsub("</body>","<script type='text/javascript'>var demograficiData = <%=@demografici_data.to_json.html_safe%>;</script></body>")
             html_layout = html_layout.gsub("</body>","<span class='hidden' id='nome_utente'><%=@nome%></span></body>")
+            #codice js comune a tutte le pagine
+            html_layout = html_layout.gsub("</body>","<%= javascript_pack_tag 'demografici' %> </body>")
             #parte che include il js della parte react sul layout CHE VA ALLA FINE, ALTRIMENTI REACT NON VA
             html_layout = html_layout.gsub("</body>","<%= javascript_pack_tag @page_app %> </body>")
             path_dir_layout = "#{Rails.root}/app/views/layouts/layout_portali/"

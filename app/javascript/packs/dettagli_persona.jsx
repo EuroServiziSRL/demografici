@@ -9,16 +9,75 @@ import ReactDOM from 'react-dom';
 import Select from 'react-select';
 import BootstrapTable from 'react-bootstrap-table-next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCircleNotch } from '@fortawesome/free-solid-svg-icons'
+import { faCircleNotch, faShoppingCart, faPrint } from '@fortawesome/free-solid-svg-icons'
 
-var dominio = window.location.protocol+"//"+window.location.hostname+(window.location.port!=""?":"+window.location.port:"");
-var test = false;
-var descrizioniStatus = {"D":"deceduto", "R":"residente", "A":"residente AIRE"}
+demograficiData.dominio = window.location.protocol+"//"+window.location.hostname+(window.location.port!=""?":"+window.location.port:"");
+demograficiData.descrizioniStatus = {"D":"DECEDUTO", "R":"RESIDENTE", "A":"RESIDENTE AIRE"}
 
-function dateToUser(dateTimeString) {
+function buttonFormatter(cell,row) {
+  var label = "Stampa";
+  var icon = <FontAwesomeIcon icon={faPrint} />
+
+  if (cell.indexOf("aggiungi_pagamento_pagopa")>-1) {label = "Paga con PagoPA"; icon = <FontAwesomeIcon icon={faCreditCard} />}
+  else if(cell.indexOf("servizi/pagamenti")>-1) { label = "Vai al carrello"; icon = <FontAwesomeIcon icon={faShoppingCart} /> }
+  return  <a href={cell} target="_blank" className="btn btn-default">{label} {icon}</a>;
+} 
+
+function statiFormatter(stato) {
+  var type = "muted";
+
+  if(stato == "da_pagare" ){
+    type = "info";
+  } else if(stato == "scaricato" ){
+    type = "success";
+  } else if(stato == "pagato" ){
+    type = "success";
+  } else if(stato=="errore"){
+    type = "danger";
+  } else if(stato=="non_emettibile"){
+    stato = "certificato_non_emettibile";
+    type = "danger";
+  } else if(stato=="annullato"){
+    stato=="annullata";
+    type = "danger";
+  } else if(stato=="in_attesa"){
+    stato = "in_elaborazione";
+    type = "warning";
+  } else if(stato=="nuovo"){
+    stato = "inviata";
+  }
+  
+  return  <span className={"text-"+type}>{ucfirst(stato.replace(/_/g," "))}</span>;
+} 
+
+function moneyFormatter(number) {  
+  if(number>0) {
+    return  <span>&euro; {number.toFixed(2).replace(/\./g,",")}</span>;
+  } else {
+    return  <span className="text-success">gratuito</span>;
+  }
+} 
+
+function esenzioneFormatter(idEsenzione) {  
+  if(idEsenzione) {
+    var esenzioneFound = false
+    for(var e in demograficiData.esenzioniBollo) {
+      if (demograficiData.esenzioniBollo[e].id == idEsenzione) { esenzioneFound = demograficiData.esenzioniBollo[e].descrizione; break; }
+    }
+    if(esenzioneFound) {
+      return esenzioneFound;
+    } else {
+      return "";
+    }
+  } else {
+    return "";
+  }
+} 
+
+function dateFormatter(dateTimeString) {
   var formatted = "";
   if(dateTimeString) {
-    var date = new Date(dateTimeString.replace(/-/g,"/").replace(/T/g," "));
+    var date = new Date(dateTimeString.replace(/-/g,"/").replace(/T/g," ").replace(/\.\d{3}Z/g,""));
     formatted = date.toLocaleDateString("IT");
   }
   return formatted;
@@ -26,7 +85,7 @@ function dateToUser(dateTimeString) {
 
 function todo(message, type) {
   if(typeof(type)=="undefined") { type="warning"; }
-  if(test) {
+  if(demograficiData.test) {
     return <span className={"ml10 alert alert-"+type}>({message})</span>
   }
 }
@@ -74,7 +133,7 @@ class DemograficiForm extends React.Component{
           if( typeof(fields[f].label) == "undefined" ) { fields[f].label = ucfirst(fields[f].name); }
           fieldsHtml.push(<label key={"label"+f.toString()} htmlFor={fields[f].name} className={labelClass}>{fields[f].label}</label>)
         } else {
-          valueSize = fieldCols;
+          fields[f].valueSize = fieldCols;
         }
         var valueClass = "col-lg-"+fields[f].valueSize;
         if(fields[f].html) {
@@ -140,6 +199,7 @@ class DettagliPersona extends React.Component{
     "documenti":[],
     "famiglia":[],
     "autocertificazioni":[],
+    "certificati":[],
     "richiedi_certificato":[],
   }
 
@@ -155,10 +215,10 @@ class DettagliPersona extends React.Component{
     
     this.authenticate();
   }
-  
+   
   componentDidUpdate(prevProps, prevState, snapshot) {
     
-    console.log("DettagliPersona did update");
+    console.log("AppTributi did update");
     var canBeResponsive = true;
     if($('li.table-header').length==0) {
       $('<li class="table-header">').appendTo("body");
@@ -170,18 +230,15 @@ class DettagliPersona extends React.Component{
       if(canBeResponsive) {
         console.log("Calling tableToUl on "+id);
         tableToUl($("#"+id));
-        if($(this).attr("id")=="immobiliImu" || $(this).attr("id")=="immobiliTasi" || $(this).attr("id")=="immobiliTari") {
-          $("#"+$(this).attr("id")+" li div:nth-of-type(1)").attr("class","cell-wide-4");
-        }
       } else  { console.log("tableToUl is not a function ("+typeof(tableToUl)+") or no css available for responsive tables"); } 
     });
   }
 
   authenticate() {
-    console.log("dominio: "+dominio);
+    console.log("demograficiData.dominio: "+demograficiData.dominio);
     var self = this;
-    console.log("Authenticating on "+dominio+"/authenticate...");
-    $.get(dominio+"/authenticate").done(function( response ) {
+    console.log("Authenticating on "+demograficiData.dominio+"/authenticate...");
+    $.get(demograficiData.dominio+"/authenticate").done(function( response ) {
       console.log("response is loaded");
       console.log(response);
       if(response.hasError) {
@@ -216,7 +273,7 @@ class DettagliPersona extends React.Component{
     }
     var self = this;
     console.log("ricercaIndividui...");
-    $.get(dominio+"/ricerca_individui", {}).done(function( response ) {
+    $.get(demograficiData.dominio+"/ricerca_individui", {}).done(function( response ) {
       console.log("ricercaIndividui response is loaded");
       console.log(response);
       if(response.hasError) {
@@ -237,13 +294,14 @@ class DettagliPersona extends React.Component{
   }
 
   formatData(datiAnagrafica) {
+    var nominativo = datiAnagrafica.cognome+" "+datiAnagrafica.nome;
     var result = {"dati":{}};
     result.datiCittadino = [[
-        { name: "nominativo", value: datiAnagrafica.cognome+" "+datiAnagrafica.nome },
+        { name: "nominativo", value: nominativo },
         { name: "indirizzo", value: datiAnagrafica.indirizzo },
       ], [
         // TODO chiedere elenco stati a giambanco
-        { name: "status", value: descrizioniStatus[datiAnagrafica.posizioneAnagrafica] },
+        { name: "status", value: demograficiData.descrizioniStatus[datiAnagrafica.posizioneAnagrafica] },
         { name: "codiceCittadino", label: "Numero individuale", value: datiAnagrafica.codiceCittadino },
       ]
     ];
@@ -268,11 +326,11 @@ class DettagliPersona extends React.Component{
 
     result.dati.documenti = [];
 
-    // if(test) {
+    // if(demograficiData.test) {
     //   result.dati.documenti.push([
     //     { name: "numero", value: documento.numero },
     //     { name: "stato", value: todo("manca l'informazione","danger") },
-    //     { name: "dataRilascio", label: "In data", value: dateToUser(documento.dataRilascio) },
+    //     { name: "dataRilascio", label: "In data", value: dateFormatter(documento.dataRilascio) },
     //     { name: "scadenza", value: todo("manca l'informazione","danger") },
     //   ]);
     // }
@@ -287,7 +345,7 @@ class DettagliPersona extends React.Component{
         { name: "numero", value: documento.numero },
         { name: "comuneRilascio", label: "Rilasciata da", value: rilasciataDa },
         // { name: "stato", value: todo("manca l'informazione","danger") },
-        { name: "dataRilascio", label: "In data", value: dateToUser(documento.dataRilascio) },
+        { name: "dataRilascio", label: "In data", value: dateFormatter(documento.dataRilascio) },
         // { name: "scadenza", value: todo("manca l'informazione","danger") },
       ]);
     }
@@ -301,7 +359,7 @@ class DettagliPersona extends React.Component{
         { name: "tipoDocumento", label: "Tipo", value: "Titolo di soggiorno" },
         { name: "numero", value: documento.numero },
         { name: "comuneRilascio", label: "Rilasciato da", value: rilasciataDa },
-        { name: "dataRilascio", label: "In data", value: dateToUser(documento.dataRilascio) },
+        { name: "dataRilascio", label: "In data", value: dateFormatter(documento.dataRilascio) },
       ]);
     }
 
@@ -333,7 +391,7 @@ class DettagliPersona extends React.Component{
           preText: null,
           text: datiAnagrafica.famiglia[componente].cognome+" "+datiAnagrafica.famiglia[componente].nome,
           postText: datiAnagrafica.famiglia[componente].relazioneParentela,
-          url: dominio+"/dettagli_persona?codice_fiscale="+datiAnagrafica.famiglia[componente].codiceFiscale
+          url: demograficiData.dominio+"/dettagli_persona?codice_fiscale="+datiAnagrafica.famiglia[componente].codiceFiscale
         });
       }
     }
@@ -352,7 +410,7 @@ class DettagliPersona extends React.Component{
       var datiDecesso = datiAnagrafica.datiDecesso;
       result.dati.decesso.push([
         { name: "comuneDecesso", name: "Comune", value: datiDecesso.comune },
-        { name: "dataDecesso", name: "Data", value: dateToUser(datiDecesso.data) },
+        { name: "dataDecesso", name: "Data", value: dateFormatter(datiDecesso.data) },
         { name: "", value: "" },
         { name: "", value: "" },
       ]);
@@ -364,7 +422,7 @@ class DettagliPersona extends React.Component{
       result.dati.matrimonio.push([
         { name: "coniugeMatrimonio", name: "Coniuge", value: (datiMatrimonio.coniuge.cognome?datiMatrimonio.coniuge.cognome:"")+" "+(datiMatrimonio.coniuge.nome?datiMatrimonio.coniuge.nome:"") },
         { name: "comuneMatrimonio", name: "Comune", value: datiMatrimonio.comune },
-        { name: "dataMatrimonio", name: "Data", value: dateToUser(datiMatrimonio.data) },
+        { name: "dataMatrimonio", name: "Data", value: dateFormatter(datiMatrimonio.data) },
       ]);
     }
 
@@ -374,7 +432,7 @@ class DettagliPersona extends React.Component{
       result.dati.divorzio.push([
         { name: "coniugeDivorzio", name: "Coniuge", value: (datiDivorzio.coniuge.cognome?datiDivorzio.coniuge.cognome:"")+" "+(datiDivorzio.coniuge.nome?datiDivorzio.coniuge.nome:"") },
         { name: "tribunale", value: datiDivorzio.tribunale },
-        { name: "dataDivorzio", name: "Data", value: dateToUser(datiDivorzio.data) },
+        { name: "dataDivorzio", name: "Data", value: dateFormatter(datiDivorzio.data) },
       ]);
     }
 
@@ -384,7 +442,7 @@ class DettagliPersona extends React.Component{
       result.dati.vedovanza.push([
         { name: "coniugeVedovanza", name: "Coniuge", value: (datiVedovanza.coniuge.cognome?datiVedovanza.coniuge.cognome:"")+" "+(datiVedovanza.coniuge.nome?datiVedovanza.coniuge.nome:"") },
         { name: "comuneVedovanza", name: "Comune", value: datiVedovanza.comune },
-        { name: "dataVedovanza", name: "Data", value: dateToUser(datiVedovanza.data) },
+        { name: "dataVedovanza", name: "Data", value: dateFormatter(datiVedovanza.data) },
       ]);
     }
 
@@ -394,7 +452,7 @@ class DettagliPersona extends React.Component{
       result.dati.unione_civile.push([
         { name: "coniugeUnioneCivile", name: "Unito civilmente", value: (datiUnioneCivile.unitoCivilmente.cognome?datiUnioneCivile.unitoCivilmente.cognome:"")+" "+(datiUnioneCivile.unitoCivilmente.nome?datiUnioneCivile.unitoCivilmente.nome:"") },
         { name: "comuneUnioneCivile", name: "Comune", value: datiUnioneCivile.comune },
-        { name: "dataUnioneCivile", name: "Data", value: dateToUser(datiUnioneCivile.data) },
+        { name: "dataUnioneCivile", name: "Data", value: dateFormatter(datiUnioneCivile.data) },
       ]);
     }
 
@@ -404,17 +462,17 @@ class DettagliPersona extends React.Component{
       result.dati.scioglimento_unione_civile.push([
         { name: "coniugeScioglimentoUnione", name: "Unito civilmente", value: (datiUniondatiScioglimentoeCivile.unitoCivilmente.cognome?datiScioglimento.unitoCivilmente.cognome:"")+" "+(datiScioglimento.unitoCivilmente.nome?datiScioglimento.unitoCivilmente.nome:"") },
         { name: "comuneScioglimentoUnione", name: "Comune", value: datiScioglimento.comune },
-        { name: "dataScioglimentoUnione", name: "Data", value: dateToUser(datiScioglimento.data) },
+        { name: "dataScioglimentoUnione", name: "Data", value: dateFormatter(datiScioglimento.data) },
       ]);
     }
 
     result.dati.autocertificazioni = [];
-    if(test) {
+    if(demograficiData.test) {
       var testList = [{
         preText: "Nome documento ",
         text: <span>scarica documento <i className='fa fa-download'></i></span>,
         postText: todo("da dove si prende?","danger"),
-        url: dominio+"/autocertificazionei?codice_fiscale="+datiAnagrafica.codiceFiscale+"&nome=Nome documento"
+        url: demograficiData.dominio+"/autocertificazione?codice_fiscale="+datiAnagrafica.codiceFiscale+"&nome=Nome documento"
       }]
       result.dati.autocertificazioni = [[
         { name:"listaAutocertificazioni", value: <DemograficiList list={testList}/>, html: true }
@@ -422,7 +480,7 @@ class DettagliPersona extends React.Component{
     }
 
     result.dati.elettorale = [];
-    if(test) {
+    if(demograficiData.test) {
       result.dati.elettorale = [[
           { name: "statusElettore", label: "Stato elettore", value: todo("da dove si prende?","danger") },
           { name: "iscrizione", value: todo("da dove si prende?","danger") },
@@ -435,41 +493,89 @@ class DettagliPersona extends React.Component{
       ];
     }
 
+    result.dati.certificati = []
+    if(datiAnagrafica.certificati.length) {
+      result.dati.certificati.push([
+          { name: "ricevuti", value: <BootstrapTable
+          id="tableCertificati"
+          keyField={"data_inserimento"}
+          data={datiAnagrafica.certificati}
+          columns={[
+            // { dataField: "id", text: "id" }, 
+            { dataField: "nome_certificato", text: "Tipo" }, 
+            { dataField: "codice_fiscale", text: "Intestatario" }, 
+            { dataField: "stato", text: "Stato richiesta", formatter: statiFormatter }, 
+            { dataField: "documento", text: "Certificato", formatter: buttonFormatter }, 
+            { dataField: "data_prenotazione", text: "Data richiesta", formatter: dateFormatter }, 
+            { dataField: "data_inserimento", text: "Emesso il", formatter: dateFormatter },
+            { dataField: "esenzione", text: "Esenzione", formatter: esenzioneFormatter },
+            { dataField: "importo", text: "Importo", formatter: moneyFormatter }            
+          ]}
+          classes="table-responsive"
+          striped
+          hover
+        />, html: true }
+        ]
+      );
+    }
+    if(datiAnagrafica.richiesteCertificati.length) {
+      result.dati.certificati.push([
+          { name: "richiesti", value: <BootstrapTable
+          id="tableRichieste"
+          keyField={"data_prenotazione"}
+          data={datiAnagrafica.richiesteCertificati}
+          columns={[
+            // { dataField: "id", text: "id" }, 
+            { dataField: "nome_certificato", text: "Tipo" }, 
+            { dataField: "codice_fiscale", text: "Intestatario" }, 
+            { dataField: "stato", text: "Stato richiesta", formatter: statiFormatter }, 
+            { dataField: "data_prenotazione", text: "Data richiesta", formatter: dateFormatter },
+            { dataField: "esenzione", text: "Esenzione", formatter: esenzioneFormatter },
+            { dataField: "importo", text: "Importo", formatter: moneyFormatter }            
+          ]}
+          classes="table-responsive"
+          striped
+          hover
+        />, html: true }
+        ]
+      );
+    }
+
     var selectTipiCertificato = []
     selectTipiCertificato.push(<option value="" disabled hidden>scegli il tipo di certificato da richiedere</option>)
-    for(var t in tipiCertificato) {
-      selectTipiCertificato.push(<option value={tipiCertificato[t].id}>{tipiCertificato[t].descrizione}</option>)
+    for(var t in demograficiData.tipiCertificato) {
+      selectTipiCertificato.push(<option value={demograficiData.tipiCertificato[t].id}>{demograficiData.tipiCertificato[t].descrizione}</option>)
     }
     selectTipiCertificato = <select className="form-control" defaultValue="" name="tipoCertificato">{selectTipiCertificato}</select>
 
     var selectEsenzioni = []
     selectEsenzioni.push(<option value="">nessuna esenzione</option>)
-    for(var e in esenzioniBollo) {
-      selectEsenzioni.push(<option value={esenzioniBollo[e].id}>{esenzioniBollo[e].descrizione}</option>)
+    for(var e in demograficiData.esenzioniBollo) {
+      selectEsenzioni.push(<option value={demograficiData.esenzioniBollo[e].id}>{demograficiData.esenzioniBollo[e].descrizione}</option>)
     }
     selectEsenzioni = <select className="form-control" defaultValue="" name="esenzioneBollo">{selectEsenzioni}</select>
 
     result.dati.richiedi_certificato = [[
       { name:null, value: <p className="alert alert-info">Per i certificati diretti alla Pubblica Amministrazione ed Enti Erogatori di Pubblici Servizi (ASL, ENEL, POSTE, PREFETTURA, INPS, SUCCESSIONE ...) dev'essere compilata l'Autocertificazione.</p>, html: true }
     ],[
-      { name:"nomeCognomeRichiesta", label: "Si richiede il certificato per", value: datiAnagrafica.cognome+" "+datiAnagrafica.nome },
-      { name:"tipoCertificato", label: "Tipo certificato", value: selectTipiCertificato, html: true }
+    { name:"nomeCognomeRichiesta", label: "Si richiede il certificato per", value: <span>{nominativo}</span> },
+      { name:"certificatoTipo", label: "Tipo certificato", value: selectTipiCertificato, html: true }
     ],[
       { name:"cartaLiberaBollo", label: "Il certificato dovrà essere rilasciato in Carta Libera o in Bollo?", value: <div>
         <label className="radio-inline">
-              <input type="radio" name="dati[bollo]" id="carta_libera" defaultValue="false"/>Carta Libera
+              <input type="radio" name="certificatoBollo" id="carta_libera" defaultValue="false"/>Carta Libera
             </label>
             <label className="radio-inline">
-              <input type="radio" name="dati[bollo]" id="bollo" defaultValue="true" defaultChecked="checked"/>
+              <input type="radio" name="certificatoBollo" id="bollo" defaultValue="true" defaultChecked="checked"/>
               Bollo
             </label>
       </div>, html: true },
-     { name:"tipoEsenzione", label: "Esenzione", value: selectEsenzioni, html: true }
+     { name:"certificatoEsenzione", label: "Esenzione", value: selectEsenzioni, html: true }
     ],[
       { name:null, value: <p className="alert alert-info">In caso di certificato in Bollo, è necessario acquistare la marca da bollo preventivamente presso un punto vendita autorizzato; il numero identificativo, composto da 14 cifre, andrà poi riportato nel campo sottostante.</p>, html: true }
     ],[
-      { name:"identificativoBollo", label: "Inserire l'identificativo del bollo", value: <input className="form-control" type="text" name="dati[bollo_numero]" defaultValue="" placeholder="01234567891234"/>, html: true },
-      { name: "", value: "" }
+      { name:"identificativoBollo", label: "Inserire l'identificativo del bollo", value: <input className="form-control" type="text" name="certificatoBolloNum" defaultValue="" placeholder="01234567891234"/>, html: true },
+      { name: "", value: <input type="hidden" name="authenticity_token" value={datiAnagrafica.csrf}/> }
     ],[
       { name:"", value: <input type="submit" name="invia" className="btn btn-default" value="Invia richiesta"/>, html: true }
     ]]
@@ -495,11 +601,25 @@ class DettagliPersona extends React.Component{
     var className = "";
     for(var tabName in this.tabs) {
       if(this.state.dati[tabName].length) {
+        var form = "";
+        if(tabName=="richiedi_certificato") {
+          form = <form className="panel-body form-horizontal" method="POST" action={demograficiData.dominio+"/richiedi_certificato"}>            
+            <DemograficiForm rows={this.state.dati[tabName]} maxLabelCols="4"/>
+          </form>
+        } else if(tabName=="certificati") {
+          // readonly
+          form = <div className="panel-body form-horizontal">
+          <DemograficiForm rows={this.state.dati[tabName]} maxLabelCols="1"/>
+        </div>
+        } else {
+          // readonly
+          form = <div className="panel-body form-horizontal">
+          <DemograficiForm rows={this.state.dati[tabName]}/>
+        </div>
+        }
         panelsHtml.push(<div role="tabpanel" key={"panel_"+tabName} className={"tab-pane"+className} id={tabName}>
           <div className="panel panel-default panel-tabbed">
-            <div className="panel-body form-horizontal">
-              <DemograficiForm rows={this.state.dati[tabName]} maxLabelCols={tabName=="certificazione"?4:2}/>
-            </div>
+            {form}
           </div>
         </div>);
         className = " hidden";
@@ -529,9 +649,8 @@ class DettagliPersona extends React.Component{
 
           {this.displayPanels()}
 
-        </div>  
-
-        {test?<pre style={{"whiteSpace": "break-spaces"}}><code>{this.state.debug?JSON.stringify(this.state.debug, null, 2):""}</code></pre>:""}
+        </div>
+        {demograficiData.test?<pre style={{"whiteSpace": "break-spaces"}}><code>{this.state.debug?JSON.stringify(this.state.debug, null, 2):""}</code></pre>:""}
 
       </div>  
     }
@@ -544,11 +663,8 @@ if(document.getElementById('app_demografici_container') !== null){
   var $links = $("#topbar").find(".row");
   $links.find("div").last().remove();
   $links.find("div").first().removeClass("col-lg-offset-3").removeClass("col-md-offset-3");
-  $links.append('<div class="col-lg-2 col-md-2 text-center"><a href="'+$("#dominio_portale").text()+'/" title="Sezione Privata">CIAO<br>'+$("#nome_utente").text()+'</a></div>');
-  $links.append('<div class="col-lg-1 col-md-1 logout_link"><a href="'+$("#dominio_portale").text()+'/autenticazione/logout" title="Logout"><span class="glyphicon glyphicon-log-out" aria-hidden="true"></span></a></div>');
-
-  console.log("hidden test is "+$(".hidden.test").length);
-  test = $(".hidden.test").length;
+  $links.append('<div class="col-lg-2 col-md-2 text-center"><a href="'+$("#demograficiData.dominio_portale").text()+'/" title="Sezione Privata">CIAO<br>'+$("#nome_utente").text()+'</a></div>');
+  $links.append('<div class="col-lg-1 col-md-1 logout_link"><a href="'+$("#demograficiData.dominio_portale").text()+'/autenticazione/logout" title="Logout"><span class="glyphicon glyphicon-log-out" aria-hidden="true"></span></a></div>');
 
   $('#portal_container').on('click', '.nav-tabs a', function(e){
     e.preventDefault();

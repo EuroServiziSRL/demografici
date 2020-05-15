@@ -31,3 +31,16 @@ body {
 #portal_container .tab-content > .tab-pane {
   display: initial;
 }
+
+
+
+#tableCertificati li div, #tableRichieste li div {
+  text-align: center;
+}
+#certificati li div:nth-of-type(1), #richiesteCertificati li div:nth-of-type(1) {
+  text-align: left;
+}
+/* #certificati li:not(.table-header) div:nth-of-type(6), 
+#richiesteCertificati li:not(.table-header) div:nth-of-type(5) {
+  text-align: right;
+} */
