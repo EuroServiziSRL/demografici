@@ -1,6 +1,7 @@
 Rails.application.routes.draw do
   get '/' => 'application#index', :as => :index
   get '/dettagli_persona' => 'application#dettagli_persona', :as => :dettagli_persona
+  get '/scarica_certificato' => 'application#scarica_certificato', :as => :scarica_certificato
   post '/richiedi_certificato' => 'application#richiedi_certificato', :as => :richiedi_certificato
   get '/authenticate' => 'application#authenticate', :as => :authenticate
   get '/ricerca_individui' => 'application#ricerca_individui', :as => :ricerca_individui

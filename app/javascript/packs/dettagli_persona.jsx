@@ -204,7 +204,9 @@ class DettagliPersona extends React.Component{
   }
 
   state = {
-    token:false, 
+    token:false,
+    error:false, 
+    error_message:false,  
     dati:{},   
     datiCittadino: [],
     loading: true
@@ -242,27 +244,22 @@ class DettagliPersona extends React.Component{
       console.log("response is loaded");
       console.log(response);
       if(response.hasError) {
+        var state = self.state;
+        state.error = true;
+        state.debug = "Errore di autenticazione";
+        state.loading = false;
+        self.setState(state);
       } else {
-        switch(response.permessi) {
-          // TODO gestire permessi visualizzazione
-          case "ricercare_anagrafiche":
-            break;
-          case "ricercare_anagrafiche_no_sensibili":
-            break;
-          case "elencare_anagrafiche":
-            break;
-          case "professionisti":
-            break;
-          case "vedere_solo_famiglia":
-            break;
-          default:
-            self.ricercaIndividui();
-            break;
-        }
+        self.ricercaIndividui();
       }
     }).fail(function(response) {
       console.log("authentication fail!");
       console.log(response);
+      var state = self.state;
+      state.error = true;
+      state.error_message = "Si è verificato un errore generico durante l'autenticazione";
+      state.loading = false;
+      self.setState(state);
     });
   } 
 
@@ -280,16 +277,27 @@ class DettagliPersona extends React.Component{
         console.log("response error");
       } else {
         var state = self.state;
+        state.error = false;
         state.debug = response;
-        response = self.formatData(response);
+        if(!response.errore) {
+          response = self.formatData(response);
+          state.dati = response.dati;
+          state.datiCittadino = response.datiCittadino;
+        } else {
+          state.error = true;
+          state.error_message = response.messaggio_errore;
+        }
         state.loading = false;
-        state.dati = response.dati;
-        state.datiCittadino = response.datiCittadino;
         self.setState(state);
       }
     }).fail(function(response) {
       console.log("ricercaIndividui fail!");
       console.log(response);
+      var state = self.state;
+      state.error = true;
+      state.error_message = "Si è verificato un errore generico durante l'interrogazione dati.";
+      state.loading = false;
+      self.setState(state);
     });
   }
 
@@ -494,7 +502,7 @@ class DettagliPersona extends React.Component{
     }
 
     result.dati.certificati = []
-    if(datiAnagrafica.certificati.length) {
+    if(datiAnagrafica.certificati && datiAnagrafica.certificati.length) {
       result.dati.certificati.push([
           { name: "ricevuti", value: <BootstrapTable
           id="tableCertificati"
@@ -518,7 +526,7 @@ class DettagliPersona extends React.Component{
         ]
       );
     }
-    if(datiAnagrafica.richiesteCertificati.length) {
+    if(datiAnagrafica.richiesteCertificati && datiAnagrafica.richiesteCertificati.length) {
       result.dati.certificati.push([
           { name: "richiesti", value: <BootstrapTable
           id="tableRichieste"
@@ -636,7 +644,10 @@ class DettagliPersona extends React.Component{
     if(this.state.loading) {
       returnVal = <div className="alert alert-info">Caricamento...</div>
     }
-    else if(found) {
+    else if(this.state.error) {
+      returnVal = <div className="alert alert-danger">{this.state.error_message}</div>
+    } else if(found) {
+      
       returnVal =       <div itemID="app_tributi">
         <h4>Dettagli persona</h4>
         <div className="form-horizontal"><DemograficiForm rows={this.state.datiCittadino}/></div>
@@ -653,6 +664,8 @@ class DettagliPersona extends React.Component{
         {demograficiData.test?<pre style={{"whiteSpace": "break-spaces"}}><code>{this.state.debug?JSON.stringify(this.state.debug, null, 2):""}</code></pre>:""}
 
       </div>  
+    } else {
+      returnVal = <div className="alert alert-danger">Si è verificato un errore generico</div>
     }
     return(returnVal);
   }

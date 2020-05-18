@@ -78,7 +78,7 @@ class ApplicationController < ActionController::Base
     end
 
     certificato = {
-      tenant: "97d6a602-2492-4f4c-9585-d2991eb3bf4c",
+      tenant: "97d6a602-2492-4f4c-9585-d2991eb3bf4c", # TODO mettere tenant da sessione
       codice_fiscale: cf_certificato,
       codici_certificato: [params[:tipoCertificato].to_i],
       bollo: importo_bollo,
@@ -166,9 +166,9 @@ class ApplicationController < ActionController::Base
     if cf_ricerca == session[:cf] 
       tipologia_richiesta = "visualizzazione propria anagrafica"
     elsif cf_ricerca.in?(session[:famiglia])
-      tipologia_richiesta = "visualizzazione anagrafica familiare"
+      tipologia_richiesta = "visualizzazione anagrafica familiare #{cf_ricerca}"
     else
-      tipologia_richiesta = "visualizzazione altra anagrafica"
+      tipologia_richiesta = "visualizzazione altra anagrafica #{cf_ricerca}"
     end
 
     if !verifica_permessi 
@@ -222,7 +222,6 @@ class ApplicationController < ActionController::Base
         else
           result["comuneNascitaDescrizione"] = "";
         end
-        # session[:cf] = result["codiceFiscale"]
         params = { 
           "codiceAggregazione": result["codiceFamiglia"], 
           # "codiceFiscaleComponente": result["codiceFiscale"] # non li mostra tutti se metto cf
@@ -274,6 +273,7 @@ class ApplicationController < ActionController::Base
                 statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
                 if(!statoPagamenti.nil? && statoPagamenti["esito"]=="ok" && (statoPagamenti["esito"][0]["stato"]=="Pagato"))
                   # pagato, lascio scaricare il documento
+                  url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
                 else
                   date = richiesta_certificato.data_inserimento
                   formatted_date = date.strftime('%d/%m/%Y')
@@ -309,6 +309,8 @@ class ApplicationController < ActionController::Base
                     url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa?#{queryString}"
                   end
                 end
+              else
+                url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
               end
               result["certificati"] << { 
                 "id": richiesta_certificato.id, 
@@ -344,7 +346,7 @@ class ApplicationController < ActionController::Base
   end
 
   def scarica_certificato
-    tipologia_richiesta = "download certificato"
+    tipologia_richiesta = "download certificato #{params["file"]}"
     if verifica_permessi
       traccia_operazione(tipologia_richiesta)
       send_file "#{Rails.root}/#{params["file"]}", type: "application/pdf", x_sendfile: true
@@ -377,7 +379,7 @@ class ApplicationController < ActionController::Base
   def traccia_operazione(tipologia_richiesta)
     now = Time.now
     operazione = {
-      # tenant: "97d6a602-2492-4f4c-9585-d2991eb3bf4c", # TODO aggiungere tenant in traccia
+      # tenant: "97d6a602-2492-4f4c-9585-d2991eb3bf4c", # TODO aggiungere tenant in traccia?
       obj_created: now,
       obj_modified: now,
       utente_id: session["user"]["id"],
@@ -393,9 +395,18 @@ class ApplicationController < ActionController::Base
 
   def verifica_permessi
     autorizzato = false
+    if session[:famiglia].nil?
+      session[:famiglia] = []
+      session[:famiglia] << session[:cf]
+    end
+    # puts 'session[:famiglia]'
+    # puts session[:famiglia]
     # TODO test rimuovere
     session["user"]["permessi"] = "vedere_solo_famiglia"
+    # puts 'session["user"]["permessi"]'
+    # puts session["user"]["permessi"]
 
+    # TODO permessi unici o multipli?
     case session["user"]["permessi"] 
     when "ricercare_anagrafiche"
       autorizzato = true
@@ -406,7 +417,9 @@ class ApplicationController < ActionController::Base
     when "professionisti"
       autorizzato = true # ??
     when "vedere_solo_famiglia"
-      autorizzato = session[:interroga_cf].in?(session[:famiglia]) # l'utente può vedere solo la sua anagrafica e le anagrafiche dei familiari
+      propria = session[:interroga_cf].nil? || session[:interroga_cf].blank? || session[:interroga_cf] == session[:cf]
+      famiglia = session[:interroga_cf].nil? || session[:interroga_cf].blank? || session[:interroga_cf].in?(session[:famiglia])
+      autorizzato = propria || famiglia # l'utente può vedere solo la sua anagrafica e le anagrafiche dei familiari
     else
       autorizzato = session[:interroga_cf].nil? || session[:interroga_cf].blank? || session[:interroga_cf] == session[:cf] # l'utente può vedere solo la sua anagrafica
     end
@@ -518,6 +531,7 @@ class ApplicationController < ActionController::Base
             @nome = jwt_data[:nome] 
             @cognome = jwt_data[:cognome]
             session[:client_id] = hash_params['c_id']
+            session[:famiglia] = []
             # TODO gestire meglio il dominio, aspettiamo setup a db
             solo_dom = @dominio.gsub("/portal","")
             
