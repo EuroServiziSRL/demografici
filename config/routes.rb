@@ -12,5 +12,8 @@ Rails.application.routes.draw do
   get 'error_dati' => "application#error_dati", :as => :error_dati
 
   get 'sconosciuto' => 'application#sconosciuto', :as => :sconosciuto
+
+  get 'logout' => 'application#logout', :as => :logout
+
   root to: "application#index"
 end

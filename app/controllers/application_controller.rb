@@ -374,6 +374,13 @@ class ApplicationController < ActionController::Base
   def error_dati
   end
     
+  #Va a pulire la sessione e chiama il logout sul portale
+  def logout
+    url_logout = File.join(session['dominio'],"autenticazione/logout")
+    reset_session
+    redirect_to url_logout
+  end
+
   private
 
   def traccia_operazione(tipologia_richiesta)
