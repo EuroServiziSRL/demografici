@@ -391,27 +391,30 @@ class DettagliPersona extends React.Component{
       ]);
     }
 
-    var famigliaFormatted = false;
-    if(datiAnagrafica.famiglia){
-      famigliaFormatted = []
-      for (var componente in datiAnagrafica.famiglia) {
-        famigliaFormatted.push({
-          preText: null,
-          text: datiAnagrafica.famiglia[componente].cognome+" "+datiAnagrafica.famiglia[componente].nome,
-          postText: datiAnagrafica.famiglia[componente].relazioneParentela,
-          url: demograficiData.dominio+"/dettagli_persona?codice_fiscale="+datiAnagrafica.famiglia[componente].codiceFiscale
-        });
+    result.dati.famiglia = []
+    if(datiAnagrafica.famiglia) {
+      var famigliaFormatted = false;
+      if(datiAnagrafica.famiglia){
+        famigliaFormatted = []
+        for (var componente in datiAnagrafica.famiglia) {
+          famigliaFormatted.push({
+            preText: null,
+            text: datiAnagrafica.famiglia[componente].cognome+" "+datiAnagrafica.famiglia[componente].nome,
+            postText: datiAnagrafica.famiglia[componente].relazioneParentela,
+            url: demograficiData.dominio+"/dettagli_persona?codice_fiscale="+datiAnagrafica.famiglia[componente].codiceFiscale
+          });
+        }
       }
+      console.log(famigliaFormatted);
+      result.dati.famiglia = [[
+          { name: "codiceFamiglia", label: "Famiglia N.", value: datiAnagrafica.codiceFamiglia },
+          { name: "numeroComponenti", label: "Numero componenti", value: datiAnagrafica.famiglia?datiAnagrafica.famiglia.length:1 },
+        ],[
+          { name: "componenti", value: <DemograficiList list={famigliaFormatted} linked="true"/>, html: true },
+          { name: "", value: "" },
+        ]
+      ];
     }
-    console.log(famigliaFormatted);
-    result.dati.famiglia = [[
-        { name: "codiceFamiglia", label: "Famiglia N.", value: datiAnagrafica.codiceFamiglia },
-        { name: "numeroComponenti", label: "Numero componenti", value: datiAnagrafica.famiglia?datiAnagrafica.famiglia.length:1 },
-      ],[
-        { name: "componenti", value: <DemograficiList list={famigliaFormatted} linked="true"/>, html: true },
-        { name: "", value: "" },
-      ]
-    ];
     
     result.dati.decesso = [];
     if(datiAnagrafica.datiDecesso) {
@@ -526,6 +529,8 @@ class DettagliPersona extends React.Component{
         ]
       );
     }
+
+
     if(datiAnagrafica.richiesteCertificati && datiAnagrafica.richiesteCertificati.length) {
       result.dati.certificati.push([
           { name: "richiesti", value: <BootstrapTable
@@ -563,6 +568,7 @@ class DettagliPersona extends React.Component{
     }
     selectEsenzioni = <select className="form-control" defaultValue="" name="esenzioneBollo">{selectEsenzioni}</select>
 
+    // TODO aggiungere in base ai permessi
     result.dati.richiedi_certificato = [[
       { name:null, value: <p className="alert alert-info">Per i certificati diretti alla Pubblica Amministrazione ed Enti Erogatori di Pubblici Servizi (ASL, ENEL, POSTE, PREFETTURA, INPS, SUCCESSIONE ...) dev'essere compilata l'Autocertificazione.</p>, html: true }
     ],[

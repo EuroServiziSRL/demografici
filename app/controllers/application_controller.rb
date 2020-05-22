@@ -22,7 +22,7 @@ class ApplicationController < ActionController::Base
     # 
     #carico cf in variabile per usarla sulla view
     puts "logged user cf: "+session[:cf]
-    # puts "cf interrogazione: "+session[:interroga_cf]
+    # puts "cf interrogazione: "+session[:cf_visualizzato]
     @cf_utente_loggato = session[:cf]
     @page_app = "dettagli_persona"
      
@@ -35,10 +35,10 @@ class ApplicationController < ActionController::Base
     @page_app = "dettagli_persona"
 
     if params["codice_fiscale"] == session[:cf]
-      session[:interroga_cf] = nil
+      session[:cf_visualizzato] = nil
     else
-      session[:interroga_cf] = params["codice_fiscale"]
-      puts "cf interrogazione: "+session[:interroga_cf].to_s
+      session[:cf_visualizzato] = params["codice_fiscale"]
+      puts "cf interrogazione: "+session[:cf_visualizzato].to_s
     end
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
   end
@@ -51,8 +51,8 @@ class ApplicationController < ActionController::Base
     # restituisco risultato inserimento e id richiesta
     # se da pagare, poi il portale farà un redirect su pagamenti
     cf_certificato = session[:cf]
-    if !session[:interroga_cf].nil? &&! session[:interroga_cf].blank? 
-      cf_certificato = session[:interroga_cf]
+    if !session[:cf_visualizzato].nil? &&! session[:cf_visualizzato].blank? 
+      cf_certificato = session[:cf_visualizzato]
     end
 
     @page_app = "richiedi_certificato"
@@ -105,7 +105,7 @@ class ApplicationController < ActionController::Base
 
     Certificati.create(certificato)    
 
-    # session[:interroga_cf] = params["codice_fiscale"]
+    # session[:cf_visualizzato] = params["codice_fiscale"]
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
   end
 
@@ -113,7 +113,7 @@ class ApplicationController < ActionController::Base
     @page_app = "richiedi_certificato"
     @nome = session[:user]["nome"]
 
-    # session[:interroga_cf] = params["codice_fiscale"]
+    # session[:cf_visualizzato] = params["codice_fiscale"]
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
   end
   
@@ -156,10 +156,10 @@ class ApplicationController < ActionController::Base
 
     tipologia_richiesta = ""
         
-    cf_ricerca = session[:interroga_cf]
-    if session[:interroga_cf].nil? || session[:interroga_cf].blank? 
+    cf_ricerca = session[:cf_visualizzato]
+    if session[:cf_visualizzato].nil? || session[:cf_visualizzato].blank? 
       cf_ricerca = session[:cf]
-    elsif session[:interroga_cf] == session[:cf]
+    elsif session[:cf_visualizzato] == session[:cf]
       cf_ricerca = session[:cf]
     end
 
@@ -171,7 +171,7 @@ class ApplicationController < ActionController::Base
       tipologia_richiesta = "visualizzazione altra anagrafica #{cf_ricerca}"
     end
 
-    if !verifica_permessi 
+    if !verifica_permessi("visualizza_anagrafica")
       tipologia_richiesta = "#{tipologia_richiesta} (non autorizzato)"
 
       result = { 
@@ -179,9 +179,6 @@ class ApplicationController < ActionController::Base
         "messaggio_errore": "Non sei autorizzato a visualizzare questi dati.", 
       }
     else
-      # puts "cf interrogazione: "+session[:interroga_cf]
-      # params = { "mostraDatiIscrizione": "true",  "codiceFiscale": "#{session[:cf]}", "nomeCognome": "#{session[:nome]} #{session[:cognome]}" }
-      # params = { "mostraDatiIscrizione": "true",  "codiceFiscale": "ZNNCDD51P20C794V", "nomeCognome": "CANDIDO ZANONI" }
       # params = { "codiceFiscale": "ZNNCDD51P20C794V" } # pochi dati
       # params = { "codiceFiscale": "TLLLRA56E46B153E" } # deceduta, no famiglia
       # params = { "codiceFiscale": "RGTVRB33C53B153U" }
@@ -189,16 +186,26 @@ class ApplicationController < ActionController::Base
       # params = { "codiceFiscale": "DPLKTY68L54Z140P" }
       params = { "codiceFiscale": cf_ricerca }
 
-      params[:mostraMaternita] = true
-      params[:mostraConiuge] = true
-      params[:mostraDatidecesso] = true
-      params[:mostraCartaIdentita] = true
-      params[:mostraTitoloSoggiorno] = true
-      params[:mostraProfessione] = true
-      params[:mostraTitoloStudio] = true
-      params[:mostraPatente] = true
-      params[:mostraVeicoli] = true
-      params[:mostraDatiStatoCivile] = true
+      # TODO capire quali sono dati sensibili
+
+      nascondi_sensibili = !is_self && session["user"]["permessi"].include?("ricercare_anagrafiche_no_sensibili")
+
+      puts "is_self? "+is_self.to_s
+      puts 'session["user"]["permessi"].include?("ricercare_anagrafiche_no_sensibili")? '+session["user"]["permessi"].include?("ricercare_anagrafiche_no_sensibili").to_s
+      puts 'nascondi_sensibili? '+nascondi_sensibili.to_s
+
+      if !nascondi_sensibili
+        params[:mostraMaternita] = true
+        params[:mostraConiuge] = true
+        params[:mostraDatidecesso] = true
+        params[:mostraCartaIdentita] = true
+        params[:mostraTitoloSoggiorno] = true
+        params[:mostraProfessione] = true
+        params[:mostraTitoloStudio] = true
+        params[:mostraPatente] = true
+        params[:mostraVeicoli] = true
+        params[:mostraDatiStatoCivile] = true
+      end
 
       puts params
 
@@ -212,6 +219,14 @@ class ApplicationController < ActionController::Base
       result = JSON.parse(result.response.body)
       result = result[0]
       if !result.nil? && result.length > 0
+        if nascondi_sensibili
+          result = {
+            "nome":result["nome"],
+            "cognome":result["cognome"],
+            "dataNascita":result["dataNascita"]
+          }
+        end
+
         comune = Comuni.where(codistat: result["codiceIstatComuneNascitaItaliano"]).first
         puts comune
         # TODO aggiungere tabella stati esteri e recuperare stato nascita come comune nascita ita
@@ -222,119 +237,124 @@ class ApplicationController < ActionController::Base
         else
           result["comuneNascitaDescrizione"] = "";
         end
-        params = { 
-          "codiceAggregazione": result["codiceFamiglia"], 
-          # "codiceFiscaleComponente": result["codiceFiscale"] # non li mostra tutti se metto cf
-        }
-        resultFamiglia = HTTParty.post(
-          "#{@@api_url}/Anagrafe/RicercaComponentiFamiglia?v=1.0", 
-          :body => params.to_json,
-          :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } ,
-          :debug_output => $stdout
-        )    
-        resultFamiglia = JSON.parse(resultFamiglia.response.body)
-        famiglia = []
-        session[:famiglia] = []
-        resultFamiglia.each do |componente|
-          puts "looping through resultFamiglia, componente:"
-          puts componente
-          relazione = RelazioniParentela.where(id_relazione: componente["codiceRelazioneParentelaANPR"]).first
-          componente["relazioneParentela"] = relazione.descrizione
-          session[:famiglia] << componente["codiceFiscale"]
-          famiglia << componente
-        end
-        result["famiglia"] = famiglia
-        result["csrf"] = form_authenticity_token
 
-        result["certificati"] = []
-        result["richiesteCertificati"] = []
-
-        puts cf_ricerca
-        puts session[:cf]
-        if cf_ricerca == session[:cf]
-          searchParams = {}
-          searchParams[:tenant] = session[:user]["api_next"]["tenant"]
-          searchParams[:id_utente] = session["user"]["id"]
-          puts searchParams
-          richieste_certificati = Certificati.where("tenant = :tenant AND id_utente = :id_utente", searchParams)
-          richieste_certificati.each do |richiesta_certificato|
-            importo = 0
-            if !richiesta_certificato.bollo.nil?
-              importo = importo+richiesta_certificato.bollo
-            end
-            if !richiesta_certificato.diritti_importo.nil?
-              importo = importo+richiesta_certificato.diritti_importo
-            end
-
-            if richiesta_certificato.stato == "pagato" || richiesta_certificato.stato == "da_pagare"
-              url = richiesta_certificato.documento
-              
-              if richiesta_certificato.stato == "da_pagare"
-                statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
-                if(!statoPagamenti.nil? && statoPagamenti["esito"]=="ok" && (statoPagamenti["esito"][0]["stato"]=="Pagato"))
-                  # pagato, lascio scaricare il documento
-                  url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
-                else
-                  date = richiesta_certificato.data_inserimento
-                  formatted_date = date.strftime('%d/%m/%Y')
-                  
-                  parametri = {
-                    importo: "#{importo}",
-                    descrizione: "#{richiesta_certificato.nome_certificato} - n.#{richiesta_certificato.id}",
-                    codice_applicazione: "demografici", # TODO va bene questo codice applicazione?
-                    url_back: request.protocol + request.host_with_port,
-                    idext: richiesta_certificato.id,
-                    tipo_elemento: "certificato",
-                    nome_versante: session[:nome],
-                    cognome_versante: session[:cognome],
-                    codice_fiscale_versante: session[:cf],
-                    nome_pagatore: session[:nome],
-                    cognome_pagatore: session[:cognome],
-                    codice_fiscale_pagatore: session[:cf]
-                  }
-                  
-                  queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore].map{ |chiave|
-                      val = parametri[chiave] 
-                      "#{chiave}=#{val}"
-                  }.join('&')
-                  
-    #               puts "query string for sha1 is [#{queryString.strip}]"
-    #               queryString = "importo=#{value["importoResiduo"].gsub(',', '.')}&descrizione=#{value["codiceAvvisoDescrizione"]} - n.#{value["numeroAvviso"]}&codice_applicazione=tributi&url_back=#{request.original_url}&idext=#{value["idAvviso"]}&tipo_elemento=pagamento_tari&nome_versante=#{session[:nome]}&cognome_versante=#{session[:cognome]}&codice_fiscale_versante=#{session[:cf]}&nome_pagatore=#{session[:nome]}&cognome_pagatore=#{session[:cognome]}&codice_fiscale_pagatore=#{session[:cf]}"
-                  fullquerystring = URI.unescape(queryString)
-                  qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
-                  hqs = OpenSSL::Digest::SHA1.new(qs)
-    #               puts "hqs is [#{hqs}]"
-                  url = "#{session[:dominio]}/servizi/pagamenti/"
-                  if(statoPagamenti.nil? || !statoPagamenti["esito"]=="ok")
-                    url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa?#{queryString}"
-                  end
-                end
-              else
-                url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
-              end
-              result["certificati"] << { 
-                "id": richiesta_certificato.id, 
-                "nome_certificato": richiesta_certificato.nome_certificato, 
-                "codice_fiscale": richiesta_certificato.codice_fiscale, 
-                "stato": richiesta_certificato.stato, 
-                "documento": url,
-                "data_prenotazione": richiesta_certificato.data_prenotazione,
-                "data_inserimento": richiesta_certificato.data_inserimento,
-                "esenzione": richiesta_certificato.bollo_esenzione, 
-                "importo": importo
-              }
-            else
-              result["richiesteCertificati"] << { 
-                "id": richiesta_certificato.id, 
-                "nome_certificato": richiesta_certificato.nome_certificato, 
-                "codice_fiscale": richiesta_certificato.codice_fiscale, 
-                "stato": richiesta_certificato.stato, 
-                "data_prenotazione": richiesta_certificato.data_prenotazione,
-                "esenzione": richiesta_certificato.bollo_esenzione, 
-                "importo": importo
-              }
-            end
+        if !nascondi_sensibili
+          params = { 
+            "codiceAggregazione": result["codiceFamiglia"], 
+            # "codiceFiscaleComponente": result["codiceFiscale"] # non li mostra tutti se metto cf
+          }
+          resultFamiglia = HTTParty.post(
+            "#{@@api_url}/Anagrafe/RicercaComponentiFamiglia?v=1.0", 
+            :body => params.to_json,
+            :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } ,
+            :debug_output => $stdout
+          )    
+          resultFamiglia = JSON.parse(resultFamiglia.response.body)
+          famiglia = []
+          session[:famiglia] = []
+          resultFamiglia.each do |componente|
+            puts "looping through resultFamiglia, componente:"
+            puts componente
+            relazione = RelazioniParentela.where(id_relazione: componente["codiceRelazioneParentelaANPR"]).first
+            componente["relazioneParentela"] = relazione.descrizione
+            session[:famiglia] << componente["codiceFiscale"]
+            famiglia << componente
           end
+          result["famiglia"] = famiglia
+          result["csrf"] = form_authenticity_token
+
+          result["certificati"] = []
+          result["richiesteCertificati"] = []
+
+          puts cf_ricerca
+          puts session[:cf]
+          if cf_ricerca == session[:cf]
+            searchParams = {}
+            searchParams[:tenant] = session[:user]["api_next"]["tenant"]
+            searchParams[:id_utente] = session["user"]["id"]
+            puts searchParams
+            richieste_certificati = Certificati.where("tenant = :tenant AND id_utente = :id_utente", searchParams)
+            richieste_certificati.each do |richiesta_certificato|
+              importo = 0
+              if !richiesta_certificato.bollo.nil?
+                importo = importo+richiesta_certificato.bollo
+              end
+              if !richiesta_certificato.diritti_importo.nil?
+                importo = importo+richiesta_certificato.diritti_importo
+              end
+
+              if richiesta_certificato.stato == "pagato" || richiesta_certificato.stato == "da_pagare"
+                url = richiesta_certificato.documento
+                
+                if richiesta_certificato.stato == "da_pagare"
+                  statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
+                  if(!statoPagamenti.nil? && statoPagamenti["esito"]=="ok" && (statoPagamenti["esito"][0]["stato"]=="Pagato"))
+                    # pagato, lascio scaricare il documento
+                    url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
+                  else
+                    date = richiesta_certificato.data_inserimento
+                    formatted_date = date.strftime('%d/%m/%Y')
+                    
+                    parametri = {
+                      importo: "#{importo}",
+                      descrizione: "#{richiesta_certificato.nome_certificato} - n.#{richiesta_certificato.id}",
+                      codice_applicazione: "demografici", # TODO va bene questo codice applicazione?
+                      url_back: request.protocol + request.host_with_port,
+                      idext: richiesta_certificato.id,
+                      tipo_elemento: "certificato",
+                      nome_versante: session[:nome],
+                      cognome_versante: session[:cognome],
+                      codice_fiscale_versante: session[:cf],
+                      nome_pagatore: session[:nome],
+                      cognome_pagatore: session[:cognome],
+                      codice_fiscale_pagatore: session[:cf]
+                    }
+                    
+                    queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore].map{ |chiave|
+                        val = parametri[chiave] 
+                        "#{chiave}=#{val}"
+                    }.join('&')
+                    
+      #               puts "query string for sha1 is [#{queryString.strip}]"
+      #               queryString = "importo=#{value["importoResiduo"].gsub(',', '.')}&descrizione=#{value["codiceAvvisoDescrizione"]} - n.#{value["numeroAvviso"]}&codice_applicazione=tributi&url_back=#{request.original_url}&idext=#{value["idAvviso"]}&tipo_elemento=pagamento_tari&nome_versante=#{session[:nome]}&cognome_versante=#{session[:cognome]}&codice_fiscale_versante=#{session[:cf]}&nome_pagatore=#{session[:nome]}&cognome_pagatore=#{session[:cognome]}&codice_fiscale_pagatore=#{session[:cf]}"
+                    fullquerystring = URI.unescape(queryString)
+                    qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
+                    hqs = OpenSSL::Digest::SHA1.new(qs)
+      #               puts "hqs is [#{hqs}]"
+                    url = "#{session[:dominio]}/servizi/pagamenti/"
+                    if(statoPagamenti.nil? || !statoPagamenti["esito"]=="ok")
+                      url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa?#{queryString}"
+                    end
+                  end
+                else
+                  url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
+                end
+                result["certificati"] << { 
+                  "id": richiesta_certificato.id, 
+                  "nome_certificato": richiesta_certificato.nome_certificato, 
+                  "codice_fiscale": richiesta_certificato.codice_fiscale, 
+                  "stato": richiesta_certificato.stato, 
+                  "documento": url,
+                  "data_prenotazione": richiesta_certificato.data_prenotazione,
+                  "data_inserimento": richiesta_certificato.data_inserimento,
+                  "esenzione": richiesta_certificato.bollo_esenzione, 
+                  "importo": importo
+                }
+              else
+                result["richiesteCertificati"] << { 
+                  "id": richiesta_certificato.id, 
+                  "nome_certificato": richiesta_certificato.nome_certificato, 
+                  "codice_fiscale": richiesta_certificato.codice_fiscale, 
+                  "stato": richiesta_certificato.stato, 
+                  "data_prenotazione": richiesta_certificato.data_prenotazione,
+                  "esenzione": richiesta_certificato.bollo_esenzione, 
+                  "importo": importo
+                }
+              end
+            end
+
+          end
+
         end
       end
 
@@ -347,7 +367,7 @@ class ApplicationController < ActionController::Base
 
   def scarica_certificato
     tipologia_richiesta = "download certificato #{params["file"]}"
-    if verifica_permessi
+    if verifica_permessi("scarica_certificato")
       traccia_operazione(tipologia_richiesta)
       send_file "#{Rails.root}/#{params["file"]}", type: "application/pdf", x_sendfile: true
     else
@@ -393,35 +413,70 @@ class ApplicationController < ActionController::Base
     DemograficiTraccium.create(operazione)
   end
 
-  def verifica_permessi
-    autorizzato = false
-    if session[:famiglia].nil?
-      session[:famiglia] = []
-      session[:famiglia] << session[:cf]
-    end
-    # puts 'session[:famiglia]'
-    # puts session[:famiglia]
-    # TODO test rimuovere
-    session["user"]["permessi"] = "vedere_solo_famiglia"
-    # puts 'session["user"]["permessi"]'
-    # puts session["user"]["permessi"]
+  def is_self
+    is_self = false
 
-    # TODO permessi unici o multipli?
-    case session["user"]["permessi"] 
-    when "ricercare_anagrafiche"
-      autorizzato = true
-    when "ricercare_anagrafiche_no_sensibili"
-      autorizzato = true
-    when "elencare_anagrafiche"
-      autorizzato = true # l'utente può vedere le anagrafiche ma 
-    when "professionisti"
-      autorizzato = true # ??
-    when "vedere_solo_famiglia"
-      propria = session[:interroga_cf].nil? || session[:interroga_cf].blank? || session[:interroga_cf] == session[:cf]
-      famiglia = session[:interroga_cf].nil? || session[:interroga_cf].blank? || session[:interroga_cf].in?(session[:famiglia])
-      autorizzato = propria || famiglia # l'utente può vedere solo la sua anagrafica e le anagrafiche dei familiari
-    else
-      autorizzato = session[:interroga_cf].nil? || session[:interroga_cf].blank? || session[:interroga_cf] == session[:cf] # l'utente può vedere solo la sua anagrafica
+    if session[:cf_visualizzato].nil? || session[:cf_visualizzato].blank?
+      session[:cf_visualizzato] = session[:cf]
+    end
+    
+    if session[:cf_visualizzato] == session[:cf]
+      is_self = true
+    end
+
+    return is_self
+  end
+
+  def is_family
+    is_family = false
+
+    if session[:cf_visualizzato].nil? || session[:cf_visualizzato].blank?
+      session[:cf_visualizzato] = session[:cf]
+    end
+    
+    if session[:cf_visualizzato] == session[:cf]
+      is_family = true
+    else      
+      if session[:famiglia].nil?
+        session[:famiglia] = []
+        session[:famiglia] << session[:cf]
+      end
+      is_family = session[:cf_visualizzato].in?(session[:famiglia])
+    end
+    return is_family
+  end
+
+  def can_see_others
+    return session["user"]["permessi"].include?("ricercare_anagrafiche") || session["user"]["permessi"].include?("ricercare_anagrafiche_no_sensibili") || session["user"]["permessi"].include?("elencare_anagrafiche") || session["user"]["permessi"].include?("professionisti")
+  end
+
+  def verifica_permessi(azione)
+    autorizzato = false
+    
+    # TODO test rimuovere
+    session["user"]["permessi"] = ["vedere_solo_famiglia","elencare_anagrafiche"]
+
+    # il comportamento cambia a seconda se sto visualizzando i dettagli o facendo una ricerca
+    # TODO quali sovrascrivono quali?
+    if azione == "visualizza_anagrafica"
+      if session["user"]["permessi"].include?("ricercare_anagrafiche") 
+        autorizzato = can_see_others
+      elsif session["user"]["permessi"].include?("ricercare_anagrafiche_no_sensibili") 
+        # TODO sovrascrive ricercare_anagrafiche se presente?
+        autorizzato = can_see_others
+      elsif session["user"]["permessi"].include?("elencare_anagrafiche") 
+        autorizzato = can_see_others
+      elsif session["user"]["permessi"].include?("professionisti") 
+        autorizzato = can_see_others
+      elsif session["user"]["permessi"].include?("vedere_solo_famiglia") 
+        autorizzato = is_self || is_family # l'utente può vedere solo la sua anagrafica e le anagrafiche dei familiari
+      else
+        autorizzato = is_self # l'utente può vedere solo la sua anagrafica
+      end
+    elsif azione == "ricerca_anagrafiche"
+      autorizzato = is_self || is_family || can_see_others
+    elsif azione == "scarica_certificato"
+      autorizzato = is_self || is_family || can_see_others
     end
 
     return autorizzato
