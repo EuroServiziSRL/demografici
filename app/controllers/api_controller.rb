@@ -336,7 +336,7 @@ class ApiController < ActionController::Base
         richiedente_cognome: ( richiedente_diverso ? nil : cognomi[richiedente_random] ),
         richiedente_doc_riconoscimento: ( richiedente_diverso ? nil : docs[richiedente_random] ),
         richiedente_doc_data: ( richiedente_diverso ? nil : rand_time(5.years.ago, 30.days.ago) ),
-        richiedente_data_nascita: ( richiedente_diverso ? nil : rand_time(80.years.ago,18.years.ago) ),
+        richiedente_data_nascita: ( richiedente_diverso ? nil : date_nascita[richiedente_random] ),
         # richiesta: "",
         stato: "nuovo",
         # data_inserimento: "",
