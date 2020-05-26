@@ -304,13 +304,10 @@ class ApiController < ActionController::Base
     while x < 20      
       certificato_random = rand(nomi_certificati.length)
       richiedente_random = rand(max)
+      cf_random = rand(max)
       doc_random = rand(3)
       richiedente_diverso = rand_bool && richiedente_random != x
-      if richiedente_diverso
-        cf_certificato = cf[rand(max)]
-      else
-        cf_certificato = cf[richiedente_random]
-      end
+      cf_certificato = cf[cf_random]
       certificati_random = []
       # certificati_random.push(rand(nomi_certificati.length))
       y = 0
@@ -331,7 +328,7 @@ class ApiController < ActionController::Base
         bollo_esenzione: bollo_esenzione,
         diritti_importo: ( rand_bool ? 0 : rand(1.2...16.9).round(1) ),
         uso: "",
-        richiedente_cf: cf_certificato,
+        richiedente_cf: ( richiedente_diverso ? cf_certificato : cf[richiedente_random] ),
         richiedente_nome: ( richiedente_diverso ? nil : nomi[richiedente_random] ),
         richiedente_cognome: ( richiedente_diverso ? nil : cognomi[richiedente_random] ),
         richiedente_doc_riconoscimento: ( richiedente_diverso ? nil : docs[richiedente_random] ),
