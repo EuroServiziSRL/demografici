@@ -312,7 +312,7 @@ class ApiController < ActionController::Base
       # certificati_random.push(rand(nomi_certificati.length))
       y = 0
       while y < rand_in_range(0,5)
-        certificati_random.push(rand(nomi_certificati.length))
+        certificati_random.push(rand(nomi_certificati.length)+1)
         y = y+ 1
       end
       bollo = ( rand_bool ? 0 : 16 )
@@ -323,7 +323,7 @@ class ApiController < ActionController::Base
       certificato = {
         tenant: "97d6a602-2492-4f4c-9585-d2991eb3bf4c",
         codice_fiscale: cf_certificato,
-        codici_certificato: certificati_random,
+        codici_certificato: certificati_random, 
         bollo: bollo,
         bollo_esenzione: bollo_esenzione,
         # diritti_importo: ( rand_bool ? 0 : rand(1.2...16.9).round(1) ),
