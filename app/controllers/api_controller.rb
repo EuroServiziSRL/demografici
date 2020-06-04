@@ -156,7 +156,7 @@ class ApiController < ActionController::Base
           "codice_esito": "003-Errore generico",
           "errore_descrizione": "è necessario specificare una richiesta"
         } 
-      elsif params[:codice_esito] == "001-Certificato presente" 
+      elsif params[:esito_emissione] == "001-Certificato presente" 
 
         searchParams[:id] = params[:richiesta]
         searchParams[:stato] = "richiesto"
@@ -175,7 +175,7 @@ class ApiController < ActionController::Base
           }
         end
 
-      elsif params[:codice_esito] == "002-Certificato non emettibile" 
+      elsif params[:esito_emissione] == "002-Certificato non emettibile" 
 
         searchParams[:id] = params[:richiesta]
         searchParams[:stato] = "richiesto"
@@ -199,7 +199,7 @@ class ApiController < ActionController::Base
         end
 
 
-      elsif params[:codice_esito] == "003-Errore generico" 
+      elsif params[:esito_emissione] == "003-Errore generico" 
 
         searchParams[:id] = params[:richiesta]
         searchParams[:stato] = "richiesto"
@@ -326,8 +326,8 @@ class ApiController < ActionController::Base
         codici_certificato: certificati_random, 
         bollo: bollo,
         bollo_esenzione: bollo_esenzione,
-        # diritti_importo: ( rand_bool ? 0 : rand(1.2...16.9).round(1) ),
-        diritti_importo: 0,  # per ora 0 perchè dovrebbe fornircelo l'api
+        diritti_importo: ( rand_bool ? 0 : rand(1.1...16.9).round(1) ),
+        # diritti_importo: 0,  # per ora 0 perchè dovrebbe fornircelo l'api
         uso: "",
         richiedente_cf: ( richiedente_diverso ? cf_certificato : cf[richiedente_random] ),
         richiedente_nome: ( richiedente_diverso ? nil : nomi[richiedente_random] ),
