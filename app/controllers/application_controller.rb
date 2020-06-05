@@ -66,14 +66,20 @@ class ApplicationController < ActionController::Base
       nome_certificato = tipo_certificato.descrizione
     end
 
-    importo_bollo = 16 # importo bollo è sempre 16
+    cartalibera = !params[:cartaLiberaBollo].nil? && !params[:cartaLiberaBollo].blank? &&  params[:cartaLiberaBollo] != "false"
+    esenzioneBollo = !params[:esenzioneBollo].nil? && !params[:esenzioneBollo].blank? &&  params[:esenzioneBollo] != "0"
     # TODO implementare recupero diritti segreteria da api quando sarà disponibile
-    importo_segreteria = ( rand_bool ? 0 : 0.26 )
-
-    if !params[:esenzioneBollo].nil? && !params[:esenzioneBollo].blank? &&  params[:esenzioneBollo] != "0"
-      puts "esenzione bollo"
-      importo_bollo = 0
-      importo_segreteria = ( rand_bool ? 0 : 0.52 )
+    if cartalibera || esenzioneBollo
+      importo_bollo = 0 # importo bollo è 0 su carta libera o se è specificata esenzione
+    else
+      importo_bollo = 16 # altrimenti è 16 (importo fisso)
+    end
+    
+    # TODO recuperare diritti segreteria da api quando sarà disponibile
+    # i diritti di segreteria sono solitamente 0.26 per carta libera e 0.52 per bollo, se vengono applicati
+    importo_segreteria = ( rand(2)>0 ? 0 : 0.52 )
+    if cartalibera
+      importo_segreteria = ( rand(2)>0 ? 0 : 0.26 )
     end
 
     certificato = {

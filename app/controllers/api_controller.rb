@@ -331,7 +331,6 @@ class ApiController < ActionController::Base
         bollo: bollo,
         bollo_esenzione: bollo_esenzione,
         diritti_importo: diritti,
-        # diritti_importo: 0,  # per ora 0 perchè dovrebbe fornircelo l'api
         uso: "",
         richiedente_cf: ( richiedente_diverso ? cf_certificato : cf[richiedente_random] ),
         richiedente_nome: ( richiedente_diverso ? nil : nomi[richiedente_random] ),
