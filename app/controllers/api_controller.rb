@@ -156,24 +156,6 @@ class ApiController < ActionController::Base
           "codice_esito": "003-Errore generico",
           "errore_descrizione": "è necessario specificare una richiesta"
         } 
-      elsif params[:esito_emissione] == "001-Certificato presente" 
-
-        searchParams[:id] = params[:richiesta]
-        searchParams[:stato] = "richiesto"
-        richiesta_certificato = Certificati.find_by_id(params[:richiesta])  
-        if richiesta_certificato.blank? || richiesta_certificato.nil?
-          array_json << {
-            "codice_esito": "003-Errore generico",
-            "errore_descrizione": "richiesta non trovata"
-          }
-        else
-          richiesta_certificato.stato = "presente"
-          richiesta_certificato.data_inserimento = Time.now
-          richiesta_certificato.save
-          array_json << {
-            "codice_esito": "002-Richiesta aggiornata"
-          }
-        end
 
       elsif params[:esito_emissione] == "002-Certificato non emettibile" 
 
@@ -192,6 +174,7 @@ class ApiController < ActionController::Base
         else
           richiesta_certificato.stato = "non_emettibile"
           richiesta_certificato.data_inserimento = Time.now
+          richiesta_certificato.descrizione_errore = params[:errore_descrizione]
           richiesta_certificato.save
           array_json << {
             "codice_esito": "002-Richiesta aggiornata"
@@ -228,7 +211,25 @@ class ApiController < ActionController::Base
           "codice_esito": "003-Errore generico",
           "errore_descrizione": "il certificato non può essere vuoto"
         }
-      else
+      elsif params[:esito_emissione] == "001-Certificato presente" 
+
+      #   searchParams[:id] = params[:richiesta]
+      #   searchParams[:stato] = "richiesto"
+      #   richiesta_certificato = Certificati.find_by_id(params[:richiesta])  
+      #   if richiesta_certificato.blank? || richiesta_certificato.nil?
+      #     array_json << {
+      #       "codice_esito": "003-Errore generico",
+      #       "errore_descrizione": "richiesta non trovata"
+      #     }
+      #   else
+      #     richiesta_certificato.stato = "presente"
+      #     richiesta_certificato.data_inserimento = Time.now
+      #     richiesta_certificato.save
+      #     array_json << {
+      #       "codice_esito": "002-Richiesta aggiornata"
+      #     }
+      #   end
+      # else
         searchParams[:id] = params[:richiesta]
         searchParams[:stato] = "richiesto"
         richiesta_certificato = Certificati.find_by_id(params[:richiesta])
@@ -311,14 +312,17 @@ class ApiController < ActionController::Base
       certificati_random = []
       # certificati_random.push(rand(nomi_certificati.length))
       y = 0
-      while y < rand_in_range(0,5)
+      # while y < rand_in_range(0,5)
+      while y < 1
         certificati_random.push(rand(nomi_certificati.length)+1)
         y = y+ 1
       end
       bollo = ( rand_bool ? 0 : 16 )
+      diritti = ( rand_bool ? 0 : 0.26 )
       bollo_esenzione = nil
       if bollo == 0 
         bollo_esenzione = rand_in_range(1,10).round()
+        diritti = ( rand_bool ? 0 : 0.52 )
       end
       certificato = {
         tenant: "97d6a602-2492-4f4c-9585-d2991eb3bf4c",
@@ -326,7 +330,7 @@ class ApiController < ActionController::Base
         codici_certificato: certificati_random, 
         bollo: bollo,
         bollo_esenzione: bollo_esenzione,
-        diritti_importo: ( rand_bool ? 0 : rand(1.1...16.9).round(1) ),
+        diritti_importo: diritti,
         # diritti_importo: 0,  # per ora 0 perchè dovrebbe fornircelo l'api
         uso: "",
         richiedente_cf: ( richiedente_diverso ? cf_certificato : cf[richiedente_random] ),
