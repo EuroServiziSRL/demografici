@@ -66,10 +66,10 @@ class ApplicationController < ActionController::Base
       nome_certificato = tipo_certificato.descrizione
     end
 
-    cartalibera = !params[:cartaLiberaBollo].nil? && !params[:cartaLiberaBollo].blank? &&  params[:cartaLiberaBollo] != "false"
+    cartaLibera = !params[:certificatoBollo].nil? && !params[:certificatoBollo].blank? &&  params[:certificatoBollo] != "true"
     esenzioneBollo = !params[:esenzioneBollo].nil? && !params[:esenzioneBollo].blank? &&  params[:esenzioneBollo] != "0"
     # TODO implementare recupero diritti segreteria da api quando sarà disponibile
-    if cartalibera || esenzioneBollo
+    if cartaLibera || esenzioneBollo
       importo_bollo = 0 # importo bollo è 0 su carta libera o se è specificata esenzione
     else
       importo_bollo = 16 # altrimenti è 16 (importo fisso)
@@ -78,7 +78,7 @@ class ApplicationController < ActionController::Base
     # TODO recuperare diritti segreteria da api quando sarà disponibile
     # i diritti di segreteria sono solitamente 0.26 per carta libera e 0.52 per bollo, se vengono applicati
     importo_segreteria = ( rand(2)>0 ? 0 : 0.52 )
-    if cartalibera
+    if cartaLibera
       importo_segreteria = ( rand(2)>0 ? 0 : 0.26 )
     end
 
@@ -90,15 +90,16 @@ class ApplicationController < ActionController::Base
       bollo_esenzione: params[:esenzioneBollo],
       nome_certificato: nome_certificato,
       # TODO aggiungere importo e uso
-      diritti_importo: importo_segreteria,
+      # diritti_importo: importo_segreteria,
+      diritti_importo: 0, # TODO per ora sempre a 0 perchè non cè l'api
       # uso: "",
       richiedente_cf: session[:cf],
       richiedente_nome: session[:nome],
       richiedente_cognome: session[:cognome],
       # TODO aggiungere dati documento e data nascita
-      # richiedente_doc_riconoscimento: ( richiedente_diverso ? nil : docs[richiedente_random] ),
-      # richiedente_doc_data: ( richiedente_diverso ? nil : rand_time(5.years.ago, 30.days.ago) ),
-      # richiedente_data_nascita: ( richiedente_diverso ? nil : rand_time(80.years.ago,18.years.ago) ),
+      richiedente_doc_riconoscimento: params[:docRiconoscimento],
+      richiedente_doc_data: params[:docData],
+      richiedente_data_nascita: params[:docNascita],
       # richiesta: "", # non usato
       stato: "nuovo",
       # data_inserimento: "", # data inserimento del certificato che verrà inserito dall'ente

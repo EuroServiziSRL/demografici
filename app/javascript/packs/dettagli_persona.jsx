@@ -307,6 +307,10 @@ class DettagliPersona extends React.Component{
     });
   }
 
+  certRequestType() {
+    $("#esenzioneBollo").parent().parent().toggle($("#bollo").is(":checked"));
+  }
+
   formatData(datiAnagrafica) {
     var nominativo = datiAnagrafica.cognome+" "+datiAnagrafica.nome;
     var result = {"dati":{}};
@@ -524,7 +528,12 @@ class DettagliPersona extends React.Component{
     for(var e in demograficiData.esenzioniBollo) {
       selectEsenzioni.push(<option value={demograficiData.esenzioniBollo[e].id}>{demograficiData.esenzioniBollo[e].descrizione}</option>)
     }
-    selectEsenzioni = <select className="form-control" defaultValue="" name="esenzioneBollo">{selectEsenzioni}</select>
+    selectEsenzioni = <select className="form-control" defaultValue="" name="esenzioneBollo" id="esenzioneBollo">{selectEsenzioni}</select>
+
+    var selectTipiDoc = []
+    selectTipiDoc.push(<option value=""></option>)
+    selectTipiDoc.push(<option value={demograficiData.esenzioniBollo[e].id}>{demograficiData.esenzioniBollo[e].descrizione}</option>);
+    selectTipiDoc = <select className="form-control" defaultValue="" name="esenzioneBollo" id="esenzioneBollo">{selectEsenzioni}</select>
 
     // TODO aggiungere in base ai permessi
     // TODO unificare tab, via identificativo bollo
@@ -540,10 +549,10 @@ class DettagliPersona extends React.Component{
     ],[
       { name:"cartaLiberaBollo", label: "Il certificato dovrà essere rilasciato in Carta Libera o in Bollo?", value: <div>
         <label className="radio-inline">
-              <input type="radio" name="certificatoBollo" id="carta_libera" defaultValue="false"/>Carta Libera
+              <input type="radio" name="certificatoBollo" id="carta_libera" onChange={this.certRequestType} defaultValue="false"/>Carta Libera
             </label>
             <label className="radio-inline">
-              <input type="radio" name="certificatoBollo" id="bollo" defaultValue="true" defaultChecked="checked"/>
+              <input type="radio" name="certificatoBollo" id="bollo" onChange={this.certRequestType} defaultValue="true" defaultChecked="checked"/>
               Bollo
             </label>
       </div>, html: true },
@@ -553,13 +562,14 @@ class DettagliPersona extends React.Component{
       { name: "", value: "" }
     ],/*[
       { name:null, value: <p className="alert alert-info">In caso di certificato in Bollo, è necessario acquistare la marca da bollo preventivamente presso un punto vendita autorizzato; il numero identificativo, composto da 14 cifre, andrà poi riportato nel campo sottostante.</p>, html: true }
+    ],*//*[
+      { name:"identificativoBollo", label: "Inserire l'identificativo del bollo", value: <input className="form-control" type="text" name="certificatoBolloNum" defaultValue="" placeholder="01234567891234"/>, html: true },
+      { name: "", value: "" }
     ],*/[
-      /*{ name:"identificativoBollo", label: "Inserire l'identificativo del bollo", value: <input className="form-control" type="text" name="certificatoBolloNum" defaultValue="" placeholder="01234567891234"/>, html: true },*/
-      { name: "", value: <input type="hidden" name="authenticity_token" value={datiAnagrafica.csrf}/> },
-      { name: "", value: "" }
-    ],[
       { name:"", value: <input type="submit" name="invia" className="btn btn-default" value="Invia richiesta"/>, html: true },
-      { name: "", value: "" }
+      { name: "", value: <input type="hidden" name="authenticity_token" value={datiAnagrafica.csrf}/> },
+    ],[
+      { name:null, value: <p className="alert alert-info">Attenzione: si informa che i certificati sono scaricabili una volta sola.</p>, html: true }
     ]);
   
     if(datiAnagrafica.certificati && datiAnagrafica.certificati.length) {
@@ -571,7 +581,7 @@ class DettagliPersona extends React.Component{
           columns={[
             // { dataField: "id", text: "id" }, 
             { dataField: "nome_certificato", text: "Certificato" }, 
-            { dataField: "codice_fiscale", text: "Intestatario" }, 
+            { dataField: "codice_fiscale", text: "CF Intestatario" }, 
             { dataField: "stato", text: "Stato richiesta", formatter: statiFormatter }, 
             { dataField: "data_prenotazione", text: "Data richiesta", formatter: dateFormatter }, 
             // { dataField: "data_inserimento", text: "Emesso il", formatter: dateFormatter },
