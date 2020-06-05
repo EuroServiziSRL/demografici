@@ -479,7 +479,7 @@ class ApplicationController < ActionController::Base
     puts "dataEvento: #{dataEvento}"
     dataEvento = Date.parse dataEvento
     puts "dataEvento: #{dataEvento}"
-    comune = Comuni.where(codistat: codice).where("datacessazione <= ? ", dataEvento).first
+    comune = Comuni.where(codistat: codice).where("dataistituzione <= ? AND datacessazione >= ? ", dataEvento, dataEvento).first
     puts comune
     if !comune.blank? && !comune.nil?
       comuneString = "#{comune.denominazione_it} (#{comune.siglaprovincia})"
