@@ -10,12 +10,12 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_05_14_072139) do
+ActiveRecord::Schema.define(version: 2020_06_05_092534) do
 
   create_table "certificatis", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
     t.string "tenant"
     t.string "codice_fiscale"
-    t.decimal "bollo", precision: 10
+    t.decimal "bollo", precision: 4, scale: 2
     t.string "uso"
     t.string "richiedente_cf"
     t.string "richiesta"
@@ -34,7 +34,7 @@ ActiveRecord::Schema.define(version: 2020_05_14_072139) do
     t.date "richiedente_data_nascita"
     t.string "richiedente_doc_riconoscimento"
     t.date "richiedente_doc_data"
-    t.decimal "diritti_importo", precision: 10
+    t.decimal "diritti_importo", precision: 4, scale: 2
     t.string "codici_certificato"
     t.string "descrizione_errore"
   end
@@ -113,8 +113,8 @@ ActiveRecord::Schema.define(version: 2020_05_14_072139) do
     t.string "tipo"
     t.string "codisosovrano"
     t.date "dataultimoagg"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
   end
 
   create_table "tipo_certificatos", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
