@@ -11,16 +11,16 @@ import BootstrapTable from 'react-bootstrap-table-next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCircleNotch, faShoppingCart, faPrint } from '@fortawesome/free-solid-svg-icons'
 
-demograficiData.dominio = window.location.protocol+"//"+window.location.hostname+(window.location.port!=""?":"+window.location.port:"");
 demograficiData.descrizioniStatus = {"D":"DECEDUTO", "R":"RESIDENTE", "A":"RESIDENTE AIRE"}
 
 function buttonFormatter(cell,row) {
   var label = "Stampa";
   var icon = <FontAwesomeIcon icon={faPrint} />
 
-  if (cell.indexOf("aggiungi_pagamento_pagopa")>-1) {label = "Paga con PagoPA"; icon = <FontAwesomeIcon icon={faCreditCard} />}
+  if (cell.indexOf("aggiungi_pagamento_pagopa")>-1) { label = "Paga con PagoPA"; icon = <FontAwesomeIcon icon={faCreditCard} /> }
   else if(cell.indexOf("servizi/pagamenti")>-1) { label = "Vai al carrello"; icon = <FontAwesomeIcon icon={faShoppingCart} /> }
-  return  <a href={cell} target="_blank" className="btn btn-default">{label} {icon}</a>;
+  // return  <a href={cell} target="_blank" className="btn btn-default">{label} {icon}</a>;
+  return  <a href={cell} target="_blank" title={label}>{icon}</a>;
 } 
 
 function statiFormatter(stato) {
@@ -52,7 +52,11 @@ function statiFormatter(stato) {
 
 function moneyFormatter(number) {  
   if(number>0) {
-    return  <span>&euro; {number.toFixed(2).replace(/\./g,",")}</span>;
+    if (typeof number.toFixed !== "function") {
+      return  <span>-</span>;
+    } else {
+      return  <span>&euro; {number.toFixed(2).replace(/\./g,",")}</span>;
+    }
   } else {
     return  <span className="text-success">gratuito</span>;
   }
@@ -200,7 +204,7 @@ class DettagliPersona extends React.Component{
     "famiglia":[],
     "autocertificazioni":[],
     "certificati":[],
-    "richiedi_certificato":[],
+    // "richiedi_certificato":[],
   }
 
   state = {
@@ -239,7 +243,7 @@ class DettagliPersona extends React.Component{
   authenticate() {
     console.log("demograficiData.dominio: "+demograficiData.dominio);
     var self = this;
-    console.log("Authenticating on "+demograficiData.dominio+"/authenticate...");
+    console.log("Dettagli persona - Authenticating on "+demograficiData.dominio+"/authenticate...");
     $.get(demograficiData.dominio+"/authenticate").done(function( response ) {
       console.log("response is loaded");
       console.log(response);
@@ -273,7 +277,10 @@ class DettagliPersona extends React.Component{
     $.get(demograficiData.dominio+"/ricerca_individui", {}).done(function( response ) {
       console.log("ricercaIndividui response is loaded");
       console.log(response);
-      if(response.hasError) {
+      if(response == null) {
+        console.log("response is null");
+      }
+      else if(response.length && response.hasError) {
         console.log("response error");
       } else {
         var state = self.state;
@@ -505,54 +512,6 @@ class DettagliPersona extends React.Component{
     }
 
     result.dati.certificati = []
-    if(datiAnagrafica.certificati && datiAnagrafica.certificati.length) {
-      result.dati.certificati.push([
-          { name: "ricevuti", value: <BootstrapTable
-          id="tableCertificati"
-          keyField={"data_inserimento"}
-          data={datiAnagrafica.certificati}
-          columns={[
-            // { dataField: "id", text: "id" }, 
-            { dataField: "nome_certificato", text: "Tipo" }, 
-            { dataField: "codice_fiscale", text: "Intestatario" }, 
-            { dataField: "stato", text: "Stato richiesta", formatter: statiFormatter }, 
-            { dataField: "documento", text: "Certificato", formatter: buttonFormatter }, 
-            { dataField: "data_prenotazione", text: "Data richiesta", formatter: dateFormatter }, 
-            { dataField: "data_inserimento", text: "Emesso il", formatter: dateFormatter },
-            { dataField: "esenzione", text: "Esenzione", formatter: esenzioneFormatter },
-            { dataField: "importo", text: "Importo", formatter: moneyFormatter }            
-          ]}
-          classes="table-responsive"
-          striped
-          hover
-        />, html: true }
-        ]
-      );
-    }
-
-
-    if(datiAnagrafica.richiesteCertificati && datiAnagrafica.richiesteCertificati.length) {
-      result.dati.certificati.push([
-          { name: "richiesti", value: <BootstrapTable
-          id="tableRichieste"
-          keyField={"data_prenotazione"}
-          data={datiAnagrafica.richiesteCertificati}
-          columns={[
-            // { dataField: "id", text: "id" }, 
-            { dataField: "nome_certificato", text: "Tipo" }, 
-            { dataField: "codice_fiscale", text: "Intestatario" }, 
-            { dataField: "stato", text: "Stato richiesta", formatter: statiFormatter }, 
-            { dataField: "data_prenotazione", text: "Data richiesta", formatter: dateFormatter },
-            { dataField: "esenzione", text: "Esenzione", formatter: esenzioneFormatter },
-            { dataField: "importo", text: "Importo", formatter: moneyFormatter }            
-          ]}
-          classes="table-responsive"
-          striped
-          hover
-        />, html: true }
-        ]
-      );
-    }
 
     var selectTipiCertificato = []
     selectTipiCertificato.push(<option value="" disabled hidden>scegli il tipo di certificato da richiedere</option>)
@@ -569,11 +528,16 @@ class DettagliPersona extends React.Component{
     selectEsenzioni = <select className="form-control" defaultValue="" name="esenzioneBollo">{selectEsenzioni}</select>
 
     // TODO aggiungere in base ai permessi
-    result.dati.richiedi_certificato = [[
+    // TODO unificare tab, via identificativo bollo
+    // TODO prendere dati documento da utente portal, mostrarli per verifica
+    result.dati.certificati.push([
       { name:null, value: <p className="alert alert-info">Per i certificati diretti alla Pubblica Amministrazione ed Enti Erogatori di Pubblici Servizi (ASL, ENEL, POSTE, PREFETTURA, INPS, SUCCESSIONE ...) dev'essere compilata l'Autocertificazione.</p>, html: true }
     ],[
-    { name:"nomeCognomeRichiesta", label: "Si richiede il certificato per", value: <span>{nominativo}</span> },
-      { name:"certificatoTipo", label: "Tipo certificato", value: selectTipiCertificato, html: true }
+      { name:"nomeCognomeRichiesta", label: "Si richiede il certificato per", value: <span>{nominativo}</span> },
+      { name: "", value: "" }
+    ],[
+      { name:"certificatoTipo", label: "Tipo certificato", value: selectTipiCertificato, html: true },
+      { name: "", value: "" }
     ],[
       { name:"cartaLiberaBollo", label: "Il certificato dovrà essere rilasciato in Carta Libera o in Bollo?", value: <div>
         <label className="radio-inline">
@@ -584,19 +548,72 @@ class DettagliPersona extends React.Component{
               Bollo
             </label>
       </div>, html: true },
-     { name:"certificatoEsenzione", label: "Esenzione", value: selectEsenzioni, html: true }
+      { name: "", value: "" }
     ],[
+      { name:"certificatoEsenzione", label: "Esenzione", value: selectEsenzioni, html: true },
+      { name: "", value: "" }
+    ],/*[
       { name:null, value: <p className="alert alert-info">In caso di certificato in Bollo, è necessario acquistare la marca da bollo preventivamente presso un punto vendita autorizzato; il numero identificativo, composto da 14 cifre, andrà poi riportato nel campo sottostante.</p>, html: true }
+    ],*/[
+      /*{ name:"identificativoBollo", label: "Inserire l'identificativo del bollo", value: <input className="form-control" type="text" name="certificatoBolloNum" defaultValue="" placeholder="01234567891234"/>, html: true },*/
+      { name: "", value: <input type="hidden" name="authenticity_token" value={datiAnagrafica.csrf}/> },
+      { name: "", value: "" }
     ],[
-      { name:"identificativoBollo", label: "Inserire l'identificativo del bollo", value: <input className="form-control" type="text" name="certificatoBolloNum" defaultValue="" placeholder="01234567891234"/>, html: true },
-      { name: "", value: <input type="hidden" name="authenticity_token" value={datiAnagrafica.csrf}/> }
-    ],[
-      { name:"", value: <input type="submit" name="invia" className="btn btn-default" value="Invia richiesta"/>, html: true }
-    ]]
+      { name:"", value: <input type="submit" name="invia" className="btn btn-default" value="Invia richiesta"/>, html: true },
+      { name: "", value: "" }
+    ]);
+  
+    if(datiAnagrafica.certificati && datiAnagrafica.certificati.length) {
+      result.dati.certificati.push([
+          { name: "ricevuti", value: <BootstrapTable
+          id="tableCertificati"
+          keyField={"data_inserimento"}
+          data={datiAnagrafica.certificati}
+          columns={[
+            // { dataField: "id", text: "id" }, 
+            { dataField: "nome_certificato", text: "Certificato" }, 
+            { dataField: "codice_fiscale", text: "Intestatario" }, 
+            { dataField: "stato", text: "Stato richiesta", formatter: statiFormatter }, 
+            { dataField: "data_prenotazione", text: "Data richiesta", formatter: dateFormatter }, 
+            // { dataField: "data_inserimento", text: "Emesso il", formatter: dateFormatter },
+            // { dataField: "esenzione", text: "Esenzione", formatter: esenzioneFormatter },
+            { dataField: "importo", text: "Importo", formatter: moneyFormatter },  
+            { dataField: "documento", text: "Azioni", formatter: buttonFormatter },           
+          ]}
+          classes="table-responsive"
+          striped
+          hover
+        />, html: true }
+        ]
+      );
+    }
+
+    if(datiAnagrafica.richiesteCertificati && datiAnagrafica.richiesteCertificati.length) {
+      result.dati.certificati.push([
+          { name: "richiesti", value: <BootstrapTable
+          id="tableRichieste"
+          keyField={"data_prenotazione"}
+          data={datiAnagrafica.richiesteCertificati}
+          columns={[
+            // { dataField: "id", text: "id" }, 
+            { dataField: "nome_certificato", text: "Certificato" }, 
+            { dataField: "codice_fiscale", text: "CF Intestatario" }, 
+            { dataField: "stato", text: "Stato richiesta", formatter: statiFormatter }, 
+            { dataField: "data_prenotazione", text: "Data richiesta", formatter: dateFormatter },
+            // { dataField: "esenzione", text: "Esenzione", formatter: esenzioneFormatter },
+            { dataField: "importo", text: "Importo", formatter: moneyFormatter }            
+          ]}
+          classes="table-responsive"
+          striped
+          hover
+        />, html: true }
+        ]
+      );
+    }
 
     return result;
   }
-
+  // TODO bollo 16€
   displayTabs() {
     var tabsHtml = [];
     var className = "active";
@@ -616,15 +633,10 @@ class DettagliPersona extends React.Component{
     for(var tabName in this.tabs) {
       if(this.state.dati[tabName].length) {
         var form = "";
-        if(tabName=="richiedi_certificato") {
+        if(tabName=="certificati") {
           form = <form className="panel-body form-horizontal" method="POST" action={demograficiData.dominio+"/richiedi_certificato"}>            
-            <DemograficiForm rows={this.state.dati[tabName]} maxLabelCols="4"/>
+            <DemograficiForm rows={this.state.dati[tabName]} maxLabelCols="1"/>
           </form>
-        } else if(tabName=="certificati") {
-          // readonly
-          form = <div className="panel-body form-horizontal">
-          <DemograficiForm rows={this.state.dati[tabName]} maxLabelCols="1"/>
-        </div>
         } else {
           // readonly
           form = <div className="panel-body form-horizontal">
