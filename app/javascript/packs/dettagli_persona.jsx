@@ -50,13 +50,12 @@ function statiFormatter(stato) {
   return  <span className={"text-"+type}>{ucfirst(stato.replace(/_/g," "))}</span>;
 } 
 
-function moneyFormatter(number) {  
-  if(number>0) {
-    if (typeof number.toFixed !== "function") {
-      return  <span>-</span>;
-    } else {
-      return  <span>&euro; {number.toFixed(2).replace(/\./g,",")}</span>;
-    }
+function moneyFormatter(number) {
+  number = parseFloat(number)  
+  if (typeof number.toFixed !== "function") {
+    return  <span>-</span>;
+  } else if(number>0) {
+    return  <span>&euro; {number.toFixed(2).replace(/\./g,",")}</span>;
   } else {
     return  <span className="text-success">gratuito</span>;
   }
