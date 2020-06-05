@@ -19,6 +19,9 @@ class ApplicationController < ActionController::Base
   
   #ROOT della main_app
   def index
+    # session[:cf] = 'ZMMRHG87L05Z600V'
+    # session[:client_id] = 768
+
     # 
     #carico cf in variabile per usarla sulla view
     puts "logged user cf: "+session[:cf]
@@ -63,18 +66,14 @@ class ApplicationController < ActionController::Base
       nome_certificato = tipo_certificato.descrizione
     end
 
-    # TODO da dove prendiamo questi importi?
-    importo_bollo = rand(1.2...16.9).round(1)
-    puts "importo_bollo: "+importo_bollo.to_s
-    importo_segreteria = 0
+    importo_bollo = 16 # importo bollo è sempre 16
+    # TODO implementare recupero diritti segreteria da api quando sarà disponibile
+    importo_segreteria = ( rand_bool ? 0 : 0.26 )
 
     if !params[:esenzioneBollo].nil? && !params[:esenzioneBollo].blank? &&  params[:esenzioneBollo] != "0"
       puts "esenzione bollo"
       importo_bollo = 0
-    end
-
-    if rand(2)>0
-      importo_segreteria = rand(5...20).round(1)
+      importo_segreteria = ( rand_bool ? 0 : 0.52 )
     end
 
     certificato = {
@@ -110,7 +109,7 @@ class ApplicationController < ActionController::Base
   end
 
   def ricerca_anagrafiche
-    @page_app = "richiedi_certificato"
+    @page_app = "ricerca_anagrafiche"
     @nome = session[:user]["nome"]
 
     # session[:cf_visualizzato] = params["codice_fiscale"]
@@ -142,6 +141,7 @@ class ApplicationController < ActionController::Base
 
     if !result["access_token"].nil? && result["access_token"].length > 0
       session[:token] = result["access_token"]
+      result["csrf"] = form_authenticity_token
     end
     
     # result["url"] = oauthURL
@@ -149,6 +149,44 @@ class ApplicationController < ActionController::Base
 
     render :json => result
   end  
+
+  def ricerca_anagrafiche_individui
+    puts "ricerca_anagrafiche_individui"
+    puts params
+
+    page = params[:page]
+    if page.nil? || page.blank?
+      page = 1
+    end
+
+    if !params[:nomeCognome].nil? || !params[:nomeCognome].blank?
+      params[:nomeCognome] = "%#{params[:nomeCognome]}%"
+    end
+
+    tipologia_richiesta = "ricerca anagrafiche"
+
+    if !verifica_permessi("ricerca_anagrafiche")
+      tipologia_richiesta = "#{tipologia_richiesta} (non autorizzato)"
+
+      result = { 
+        "errore": true, 
+        "messaggio_errore": "Non sei autorizzato a visualizzare questi dati.", 
+      }
+    else      
+      result = HTTParty.post(
+        "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
+        :body => params.to_json,
+        :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } ,
+        :debug_output => $stdout
+      )   
+      result = JSON.parse(result.response.body)
+      result = { "data": result }
+    end
+
+    traccia_operazione(tipologia_richiesta)
+
+    render :json => result
+  end
 
   def ricerca_individui
     
@@ -186,7 +224,7 @@ class ApplicationController < ActionController::Base
       # params = { "codiceFiscale": "DPLKTY68L54Z140P" }
       params = { "codiceFiscale": cf_ricerca }
 
-      # TODO capire quali sono dati sensibili
+      # TODO capire quali sono dati sensibili - vedere in codice demografici
 
       nascondi_sensibili = !is_self && session["user"]["permessi"].include?("ricercare_anagrafiche_no_sensibili")
 
@@ -227,12 +265,12 @@ class ApplicationController < ActionController::Base
           }
         end
 
-        comune = Comuni.where(codistat: result["codiceIstatComuneNascitaItaliano"]).first
-        puts comune
-        # TODO aggiungere tabella stati esteri e recuperare stato nascita come comune nascita ita
-        if !comune.blank? && !comune.nil?
-          result["comuneNascitaDescrizione"] = comune.denominazione_it
+        comune = get_comune(result["codiceIstatComuneNascitaItaliano"], result["dataNascita"])
+        puts "comune: #{comune}"
+        if !comune.blank? && !comune.nil? && comune
+          result["comuneNascitaDescrizione"] = comune
         elsif !result["descrizioneComuneNascitaEstero"].blank?
+          # TODO aggiungere tabella stati esteri e recuperare stato nascita come comune nascita ita
           result["comuneNascitaDescrizione"] = result["descrizioneComuneNascitaEstero"]+" ("+result["codiceIstatNazioneNascitaEstero"]+")"
         else
           result["comuneNascitaDescrizione"] = "";
@@ -329,6 +367,8 @@ class ApplicationController < ActionController::Base
                 else
                   url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
                 end
+                # TODO scaricabile solo una volta, vedere su velletri o giugliano, aggiungere avviso
+                # TODO prevedere scadenza 180gg, se stato scaduto si vede ma non si scarica più
                 result["certificati"] << { 
                   "id": richiesta_certificato.id, 
                   "nome_certificato": richiesta_certificato.nome_certificato, 
@@ -356,6 +396,11 @@ class ApplicationController < ActionController::Base
           end
 
         end
+      else 
+        result = { 
+          "errore": true, 
+          "messaggio_errore": "Dati utente non presenti nel sistema.", 
+        }
       end
 
     end
@@ -404,20 +449,36 @@ class ApplicationController < ActionController::Base
   private
 
   def traccia_operazione(tipologia_richiesta)
+    # TODO implementare su: visualizzazione scheda anagrafica e richiesta certificato, togliere da download certificato
     now = Time.now
     operazione = {
-      # tenant: "97d6a602-2492-4f4c-9585-d2991eb3bf4c", # TODO aggiungere tenant in traccia?
+      # tenant: "97d6a602-2492-4f4c-9585-d2991eb3bf4c", # TODO aggiungere tenant in traccia
       obj_created: now,
       obj_modified: now,
       utente_id: session["user"]["id"],
       ip: request.remote_ip,
-      pagina: request.base_url + request.path,
-      parametri: request.query_string,
+      pagina: request.path,
+      parametri: request.query_string, # TODO questo dev'essere un json non un query string
       # id_transazione_app: ???, # TODO aggiungere id_transazione_app in traccia
+      tipologia_servizio: "Demografici",
       tipologia_richiesta: tipologia_richiesta
     }
 
     DemograficiTraccium.create(operazione)
+  end
+
+  def get_comune(codice, dataEvento)
+    comuneString = false
+    puts "codice: #{codice}"
+    puts "dataEvento: #{dataEvento}"
+    dataEvento = Date.parse dataEvento
+    puts "dataEvento: #{dataEvento}"
+    comune = Comuni.where(codistat: codice).where("datacessazione <= ? ", dataEvento).first
+    puts comune
+    if !comune.blank? && !comune.nil?
+      comuneString = "#{comune.denominazione_it} (#{comune.siglaprovincia})"
+    end
+    return comuneString
   end
 
   def is_self
@@ -466,14 +527,16 @@ class ApplicationController < ActionController::Base
     # il comportamento cambia a seconda se sto visualizzando i dettagli o facendo una ricerca
     # TODO quali sovrascrivono quali?
     if azione == "visualizza_anagrafica"
-      if session["user"]["permessi"].include?("ricercare_anagrafiche") 
+      if session["user"]["permessi"].include?("ricercare_anagrafiche") # TODO ricerca completa
         autorizzato = can_see_others
       elsif session["user"]["permessi"].include?("ricercare_anagrafiche_no_sensibili") 
         # TODO sovrascrive ricercare_anagrafiche se presente?
         autorizzato = can_see_others
-      elsif session["user"]["permessi"].include?("elencare_anagrafiche") 
+      elsif session["user"]["permessi"].include?("elencare_anagrafiche") # TODO solo elenco ma non si clicca
         autorizzato = can_see_others
-      elsif session["user"]["permessi"].include?("professionisti") 
+      elsif session["user"]["permessi"].include?("professionisti") # TODO ricerca ridotta solo nomecognome e cf
+        autorizzato = can_see_others
+      elsif session["user"]["permessi"].include?("professionisti_limitato") # TODO ricerca ridotta solo nomecognome e cf ma quando visualizza scheda può vedere solo la scheda dei certificati, da aggiungere tra i profili portal
         autorizzato = can_see_others
       elsif session["user"]["permessi"].include?("vedere_solo_famiglia") 
         autorizzato = is_self || is_family # l'utente può vedere solo la sua anagrafica e le anagrafiche dei familiari
@@ -573,6 +636,7 @@ class ApplicationController < ActionController::Base
           }
           puts hash_jwt_app
           jwt = JsonWebToken.encode(hash_jwt_app)
+          # TODO aggiungere permessi e info documento
           #richiesta in post a get_login_session con authorization bearer
           result = HTTParty.post(@dominio+"/autenticazione/get_login_session.json", 
             :body => hash_params,
