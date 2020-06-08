@@ -243,6 +243,7 @@ class DettagliPersona extends React.Component{
     console.log("demograficiData.dominio: "+demograficiData.dominio);
     var self = this;
     console.log("Dettagli persona - Authenticating on "+demograficiData.dominio+"/authenticate...");
+    // TODO gestire caso login errato su microsoft per accesso api
     $.get(demograficiData.dominio+"/authenticate").done(function( response ) {
       console.log("response is loaded");
       console.log(response);
@@ -289,6 +290,7 @@ class DettagliPersona extends React.Component{
           response = self.formatData(response);
           state.dati = response.dati;
           state.datiCittadino = response.datiCittadino;
+          state.datiRichiedente = response.datiRichiedente;
         } else {
           state.error = true;
           state.error_message = response.messaggio_errore;
@@ -530,6 +532,7 @@ class DettagliPersona extends React.Component{
     }
     selectEsenzioni = <select className="form-control" defaultValue="" name="esenzioneBollo" id="esenzioneBollo">{selectEsenzioni}</select>
 
+    var urlModifica = $("#dominio_portale").text()+"/dettagli_utente?modifica";
     var selectTipiDoc = []
     selectTipiDoc.push(<option value=""></option>)
     selectTipiDoc.push(<option value={demograficiData.esenzioniBollo[e].id}>{demograficiData.esenzioniBollo[e].descrizione}</option>);
@@ -560,19 +563,28 @@ class DettagliPersona extends React.Component{
     ],[
       { name:"certificatoEsenzione", label: "Esenzione", value: selectEsenzioni, html: true },
       { name: "", value: "" }
+    ],[
+      { name:null, value: <p className="alert alert-info">Verifica che i dati del richiedente siano corretti prima di proseguire:</p>, html: true }
+    ],[
+      { name: "nomeRichiedente", label: "Nome", value: datiAnagrafica.datiRichiedente.nome.toUpperCase() },
+      { name: "cognomeRichiedente", label: "Cognome", value: datiAnagrafica.datiRichiedente.cognome.toUpperCase() },
+    ],[
+      { name: "documentoRichiedente", label: "Documento", value: datiAnagrafica.datiRichiedente.tipo_documento+" "+datiAnagrafica.datiRichiedente.numero_documento },
+      { name: "dataDocRichiedente", label: "Data documento", value: dateFormatter(datiAnagrafica.datiRichiedente.data_documento) },
     ],/*[
       { name:null, value: <p className="alert alert-info">In caso di certificato in Bollo, è necessario acquistare la marca da bollo preventivamente presso un punto vendita autorizzato; il numero identificativo, composto da 14 cifre, andrà poi riportato nel campo sottostante.</p>, html: true }
     ],*//*[
       { name:"identificativoBollo", label: "Inserire l'identificativo del bollo", value: <input className="form-control" type="text" name="certificatoBolloNum" defaultValue="" placeholder="01234567891234"/>, html: true },
       { name: "", value: "" }
     ],*/[
-      { name:"", value: <input type="submit" name="invia" className="btn btn-default" value="Invia richiesta"/>, html: true },
+      { name:"", value: <div><input type="submit" name="invia" className="btn btn-primary" value="Invia richiesta"/><a className="btn btn-default ml10" href={urlModifica}>Modifica i tuoi dati</a></div>, html: true },
       { name: "", value: <input type="hidden" name="authenticity_token" value={datiAnagrafica.csrf}/> },
-    ],[
-      { name:null, value: <p className="alert alert-info">Attenzione: si informa che i certificati sono scaricabili una volta sola.</p>, html: true }
     ]);
   
     if(datiAnagrafica.certificati && datiAnagrafica.certificati.length) {
+      result.dati.certificati.push([
+        { name:null, value: <p className="alert alert-info">Attenzione: si informa che i certificati sono scaricabili una volta sola.</p>, html: true }
+      ]);
       result.dati.certificati.push([
           { name: "ricevuti", value: <BootstrapTable
           id="tableCertificati"
@@ -598,6 +610,11 @@ class DettagliPersona extends React.Component{
     }
 
     if(datiAnagrafica.richiesteCertificati && datiAnagrafica.richiesteCertificati.length) {
+      if(datiAnagrafica.certificati && !datiAnagrafica.certificati.length) {
+        result.dati.certificati.push([
+          { name:null, value: <p className="alert alert-info">Attenzione: si informa che i certificati sono scaricabili una volta sola.</p>, html: true }
+        ]);
+      }
       result.dati.certificati.push([
           { name: "richiesti", value: <BootstrapTable
           id="tableRichieste"
@@ -703,7 +720,7 @@ if(document.getElementById('app_demografici_container') !== null){
   var $links = $("#topbar").find(".row");
   $links.find("div").last().remove();
   $links.find("div").first().removeClass("col-lg-offset-3").removeClass("col-md-offset-3");
-  $links.append('<div class="col-lg-2 col-md-2 text-center"><a href="'+$("#demograficiData.dominio_portale").text()+'/" title="Sezione Privata">CIAO<br>'+$("#nome_utente").text()+'</a></div>');
+  $links.append('<div class="col-lg-2 col-md-2 text-center"><a href="'+$("dominio_portale").text()+'/" title="Sezione Privata">CIAO<br>'+$("#nome_utente").text()+'</a></div>');
   $links.append('<div class="col-lg-1 col-md-1 logout_link"><a href="logout" title="Logout"><span class="glyphicon glyphicon-log-out" aria-hidden="true"></span></a></div>');
 
   $('#portal_container').on('click', '.nav-tabs a', function(e){
