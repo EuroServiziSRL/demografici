@@ -85,7 +85,7 @@ class ApplicationController < ActionController::Base
     end
 
     certificato = {
-      tenant: session[:tenant], 
+      tenant: session[:user]["api_next"]["tenant"], 
       codice_fiscale: cf_certificato,
       codici_certificato: [params[:tipoCertificato].to_i],
       bollo: importo_bollo,
@@ -96,11 +96,11 @@ class ApplicationController < ActionController::Base
       diritti_importo: 0, # TODO per ora sempre a 0 perchè non cè l'api
       # uso: "",
       richiedente_cf: session[:cf],
-      richiedente_nome: session[:nome],
-      richiedente_cognome: session[:cognome],
-      richiedente_doc_riconoscimento: "#{session[:tipo_documento]} #{session[:numero_documento]}",
-      richiedente_doc_data: session[:data_documento],
-      richiedente_data_nascita: session[:data_nascita],
+      richiedente_nome: session[:user]["nome"],
+      richiedente_cognome: session[:user]["cognome"],
+      richiedente_doc_riconoscimento: "#{session[:user]["tipo_documento"]} #{session[:user]["numero_documento"]}",
+      richiedente_doc_data: session[:user]["data_documento"],
+      richiedente_data_nascita: session[:user]["data_nascita"],
       # richiesta: "", # non usato
       stato: "nuovo",
       # data_inserimento: "", # data inserimento del certificato che verrà inserito dall'ente
@@ -265,6 +265,20 @@ class ApplicationController < ActionController::Base
       result = JSON.parse(result.response.body)
       result = result[0]
       if !result.nil? && result.length > 0
+
+        result["datiRichiedente"] = {
+          "nome": session[:user]["nome"], 
+          "cognome": session[:user]["cognome"], 
+          "cf": session[:cf], 
+          "data_nascita": session[:user]["data_nascita"], 
+          "tipo_documento": session[:user]["tipo_documento"], 
+          "numero_documento": session[:user]["numero_documento"], 
+          "data_documento": session[:user]["data_documento"], 
+        }
+
+        puts "datiRichiedente set to"
+        puts result["datiRichiedente"]
+
         if nascondi_sensibili
           result = {
             "nome":result["nome"],
@@ -348,11 +362,11 @@ class ApplicationController < ActionController::Base
                       url_back: request.protocol + request.host_with_port,
                       idext: richiesta_certificato.id,
                       tipo_elemento: "certificato",
-                      nome_versante: session[:nome],
-                      cognome_versante: session[:cognome],
+                      nome_versante: session[:user]["nome"],
+                      cognome_versante: session[:user]["cognome"],
                       codice_fiscale_versante: session[:cf],
-                      nome_pagatore: session[:nome],
-                      cognome_pagatore: session[:cognome],
+                      nome_pagatore: session[:user]["nome"],
+                      cognome_pagatore: session[:user]["cognome"],
                       codice_fiscale_pagatore: session[:cf]
                     }
                     
@@ -399,18 +413,6 @@ class ApplicationController < ActionController::Base
                   "importo": importo
                 }
               end
-              session[:tipo_documento] = hash_params['tipo_documento']
-              session[:numero_documento] = hash_params['numero_documento']
-              session[:data_documento] = hash_params['data_documento']
-              result["richiedenteCertificato"] << {
-                "nome": session[:nome], 
-                "cognome": session[:cognome], 
-                "cf": session[:cf], 
-                "data_nascita": session[:data_nascita], 
-                "tipo_documento": session[:tipo_documento], 
-                "numero_documento": session[:numero_documento], 
-                "data_documento": session[:data_documento], 
-              }
             end
 
           end
@@ -425,7 +427,10 @@ class ApplicationController < ActionController::Base
 
     end
 
+    # puts "ricerca individui done, tracking request"
     traccia_operazione(tipologia_richiesta)
+    # puts "request tracked, result is:"
+    # puts result
 
     render :json => result
   end
@@ -472,7 +477,7 @@ class ApplicationController < ActionController::Base
     # TODO implementare su: visualizzazione scheda anagrafica e richiesta certificato, togliere da download certificato
     now = Time.now
     operazione = {
-      # tenant: "97d6a602-2492-4f4c-9585-d2991eb3bf4c", # TODO aggiungere tenant in traccia
+      # tenant: session[:tenant],#TODO aggiungere tenant in traccia
       obj_created: now,
       obj_modified: now,
       utente_id: session["user"]["id"],
@@ -622,7 +627,7 @@ class ApplicationController < ActionController::Base
       if !hash_params['c_id'].blank? && session[:client_id] != hash_params['c_id']
         reset_session
       end
-      if session.blank? || session[:user].blank? #controllo se ho fatto login
+      if session.blank? || session[:user].blank? || false #controllo se ho fatto login
         puts "received hash params"
         puts hash_params
         #se ho la sessione vuota devo ottenere una sessione dal portale
@@ -677,11 +682,11 @@ class ApplicationController < ActionController::Base
             @nome = jwt_data[:nome] 
             @cognome = jwt_data[:cognome]
             session[:client_id] = hash_params['c_id']
-            session[:tipo_documento] = hash_params['tipo_documento']
-            session[:numero_documento] = hash_params['numero_documento']
-            session[:data_documento] = hash_params['data_documento']
-            session[:data_nascita] = "" # TODO recuperare da portal
-            session[:tenant] = hash_params['tenant']
+            # session[:tipo_documento] = jwt_data[:tipo_documento]
+            # session[:numero_documento] = jwt_data[:numero_documento]
+            # session[:data_documento] = jwt_data[:data_documento]
+            # session[:data_nascita] = "" # TODO recuperare da portal
+            # session[:tenant] = jwt_data[:api_next][:tenant]
             session[:famiglia] = []
             # TODO gestire meglio il dominio, aspettiamo setup a db
             solo_dom = @dominio.gsub("/portal","")
