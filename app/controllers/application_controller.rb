@@ -13,7 +13,9 @@ require 'openssl'
 
 class ApplicationController < ActionController::Base
   include ApplicationHelper
-  @@api_resource = "https://api.civilianextuat.it"
+  # TODO aggiungere anche resource in config?
+  # @@api_resource = "https://api.civilianextuat.it"
+  @@api_resource = "https://api.civilianextdev.it"
   @@api_url = "#{@@api_resource}/Demografici/"
   before_action :get_dominio_sessione_utente, :get_layout_portale, :carica_variabili_layout
   
@@ -83,7 +85,7 @@ class ApplicationController < ActionController::Base
     end
 
     certificato = {
-      tenant: "97d6a602-2492-4f4c-9585-d2991eb3bf4c", # TODO mettere tenant da sessione
+      tenant: session[:tenant], 
       codice_fiscale: cf_certificato,
       codici_certificato: [params[:tipoCertificato].to_i],
       bollo: importo_bollo,
@@ -96,10 +98,9 @@ class ApplicationController < ActionController::Base
       richiedente_cf: session[:cf],
       richiedente_nome: session[:nome],
       richiedente_cognome: session[:cognome],
-      # TODO aggiungere dati documento e data nascita
-      richiedente_doc_riconoscimento: params[:docRiconoscimento],
-      richiedente_doc_data: params[:docData],
-      richiedente_data_nascita: params[:docNascita],
+      richiedente_doc_riconoscimento: "#{session[:tipo_documento]} #{session[:numero_documento]}",
+      richiedente_doc_data: session[:data_documento],
+      richiedente_data_nascita: session[:data_nascita],
       # richiesta: "", # non usato
       stato: "nuovo",
       # data_inserimento: "", # data inserimento del certificato che verrà inserito dall'ente
@@ -360,12 +361,12 @@ class ApplicationController < ActionController::Base
                         "#{chiave}=#{val}"
                     }.join('&')
                     
-      #               puts "query string for sha1 is [#{queryString.strip}]"
-      #               queryString = "importo=#{value["importoResiduo"].gsub(',', '.')}&descrizione=#{value["codiceAvvisoDescrizione"]} - n.#{value["numeroAvviso"]}&codice_applicazione=tributi&url_back=#{request.original_url}&idext=#{value["idAvviso"]}&tipo_elemento=pagamento_tari&nome_versante=#{session[:nome]}&cognome_versante=#{session[:cognome]}&codice_fiscale_versante=#{session[:cf]}&nome_pagatore=#{session[:nome]}&cognome_pagatore=#{session[:cognome]}&codice_fiscale_pagatore=#{session[:cf]}"
+                    # puts "query string for sha1 is [#{queryString.strip}]"
+                    # queryString = "importo=#{value["importoResiduo"].gsub(',', '.')}&descrizione=#{value["codiceAvvisoDescrizione"]} - n.#{value["numeroAvviso"]}&codice_applicazione=tributi&url_back=#{request.original_url}&idext=#{value["idAvviso"]}&tipo_elemento=pagamento_tari&nome_versante=#{session[:nome]}&cognome_versante=#{session[:cognome]}&codice_fiscale_versante=#{session[:cf]}&nome_pagatore=#{session[:nome]}&cognome_pagatore=#{session[:cognome]}&codice_fiscale_pagatore=#{session[:cf]}"
                     fullquerystring = URI.unescape(queryString)
                     qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
                     hqs = OpenSSL::Digest::SHA1.new(qs)
-      #               puts "hqs is [#{hqs}]"
+                    # puts "hqs is [#{hqs}]"
                     url = "#{session[:dominio]}/servizi/pagamenti/"
                     if(statoPagamenti.nil? || !statoPagamenti["esito"]=="ok")
                       url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa?#{queryString}"
@@ -398,6 +399,18 @@ class ApplicationController < ActionController::Base
                   "importo": importo
                 }
               end
+              session[:tipo_documento] = hash_params['tipo_documento']
+              session[:numero_documento] = hash_params['numero_documento']
+              session[:data_documento] = hash_params['data_documento']
+              result["richiedenteCertificato"] << {
+                "nome": session[:nome], 
+                "cognome": session[:cognome], 
+                "cf": session[:cf], 
+                "data_nascita": session[:data_nascita], 
+                "tipo_documento": session[:tipo_documento], 
+                "numero_documento": session[:numero_documento], 
+                "data_documento": session[:data_documento], 
+              }
             end
 
           end
@@ -657,13 +670,18 @@ class ApplicationController < ActionController::Base
           if !hash_result.blank? && !hash_result["stato"].nil? && hash_result["stato"] == 'ok'
             jwt_data = JsonWebToken.decode(hash_result['token'])
             session[:user] = jwt_data #uso questo oggetto per capire se utente connesso!
-            puts "received hash"
+            puts "received user data hash"
             puts jwt_data
             puts "received cf is "+jwt_data[:cf]
             session[:cf] = jwt_data[:cf]
             @nome = jwt_data[:nome] 
             @cognome = jwt_data[:cognome]
             session[:client_id] = hash_params['c_id']
+            session[:tipo_documento] = hash_params['tipo_documento']
+            session[:numero_documento] = hash_params['numero_documento']
+            session[:data_documento] = hash_params['data_documento']
+            session[:data_nascita] = "" # TODO recuperare da portal
+            session[:tenant] = hash_params['tenant']
             session[:famiglia] = []
             # TODO gestire meglio il dominio, aspettiamo setup a db
             solo_dom = @dominio.gsub("/portal","")
