@@ -212,16 +212,22 @@ class ApiController < ActionController::Base
         searchParams[:stato] = "richiesto"
         richiesta_certificato = Certificati.find_by_id(params[:richiesta])  
         if richiesta_certificato.blank? || richiesta_certificato.nil?
+          array_json << {
+            "codice_esito": "003-Errore generico",
+            "errore_descrizione": "richiesta non trovata"
+          }
+        else
           richiesta_certificato.stato = "errore"
           richiesta_certificato.descrizione_errore = "Errore durante la ricezione del certificato"
           richiesta_certificato.data_inserimento = Time.now
           richiesta_certificato.save
+
+          array_json << {
+            "codice_esito": "003-Errore generico",
+            "errore_descrizione": "il certificato non può essere vuoto"
+          }
         end
 
-        array_json << {
-          "codice_esito": "003-Errore generico",
-          "errore_descrizione": "il certificato non può essere vuoto"
-        }
       else # questo dovrebbe essere 001-Certificato presente o 000-Certificato inserito
 
       #   searchParams[:id] = params[:richiesta]
