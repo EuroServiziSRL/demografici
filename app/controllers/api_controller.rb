@@ -206,12 +206,23 @@ class ApiController < ActionController::Base
           }
         end
 
-      elsif params[:certificato].nil?
+      elsif params[:certificato].nil? # questo dovrebbe essere 001-Certificato presente o 000-Certificato inserito ma senza ricezione certificato
+
+        searchParams[:id] = params[:richiesta]
+        searchParams[:stato] = "richiesto"
+        richiesta_certificato = Certificati.find_by_id(params[:richiesta])  
+        if richiesta_certificato.blank? || richiesta_certificato.nil?
+          richiesta_certificato.stato = "errore"
+          richiesta_certificato.descrizione_errore = "Errore durante la ricezione del certificato"
+          richiesta_certificato.data_inserimento = Time.now
+          richiesta_certificato.save
+        end
+
         array_json << {
           "codice_esito": "003-Errore generico",
           "errore_descrizione": "il certificato non può essere vuoto"
         }
-      elsif params[:esito_emissione] == "001-Certificato presente" 
+      else # questo dovrebbe essere 001-Certificato presente o 000-Certificato inserito
 
       #   searchParams[:id] = params[:richiesta]
       #   searchParams[:stato] = "richiesto"
@@ -325,7 +336,8 @@ class ApiController < ActionController::Base
         diritti = ( rand_bool ? 0 : 0.52 )
       end
       certificato = {
-        tenant: "97d6a602-2492-4f4c-9585-d2991eb3bf4c",
+        #tenant: "97d6a602-2492-4f4c-9585-d2991eb3bf4c",
+        tenant: "ba4785a1-abe2-4fcc-ac26-6cda29910c2",
         codice_fiscale: cf_certificato,
         codici_certificato: certificati_random, 
         bollo: bollo,
