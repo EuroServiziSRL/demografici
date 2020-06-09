@@ -90,6 +90,11 @@ function ucfirst(str){
       return   firstLetter.toUpperCase();
     }):"";
 }
+
+function linkAnagraficaFormatter(cell,row) {
+  return  <a href={demograficiData.dominio+"/dettagli_persona?codice_fiscale="+cell}>{cell}</a>;
+} 
+
 class DemograficiForm extends React.Component{
   cols = 12
   maxLabelCols = 2
@@ -153,9 +158,9 @@ class RicercaAnagrafiche extends React.Component{
   } 
 
   columns = [
+    { dataField: "codiceFiscale", text: "Codice fiscale", formatter: linkAnagraficaFormatter },
     { dataField: "nome", text: "Nome" },
     { dataField: "cognome", text: "Cognome" },
-    { dataField: "codiceFiscale", text: "Codice fiscale" },
     { dataField: "descrizioneCittadinanza", text: "Cittadinanza" },
     { dataField: "sesso", text: "Sesso" },
     { dataField: "dataNascita", text: "Data di nascita" },

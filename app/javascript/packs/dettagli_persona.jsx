@@ -126,7 +126,7 @@ class DemograficiForm extends React.Component{
       var fields = this.rows[r];
       var fieldCols = this.cols/fields.length;
       var labelCols = Math.floor(fieldCols/3);
-      if(labelCols>2) { labelCols = this.maxLabelCols; } // senò è enorme dai
+      if(labelCols>this.maxLabelCols) { labelCols = this.maxLabelCols; } // senò è enorme dai
       var valueSize = fieldCols-labelCols;
       for(var f in fields) {
         if( typeof(fields[f].labelCols) == "undefined" ) { fields[f].labelCols = labelCols; }
@@ -544,13 +544,11 @@ class DettagliPersona extends React.Component{
     result.dati.certificati.push([
       { name:null, value: <p className="alert alert-info">Per i certificati diretti alla Pubblica Amministrazione ed Enti Erogatori di Pubblici Servizi (ASL, ENEL, POSTE, PREFETTURA, INPS, SUCCESSIONE ...) dev'essere compilata l'Autocertificazione.</p>, html: true }
     ],[
-      { name:"nomeCognomeRichiesta", label: "Si richiede il certificato per", value: <span>{nominativo}</span> },
-      { name: "", value: "" }
+      { name:"nomeCognomeRichiesta", label: "Si richiede il certificato per", labelCols:4, valueSize:4, value: <span>{nominativo}</span> }
     ],[
-      { name:"certificatoTipo", label: "Tipo certificato", value: selectTipiCertificato, html: true },
-      { name: "", value: "" }
+      { name:"certificatoTipo", label: "Tipo certificato", labelCols:4, valueSize:4, value: selectTipiCertificato, html: true }
     ],[
-      { name:"cartaLiberaBollo", label: "Il certificato dovrà essere rilasciato in Carta Libera o in Bollo?", value: <div>
+      { name:"cartaLiberaBollo", label: "Il certificato dovrà essere rilasciato in Carta Libera o in Bollo?", labelCols:4, valueSize:4, value: <div>
         <label className="radio-inline">
               <input type="radio" name="certificatoBollo" id="carta_libera" onChange={this.certRequestType} defaultValue="false"/>Carta Libera
             </label>
@@ -558,27 +556,24 @@ class DettagliPersona extends React.Component{
               <input type="radio" name="certificatoBollo" id="bollo" onChange={this.certRequestType} defaultValue="true" defaultChecked="checked"/>
               Bollo
             </label>
-      </div>, html: true },
-      { name: "", value: "" }
+      </div>, html: true }
     ],[
-      { name:"certificatoEsenzione", label: "Esenzione", value: selectEsenzioni, html: true },
-      { name: "", value: "" }
+      { name:"certificatoEsenzione", label: "Esenzione", labelCols:4, valueSize:4, value: selectEsenzioni, html: true }
     ],[
       { name:null, value: <p className="alert alert-info">Verifica che i dati del richiedente siano corretti prima di proseguire:</p>, html: true }
     ],[
-      { name: "nomeRichiedente", label: "Nome", value: datiAnagrafica.datiRichiedente.nome.toUpperCase() },
-      { name: "cognomeRichiedente", label: "Cognome", value: datiAnagrafica.datiRichiedente.cognome.toUpperCase() },
-    ],[
-      { name: "documentoRichiedente", label: "Documento", value: datiAnagrafica.datiRichiedente.tipo_documento+" "+datiAnagrafica.datiRichiedente.numero_documento },
-      { name: "dataDocRichiedente", label: "Data documento", value: dateFormatter(datiAnagrafica.datiRichiedente.data_documento) },
+      { name: "nomeRichiedente", label: "Nome", labelCols:1, valueSize:2, value: datiAnagrafica.datiRichiedente.nome.toUpperCase() },
+      { name: "cognomeRichiedente", label: "Cognome", labelCols:1, valueSize:2, value: datiAnagrafica.datiRichiedente.cognome.toUpperCase() },
+      { name: "documentoRichiedente", label: "Documento", labelCols:1, valueSize:2, value: datiAnagrafica.datiRichiedente.tipo_documento+" "+datiAnagrafica.datiRichiedente.numero_documento },
+      { name: "dataDocRichiedente", label: "Data", labelCols:1, valueSize:2, value: dateFormatter(datiAnagrafica.datiRichiedente.data_documento) },
     ],/*[
       { name:null, value: <p className="alert alert-info">In caso di certificato in Bollo, è necessario acquistare la marca da bollo preventivamente presso un punto vendita autorizzato; il numero identificativo, composto da 14 cifre, andrà poi riportato nel campo sottostante.</p>, html: true }
     ],*//*[
       { name:"identificativoBollo", label: "Inserire l'identificativo del bollo", value: <input className="form-control" type="text" name="certificatoBolloNum" defaultValue="" placeholder="01234567891234"/>, html: true },
       { name: "", value: "" }
     ],*/[
-      { name:"", value: <div><input type="submit" name="invia" className="btn btn-primary" value="Invia richiesta"/><a className="btn btn-default ml10" href={urlModifica}>Modifica i tuoi dati</a></div>, html: true },
-      { name: "", value: <input type="hidden" name="authenticity_token" value={datiAnagrafica.csrf}/> },
+      { name:"", labelCols:2, valueSize:8, value: <div className="text-center"><input type="submit" name="invia" className="btn btn-primary" value="Invia richiesta"/><a className="btn btn-default ml10" href={urlModifica}>Modifica i tuoi dati</a></div>, html: true },
+      { name: "", labelCols:1, valueSize:1, value: <input type="hidden" name="authenticity_token" value={datiAnagrafica.csrf}/> },
     ]);
   
     if(datiAnagrafica.certificati && datiAnagrafica.certificati.length) {
@@ -586,7 +581,7 @@ class DettagliPersona extends React.Component{
         { name:null, value: <p className="alert alert-info">Attenzione: si informa che i certificati sono scaricabili una volta sola.</p>, html: true }
       ]);
       result.dati.certificati.push([
-          { name: "ricevuti", value: <BootstrapTable
+          { name: "ricevuti", labelCols:1, value: <BootstrapTable
           id="tableCertificati"
           keyField={"data_inserimento"}
           data={datiAnagrafica.certificati}
@@ -616,7 +611,7 @@ class DettagliPersona extends React.Component{
         ]);
       }
       result.dati.certificati.push([
-          { name: "richiesti", value: <BootstrapTable
+          { name: "richiesti", labelCols:1, value: <BootstrapTable
           id="tableRichieste"
           keyField={"data_prenotazione"}
           data={datiAnagrafica.richiesteCertificati}
