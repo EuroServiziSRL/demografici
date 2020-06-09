@@ -357,11 +357,11 @@ class ApplicationController < ActionController::Base
                     
                     parametri = {
                       importo: "#{importo}",
-                      descrizione: "#{richiesta_certificato.nome_certificato} - n.#{richiesta_certificato.id}",
+                      descrizione: "Certificato #{richiesta_certificato.nome_certificato} per #{richiesta_certificato.codice_fiscale} - n.#{richiesta_certificato.id}",
                       codice_applicazione: "demografici", # TODO va bene questo codice applicazione?
                       url_back: request.protocol + request.host_with_port,
                       idext: richiesta_certificato.id,
-                      tipo_elemento: "certificato",
+                      tipo_elemento: "certificazione_td",
                       nome_versante: session[:user]["nome"],
                       cognome_versante: session[:user]["cognome"],
                       codice_fiscale_versante: session[:cf],
