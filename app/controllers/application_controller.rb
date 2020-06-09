@@ -382,7 +382,7 @@ class ApplicationController < ActionController::Base
                     hqs = OpenSSL::Digest::SHA1.new(qs)
                     # puts "hqs is [#{hqs}]"
                     url = "#{session[:dominio]}/servizi/pagamenti/"
-                    if(statoPagamenti.nil? || !statoPagamenti["esito"]=="ok")
+                    if(statoPagamenti.nil? || statoPagamenti["esito"]!="ok")
                       url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa?#{queryString}"
                     end
                   end
