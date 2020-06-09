@@ -77,6 +77,7 @@ class ApiController < ActionController::Base
             "codice_fiscale": richiesta_certificato.codice_fiscale,
             "codici_certificato": array_codici, # ottenuti da compilazione form da parte del cittadino, questi verranno ottenuti da ws che restituisce elenco tipi certificato
             "bollo": richiesta_certificato.bollo, # ottenuti da compilazione form da parte del cittadino, sì/no
+            "bollo_esenzione": richiesta_certificato.bollo_esenzione,
             "diritti_importo": richiesta_certificato.diritti_importo, # ottenuti da compilazione form da parte del cittadino, sì/no
             "uso": richiesta_certificato.uso, # ottenuti da compilazione form da parte del cittadino, probabilmente recuperati da ws?
             "richiedente_cf": richiesta_certificato.richiedente_cf,
