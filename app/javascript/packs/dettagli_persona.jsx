@@ -20,7 +20,7 @@ function buttonFormatter(cell,row) {
   if (cell.indexOf("aggiungi_pagamento_pagopa")>-1) { label = "Paga con PagoPA"; icon = <FontAwesomeIcon icon={faShoppingCart} /> }
   else if(cell.indexOf("servizi/pagamenti")>-1) { label = "Vai al carrello"; icon = <FontAwesomeIcon icon={faShoppingCart} /> }
   // return  <a href={cell} target="_blank" className="btn btn-default">{label} {icon}</a>;
-  return  <a href={cell} target="_blank" title={label}>{icon}</a>;
+  return  <a href={cell} title={label}>{icon}</a>;
 } 
 
 function statiFormatter(stato) {
