@@ -167,9 +167,23 @@ class ApplicationController < ActionController::Base
       page = 1
     end
 
+    # TODO aggiungere wildcard ad altri campi ricerca e verificare che nomeCognome funzioni
     if !params[:nomeCognome].nil? || !params[:nomeCognome].blank?
       params[:nomeCognome] = "%#{params[:nomeCognome]}%"
     end
+    # params[:mostraIndirizzo] = true
+    # params[:mostraMaternita] = true
+    # params[:mostraConiuge] = true
+    # params[:mostraDatidecesso] = true
+    # params[:mostraCartaIdentita] = true
+    # params[:mostraTitoloSoggiorno] = true
+    # params[:mostraProfessione] = true
+    # params[:mostraTitoloStudio] = true
+    # params[:mostraPatente] = true
+    # params[:mostraVeicoli] = true
+    # params[:mostraDatiStatoCivile] = true
+    # params[:itemsPerPage] = 100
+    # params[:pageNumber] = 4
 
     tipologia_richiesta = "ricerca anagrafiche"
 
@@ -241,6 +255,7 @@ class ApplicationController < ActionController::Base
       puts 'nascondi_sensibili? '+nascondi_sensibili.to_s
 
       if !nascondi_sensibili
+        params[:mostraIndirizzo] = true
         params[:mostraMaternita] = true
         params[:mostraConiuge] = true
         params[:mostraDatidecesso] = true
@@ -301,7 +316,6 @@ class ApplicationController < ActionController::Base
         if !nascondi_sensibili
           params = { 
             "codiceAggregazione": result["codiceFamiglia"], 
-            # "codiceFiscaleComponente": result["codiceFiscale"] # non li mostra tutti se metto cf
           }
           resultFamiglia = HTTParty.post(
             "#{@@api_url}/Anagrafe/RicercaComponentiFamiglia?v=1.0", 
@@ -326,95 +340,90 @@ class ApplicationController < ActionController::Base
           result["certificati"] = []
           result["richiesteCertificati"] = []
 
-          puts cf_ricerca
-          puts session[:cf]
-          if cf_ricerca == session[:cf]
-            searchParams = {}
-            searchParams[:tenant] = session[:user]["api_next"]["tenant"]
-            searchParams[:id_utente] = session["user"]["id"]
-            puts searchParams
-            richieste_certificati = Certificati.where("tenant = :tenant AND id_utente = :id_utente", searchParams)
-            richieste_certificati.each do |richiesta_certificato|
-              importo = 0
-              if !richiesta_certificato.bollo.nil?
-                importo = importo+richiesta_certificato.bollo
-              end
-              if !richiesta_certificato.diritti_importo.nil?
-                importo = importo+richiesta_certificato.diritti_importo
-              end
-
-              if richiesta_certificato.stato == "pagato" || richiesta_certificato.stato == "da_pagare"
-                url = richiesta_certificato.documento
-                
-                if richiesta_certificato.stato == "da_pagare"
-                  statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
-                  if(!statoPagamenti.nil? && statoPagamenti["esito"]=="ok" && (statoPagamenti["esito"][0]["stato"]=="Pagato"))
-                    # pagato, lascio scaricare il documento
-                    url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
-                  else
-                    date = richiesta_certificato.data_inserimento
-                    formatted_date = date.strftime('%d/%m/%Y')
-                    
-                    parametri = {
-                      importo: "#{importo}",
-                      descrizione: "Certificato #{richiesta_certificato.nome_certificato} per #{richiesta_certificato.codice_fiscale} - n.#{richiesta_certificato.id}",
-                      codice_applicazione: "demografici", # TODO va bene questo codice applicazione?
-                      url_back: request.protocol + request.host_with_port,
-                      idext: richiesta_certificato.id,
-                      tipo_elemento: "certificazione_td",
-                      nome_versante: session[:user]["nome"],
-                      cognome_versante: session[:user]["cognome"],
-                      codice_fiscale_versante: session[:cf],
-                      nome_pagatore: session[:user]["nome"],
-                      cognome_pagatore: session[:user]["cognome"],
-                      codice_fiscale_pagatore: session[:cf]
-                    }
-                    
-                    queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore].map{ |chiave|
-                        val = parametri[chiave] 
-                        "#{chiave}=#{val}"
-                    }.join('&')
-                    
-                    # puts "query string for sha1 is [#{queryString.strip}]"
-                    # queryString = "importo=#{value["importoResiduo"].gsub(',', '.')}&descrizione=#{value["codiceAvvisoDescrizione"]} - n.#{value["numeroAvviso"]}&codice_applicazione=tributi&url_back=#{request.original_url}&idext=#{value["idAvviso"]}&tipo_elemento=pagamento_tari&nome_versante=#{session[:nome]}&cognome_versante=#{session[:cognome]}&codice_fiscale_versante=#{session[:cf]}&nome_pagatore=#{session[:nome]}&cognome_pagatore=#{session[:cognome]}&codice_fiscale_pagatore=#{session[:cf]}"
-                    fullquerystring = URI.unescape(queryString)
-                    qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
-                    hqs = OpenSSL::Digest::SHA1.new(qs)
-                    # puts "hqs is [#{hqs}]"
-                    url = "#{session[:dominio]}/servizi/pagamenti/"
-                    if(statoPagamenti.nil? || statoPagamenti["esito"]!="ok")
-                      url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa?#{queryString}"
-                    end
-                  end
-                else
-                  url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
-                end
-                # TODO scaricabile solo una volta, vedere su velletri o giugliano, aggiungere avviso
-                # TODO prevedere scadenza 180gg, se stato scaduto si vede ma non si scarica più
-                result["certificati"] << { 
-                  "id": richiesta_certificato.id, 
-                  "nome_certificato": richiesta_certificato.nome_certificato, 
-                  "codice_fiscale": richiesta_certificato.codice_fiscale, 
-                  "stato": richiesta_certificato.stato, 
-                  "documento": url,
-                  "data_prenotazione": richiesta_certificato.data_prenotazione,
-                  "data_inserimento": richiesta_certificato.data_inserimento,
-                  "esenzione": richiesta_certificato.bollo_esenzione, 
-                  "importo": importo
-                }
-              else
-                result["richiesteCertificati"] << { 
-                  "id": richiesta_certificato.id, 
-                  "nome_certificato": richiesta_certificato.nome_certificato, 
-                  "codice_fiscale": richiesta_certificato.codice_fiscale, 
-                  "stato": richiesta_certificato.stato, 
-                  "data_prenotazione": richiesta_certificato.data_prenotazione,
-                  "esenzione": richiesta_certificato.bollo_esenzione, 
-                  "importo": importo
-                }
-              end
+          searchParams = {}
+          searchParams[:tenant] = session[:user]["api_next"]["tenant"]
+          searchParams[:id_utente] = session["user"]["id"]
+          searchParams[:codice_fiscale] = cf_ricerca
+          richieste_certificati = Certificati.where("tenant = :tenant AND codice_fiscale = :codice_fiscale AND id_utente = :id_utente", searchParams)
+          richieste_certificati.each do |richiesta_certificato|
+            importo = 0
+            if !richiesta_certificato.bollo.nil?
+              importo = importo+richiesta_certificato.bollo
+            end
+            if !richiesta_certificato.diritti_importo.nil?
+              importo = importo+richiesta_certificato.diritti_importo
             end
 
+            if richiesta_certificato.stato == "pagato" || richiesta_certificato.stato == "da_pagare"
+              url = richiesta_certificato.documento
+              
+              if richiesta_certificato.stato == "da_pagare"
+                statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
+                if(!statoPagamenti.nil? && statoPagamenti["esito"]=="ok" && (statoPagamenti["esito"][0]["stato"]=="Pagato"))
+                  # pagato, lascio scaricare il documento
+                  url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
+                else
+                  date = richiesta_certificato.data_inserimento
+                  formatted_date = date.strftime('%d/%m/%Y')
+                  
+                  parametri = {
+                    importo: "#{importo}",
+                    descrizione: "Certificato #{richiesta_certificato.nome_certificato} per #{richiesta_certificato.codice_fiscale} - n.#{richiesta_certificato.id}",
+                    codice_applicazione: "demografici", # TODO va bene questo codice applicazione?
+                    url_back: request.protocol + request.host_with_port,
+                    idext: richiesta_certificato.id,
+                    tipo_elemento: "certificazione_td",
+                    nome_versante: session[:user]["nome"],
+                    cognome_versante: session[:user]["cognome"],
+                    codice_fiscale_versante: session[:cf],
+                    nome_pagatore: session[:user]["nome"],
+                    cognome_pagatore: session[:user]["cognome"],
+                    codice_fiscale_pagatore: session[:cf]
+                  }
+                  
+                  queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore].map{ |chiave|
+                      val = parametri[chiave] 
+                      "#{chiave}=#{val}"
+                  }.join('&')
+                  
+                  # puts "query string for sha1 is [#{queryString.strip}]"
+                  # queryString = "importo=#{value["importoResiduo"].gsub(',', '.')}&descrizione=#{value["codiceAvvisoDescrizione"]} - n.#{value["numeroAvviso"]}&codice_applicazione=tributi&url_back=#{request.original_url}&idext=#{value["idAvviso"]}&tipo_elemento=pagamento_tari&nome_versante=#{session[:nome]}&cognome_versante=#{session[:cognome]}&codice_fiscale_versante=#{session[:cf]}&nome_pagatore=#{session[:nome]}&cognome_pagatore=#{session[:cognome]}&codice_fiscale_pagatore=#{session[:cf]}"
+                  fullquerystring = URI.unescape(queryString)
+                  qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
+                  hqs = OpenSSL::Digest::SHA1.new(qs)
+                  # puts "hqs is [#{hqs}]"
+                  url = "#{session[:dominio]}/servizi/pagamenti/"
+                  if(statoPagamenti.nil? || statoPagamenti["esito"]!="ok")
+                    url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa?#{queryString}"
+                  end
+                end
+              else
+                url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
+              end
+              # TODO scaricabile solo una volta, vedere su velletri o giugliano, aggiungere avviso
+              # TODO prevedere scadenza 180gg, se stato scaduto si vede ma non si scarica più
+              result["certificati"] << { 
+                "id": richiesta_certificato.id, 
+                "nome_certificato": richiesta_certificato.nome_certificato, 
+                "codice_fiscale": richiesta_certificato.codice_fiscale, 
+                "stato": richiesta_certificato.stato, 
+                "documento": url,
+                "data_prenotazione": richiesta_certificato.data_prenotazione,
+                "data_inserimento": richiesta_certificato.data_inserimento,
+                "esenzione": richiesta_certificato.bollo_esenzione, 
+                "importo": importo
+              }
+            else
+              result["richiesteCertificati"] << { 
+                "id": richiesta_certificato.id, 
+                "nome_certificato": richiesta_certificato.nome_certificato, 
+                "codice_fiscale": richiesta_certificato.codice_fiscale, 
+                "stato": richiesta_certificato.stato, 
+                "data_prenotazione": richiesta_certificato.data_prenotazione,
+                "esenzione": richiesta_certificato.bollo_esenzione, 
+                "importo": importo
+              }
+            end
           end
 
         end
