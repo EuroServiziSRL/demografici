@@ -11,7 +11,7 @@ import BootstrapTable from 'react-bootstrap-table-next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCircleNotch, faShoppingCart, faPrint } from '@fortawesome/free-solid-svg-icons'
 
-demograficiData.descrizioniStatus = {"D":"DECEDUTO", "R":"RESIDENTE", "A":"RESIDENTE AIRE"}
+demograficiData.descrizioniStatus = {"D":"DECEDUTO", "R":"RESIDENTE", "A":"RESIDENTE AIRE", "I":"IRREPERIBILE", "E":"EMIGRATO"}
 
 function buttonFormatter(cell,row) {
   var label = "Stampa";
@@ -80,10 +80,15 @@ function esenzioneFormatter(idEsenzione) {
 function dateFormatter(dateTimeString) {
   var formatted = "";
   if(dateTimeString) {
-    var date = new Date(dateTimeString.replace(/-/g,"/").replace(/T/g," ").replace(/\.\d{3}Z/g,""));
+    var dateString = dateTimeString.replace(/-/g,"/").replace(/T.*/g," ").replace(/\.\d{3}Z/g,"");
+    var date = new Date(dateString);
     formatted = date.toLocaleDateString("IT");
   }
   return formatted;
+}
+
+function tipoCertFormatter(cell,row) {
+  return "Certificato "+cell;
 }
 
 function todo(message, type) {
@@ -197,7 +202,7 @@ class DettagliPersona extends React.Component{
     "divorzio":[],
     "vedovanza":[],
     "unione_civile":[],
-    "scioglimento_unione_civile":[],
+    "scioglimento_unione_civile":[], // TODO aggiungere dentro divorzio?
     "elettorale":[],
     "documenti":[],
     "famiglia":[],
@@ -411,7 +416,7 @@ class DettagliPersona extends React.Component{
         for (var componente in datiAnagrafica.famiglia) {
           famigliaFormatted.push({
             preText: null,
-            text: datiAnagrafica.famiglia[componente].cognome+" "+datiAnagrafica.famiglia[componente].nome,
+            text: datiAnagrafica.famiglia[componente].cognome+" "+datiAnagrafica.famiglia[componente].nome+" ("+datiAnagrafica.famiglia[componente].sesso+") -  "+datiAnagrafica.famiglia[componente].dataNascita,
             postText: datiAnagrafica.famiglia[componente].relazioneParentela,
             url: demograficiData.dominio+"/dettagli_persona?codice_fiscale="+datiAnagrafica.famiglia[componente].codiceFiscale
           });
@@ -539,16 +544,22 @@ class DettagliPersona extends React.Component{
     selectTipiDoc = <select className="form-control" defaultValue="" name="esenzioneBollo" id="esenzioneBollo">{selectEsenzioni}</select>
 
     // TODO aggiungere in base ai permessi
-    // TODO unificare tab, via identificativo bollo
-    // TODO prendere dati documento da utente portal, mostrarli per verifica
+    // TODO alert dati documento mancanti
+    var stringaRichiedente = datiAnagrafica.datiRichiedente.cognome.toUpperCase()+
+    " "+datiAnagrafica.datiRichiedente.nome.toUpperCase()+
+    " - "+(datiAnagrafica.datiRichiedente.tipo_documento=="CI"?"Carta d'Identità":datiAnagrafica.datiRichiedente.tipo_documento)+
+    " n."+datiAnagrafica.datiRichiedente.numero_documento+
+    " del "+dateFormatter(datiAnagrafica.datiRichiedente.data_documento)
     result.dati.certificati.push([
       { name:null, value: <p className="alert alert-info">Per i certificati diretti alla Pubblica Amministrazione ed Enti Erogatori di Pubblici Servizi (ASL, ENEL, POSTE, PREFETTURA, INPS, SUCCESSIONE ...) dev'essere compilata l'Autocertificazione.</p>, html: true }
     ],[
-      { name:"nomeCognomeRichiesta", label: "Si richiede il certificato per", labelCols:4, valueSize:4, value: <span>{nominativo}</span> }
+      { name:"nomeCognomeRichiesta", label: "Si richiede il certificato per", labelCols:4, valueSize:5, value: <span>{nominativo}</span> }
     ],[
-      { name:"certificatoTipo", label: "Tipo certificato", labelCols:4, valueSize:4, value: selectTipiCertificato, html: true }
+      { name:"nomeCognomeRichiedente", label: "Il certificato viene richiesto da", labelCols:4, valueSize:5, value: <span>{stringaRichiedente} <a className="btn btn-default ml10" href={urlModifica}>Modifica</a></span> }
     ],[
-      { name:"cartaLiberaBollo", label: "Il certificato dovrà essere rilasciato in Carta Libera o in Bollo?", labelCols:4, valueSize:4, value: <div>
+      { name:"certificatoTipo", label: "Tipo certificato", labelCols:4, valueSize:5, value: selectTipiCertificato, html: true }
+    ],[
+      { name:"cartaLiberaBollo", label: "Il certificato dovrà essere rilasciato in Carta Libera o in Bollo?", labelCols:4, valueSize:5, value: <div>
         <label className="radio-inline">
               <input type="radio" name="certificatoBollo" id="carta_libera" onChange={this.certRequestType} defaultValue="false"/>Carta Libera
             </label>
@@ -558,27 +569,38 @@ class DettagliPersona extends React.Component{
             </label>
       </div>, html: true }
     ],[
-      { name:"certificatoEsenzione", label: "Esenzione", labelCols:4, valueSize:4, value: selectEsenzioni, html: true }
-    ],[
-      { name:null, value: <p className="alert alert-info">Verifica che i dati del richiedente siano corretti prima di proseguire:</p>, html: true }
+      { name:"certificatoEsenzione", label: "Esenzione", labelCols:4, valueSize:5, value: selectEsenzioni, html: true }
+    ]);
+
+    /*[
+      { name:null, value: <p className="alert alert-info">In caso di certificato in Bollo, è necessario acquistare la marca da bollo preventivamente presso un punto vendita autorizzato; il numero identificativo, composto da 14 cifre, andrà poi riportato nel campo sottostante.</p>, html: true }
+    ],*//*[
+      { name:"identificativoBollo", label: "Inserire l'identificativo del bollo", value: <input className="form-control" type="text" name="certificatoBolloNum" defaultValue="" placeholder="01234567891234"/>, html: true },
+      { name: "", value: "" }
     ],[
       { name: "nomeRichiedente", label: "Nome", labelCols:1, valueSize:2, value: datiAnagrafica.datiRichiedente.nome.toUpperCase() },
       { name: "cognomeRichiedente", label: "Cognome", labelCols:1, valueSize:2, value: datiAnagrafica.datiRichiedente.cognome.toUpperCase() },
       { name: "documentoRichiedente", label: "Documento", labelCols:1, valueSize:2, value: datiAnagrafica.datiRichiedente.tipo_documento+" "+datiAnagrafica.datiRichiedente.numero_documento },
       { name: "dataDocRichiedente", label: "Data", labelCols:1, valueSize:2, value: dateFormatter(datiAnagrafica.datiRichiedente.data_documento) },
-    ],/*[
-      { name:null, value: <p className="alert alert-info">In caso di certificato in Bollo, è necessario acquistare la marca da bollo preventivamente presso un punto vendita autorizzato; il numero identificativo, composto da 14 cifre, andrà poi riportato nel campo sottostante.</p>, html: true }
-    ],*//*[
-      { name:"identificativoBollo", label: "Inserire l'identificativo del bollo", value: <input className="form-control" type="text" name="certificatoBolloNum" defaultValue="" placeholder="01234567891234"/>, html: true },
-      { name: "", value: "" }
-    ],*/[
-      { name:"", labelCols:2, valueSize:8, value: <div className="text-center"><input type="submit" name="invia" className="btn btn-primary" value="Invia richiesta"/><a className="btn btn-default ml10" href={urlModifica}>Modifica i tuoi dati</a></div>, html: true },
-      { name: "", labelCols:1, valueSize:1, value: <input type="hidden" name="authenticity_token" value={datiAnagrafica.csrf}/> },
-    ]);
+    ],*/
+
+    if(!datiAnagrafica.datiRichiedente.tipo_documento || !datiAnagrafica.datiRichiedente.data_documento || !datiAnagrafica.datiRichiedente.numero_documento ) {
+      result.dati.certificati.push([
+        { name:null, value: <p className="alert alert-danger">Attenzione: dati documento mancanti o incompleti. Completa i dati per abilitare l'invio della richiesta:</p>, html: true }
+      ]);
+      result.dati.certificati.push([
+        { name:"", labelCols:2, valueSize:8, value: <div className="text-center"><a className="btn btn-default ml10" href={urlModifica}>Completa i dati documento</a></div>, html: true }
+      ]);
+    } else {
+      result.dati.certificati.push([
+        { name:"", labelCols:2, valueSize:8, value: <div className="text-center"><input type="submit" name="invia" className="btn btn-primary" value="Invia richiesta"/></div>, html: true },
+        { name: "", labelCols:1, valueSize:1, value: <input type="hidden" name="authenticity_token" value={datiAnagrafica.csrf}/> },
+      ]);
+    }
   
     if(datiAnagrafica.certificati && datiAnagrafica.certificati.length) {
       result.dati.certificati.push([
-        { name:null, value: <p className="alert alert-info">Attenzione: si informa che i certificati sono scaricabili una volta sola.</p>, html: true }
+        { name:null, value: <p className="alert alert-warning">Attenzione: si informa che i certificati sono scaricabili una volta sola.</p>, html: true }
       ]);
       result.dati.certificati.push([
           { name: "ricevuti", labelCols:1, value: <BootstrapTable
@@ -587,8 +609,8 @@ class DettagliPersona extends React.Component{
           data={datiAnagrafica.certificati}
           columns={[
             // { dataField: "id", text: "id" }, 
-            { dataField: "nome_certificato", text: "Certificato" }, 
-            { dataField: "codice_fiscale", text: "CF Intestatario" }, 
+            { dataField: "nome_certificato", text: "Tipo certificato", formatter: tipoCertFormatter }, 
+            // { dataField: "codice_fiscale", text: "CF Intestatario" }, // non serve più? li mostro sulla scheda dell'intestatario
             { dataField: "stato", text: "Stato richiesta", formatter: statiFormatter }, 
             { dataField: "data_prenotazione", text: "Data richiesta", formatter: dateFormatter }, 
             // { dataField: "data_inserimento", text: "Emesso il", formatter: dateFormatter },
@@ -607,7 +629,7 @@ class DettagliPersona extends React.Component{
     if(datiAnagrafica.richiesteCertificati && datiAnagrafica.richiesteCertificati.length) {
       if(datiAnagrafica.certificati && !datiAnagrafica.certificati.length) {
         result.dati.certificati.push([
-          { name:null, value: <p className="alert alert-info">Attenzione: si informa che i certificati sono scaricabili una volta sola.</p>, html: true }
+          { name:null, value: <p className="alert alert-warning">Attenzione: si informa che i certificati sono scaricabili una volta sola.</p>, html: true }
         ]);
       }
       result.dati.certificati.push([
@@ -617,8 +639,8 @@ class DettagliPersona extends React.Component{
           data={datiAnagrafica.richiesteCertificati}
           columns={[
             // { dataField: "id", text: "id" }, 
-            { dataField: "nome_certificato", text: "Certificato" }, 
-            { dataField: "codice_fiscale", text: "CF Intestatario" }, 
+            { dataField: "nome_certificato", text: "Tipo certificato", formatter: tipoCertFormatter }, 
+            // { dataField: "codice_fiscale", text: "CF Intestatario" }, // non serve più? li mostro sulla scheda dell'intestatario
             { dataField: "stato", text: "Stato richiesta", formatter: statiFormatter }, 
             { dataField: "data_prenotazione", text: "Data richiesta", formatter: dateFormatter },
             // { dataField: "esenzione", text: "Esenzione", formatter: esenzioneFormatter },
@@ -634,7 +656,7 @@ class DettagliPersona extends React.Component{
 
     return result;
   }
-  // TODO bollo 16€
+  
   displayTabs() {
     var tabsHtml = [];
     var className = "active";
