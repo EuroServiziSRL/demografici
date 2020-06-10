@@ -240,6 +240,7 @@ class RicercaAnagrafiche extends React.Component{
         state.debug = response;
         if(!response.errore) {
           state.dati = response.data;
+          state.debug = response;
         } else {
           state.error = true;
           state.error_message = response.messaggio_errore;
@@ -288,6 +289,8 @@ class RicercaAnagrafiche extends React.Component{
         striped
         hover
       /></div> : <p className="text-center">Nessun risultato</p> }
+
+      {demograficiData.test?<pre style={{"whiteSpace": "break-spaces"}}><code>{this.state.debug?JSON.stringify(this.state.debug, null, 2):""}</code></pre>:""}
 
     </div>
     return content;
