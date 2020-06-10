@@ -244,7 +244,7 @@ class ApplicationController < ActionController::Base
       # params = { "codiceFiscale": "RGTVRB33C53B153U" }
       # params = { "codiceFiscale": "GRFJNU74M26Z148Q" }
       # params = { "codiceFiscale": "DPLKTY68L54Z140P" }
-      params = { "codiceFiscale": cf_ricerca }
+      searchParams = { "codiceFiscale": cf_ricerca }
 
       # TODO capire quali sono dati sensibili - vedere in codice demografici
 
@@ -255,24 +255,25 @@ class ApplicationController < ActionController::Base
       puts 'nascondi_sensibili? '+nascondi_sensibili.to_s
 
       if !nascondi_sensibili
-        params[:mostraIndirizzo] = true
-        params[:mostraMaternita] = true
-        params[:mostraConiuge] = true
-        params[:mostraDatidecesso] = true
-        params[:mostraCartaIdentita] = true
-        params[:mostraTitoloSoggiorno] = true
-        params[:mostraProfessione] = true
-        params[:mostraTitoloStudio] = true
-        params[:mostraPatente] = true
-        params[:mostraVeicoli] = true
-        params[:mostraDatiStatoCivile] = true
+        searchParams[:mostraIndirizzo] = true
+        searchParams[:mostraMaternita] = true
+        searchParams[:mostraConiuge] = true
+        searchParams[:mostraDatidecesso] = true
+        searchParams[:mostraCartaIdentita] = true
+        searchParams[:mostraTitoloSoggiorno] = true
+        searchParams[:mostraProfessione] = true
+        searchParams[:mostraTitoloStudio] = true
+        searchParams[:mostraPatente] = true
+        searchParams[:mostraVeicoli] = true
+        searchParams[:mostraDatiStatoCivile] = true
       end
 
-      puts params
+      puts "searchParams: "
+      puts searchParams
 
       result = HTTParty.post(
         "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
-        :body => params.to_json,
+        :body => searchParams.to_json,
         :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } ,
         :debug_output => $stdout
       )    
@@ -314,12 +315,12 @@ class ApplicationController < ActionController::Base
         end
 
         if !nascondi_sensibili
-          params = { 
+          searchParams = { 
             "codiceAggregazione": result["codiceFamiglia"], 
           }
           resultFamiglia = HTTParty.post(
             "#{@@api_url}/Anagrafe/RicercaComponentiFamiglia?v=1.0", 
-            :body => params.to_json,
+            :body => searchParams.to_json,
             :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } ,
             :debug_output => $stdout
           )    
@@ -618,7 +619,7 @@ class ApplicationController < ActionController::Base
     end
     @demografici_data["esenzioniBollo"] = esenzioniBollo
 
-    if Rails.env.development? 
+    if params["debug"] 
       @demografici_data["test"] = true
     else
       @demografici_data["test"] = false
