@@ -91,9 +91,10 @@ class ApplicationController < ActionController::Base
       bollo: importo_bollo,
       bollo_esenzione: params[:esenzioneBollo],
       nome_certificato: nome_certificato,
-      # TODO aggiungere importo e uso
+      # TODO aggiungere importo quando l'api lo fornirà
       # diritti_importo: importo_segreteria,
-      diritti_importo: 0, # TODO per ora sempre a 0 perchè non cè l'api
+      diritti_importo: 0, # per ora sempre a 0 perchè non cè l'api
+      # TODO aggiungere uso 
       # uso: "",
       richiedente_cf: session[:cf],
       richiedente_nome: session[:user]["nome"],
@@ -171,17 +172,17 @@ class ApplicationController < ActionController::Base
     if !params[:nomeCognome].nil? || !params[:nomeCognome].blank?
       params[:nomeCognome] = "%#{params[:nomeCognome]}%"
     end
-    # params[:mostraIndirizzo] = true
-    # params[:mostraMaternita] = true
-    # params[:mostraConiuge] = true
-    # params[:mostraDatidecesso] = true
-    # params[:mostraCartaIdentita] = true
-    # params[:mostraTitoloSoggiorno] = true
-    # params[:mostraProfessione] = true
-    # params[:mostraTitoloStudio] = true
-    # params[:mostraPatente] = true
-    # params[:mostraVeicoli] = true
-    # params[:mostraDatiStatoCivile] = true
+    # params[:MostraIndirizzo] = true
+    # params[:MostraMaternita] = true
+    # params[:MostraConiuge] = true
+    # params[:MostraDatidecesso] = true
+    # params[:MostraCartaIdentita] = true
+    # params[:MostraTitoloSoggiorno] = true
+    # params[:MostraProfessione] = true
+    # params[:MostraTitoloStudio] = true
+    # params[:MostraPatente] = true
+    # params[:MostraVeicoli] = true
+    # params[:MostraDatiStatoCivile] = true
     # params[:itemsPerPage] = 100
     # params[:pageNumber] = 4
 
@@ -207,6 +208,55 @@ class ApplicationController < ActionController::Base
 
     traccia_operazione(tipologia_richiesta)
 
+    render :json => result
+  end
+
+  def inserisci_pagamento
+    searchParams = {}
+    searchParams[:tenant] = session[:user]["api_next"]["tenant"]
+    searchParams[:id_utente] = session["user"]["id"]
+    searchParams[:id] = params[:id]
+    richiesta_certificato = Certificati.where("id = :id AND tenant = :tenant AND id_utente = :id_utente", searchParams).first
+    importo = 0
+    if !richiesta_certificato.bollo.nil?
+      importo = importo+richiesta_certificato.bollo
+    end
+    if !richiesta_certificato.diritti_importo.nil?
+      importo = importo+richiesta_certificato.diritti_importo
+    end
+    parametri = {
+      importo: "#{importo}",
+      descrizione: "Certificato #{richiesta_certificato.nome_certificato} per #{richiesta_certificato.codice_fiscale} - n.#{richiesta_certificato.id}",
+      codice_applicazione: "demografici", # TODO va bene questo codice applicazione?
+      url_back: request.protocol + request.host_with_port,
+      idext: richiesta_certificato.id,
+      tipo_elemento: "certificazione_td",
+      nome_versante: session[:user]["nome"],
+      cognome_versante: session[:user]["cognome"],
+      codice_fiscale_versante: session[:cf],
+      nome_pagatore: session[:user]["nome"],
+      cognome_pagatore: session[:user]["cognome"],
+      codice_fiscale_pagatore: session[:cf]
+    }
+    
+    queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore].map{ |chiave|
+        val = parametri[chiave] 
+        "#{chiave}=#{val}"
+    }.join('&')
+    
+    # puts "query string for sha1 is [#{queryString.strip}]"
+    # queryString = "importo=#{value["importoResiduo"].gsub(',', '.')}&descrizione=#{value["codiceAvvisoDescrizione"]} - n.#{value["numeroAvviso"]}&codice_applicazione=tributi&url_back=#{request.original_url}&idext=#{value["idAvviso"]}&tipo_elemento=pagamento_tari&nome_versante=#{session[:nome]}&cognome_versante=#{session[:cognome]}&codice_fiscale_versante=#{session[:cf]}&nome_pagatore=#{session[:nome]}&cognome_pagatore=#{session[:cognome]}&codice_fiscale_pagatore=#{session[:cf]}"
+    fullquerystring = URI.unescape(queryString)
+    # qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
+    qs = queryString+"3ur0s3rv1z1"
+    hqs = OpenSSL::Digest::SHA1.new(qs)
+    url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa.json?#{queryString}&hqs=#{hqs}&id_utente=#{session[:user]["id"]}&sid=#{session[:user]["sid"]}"
+    result = HTTParty.post(
+      url, 
+      :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json' } ,
+      :debug_output => $stdout
+    )   
+    result = JSON.parse(result.response.body)
     render :json => result
   end
 
@@ -244,7 +294,7 @@ class ApplicationController < ActionController::Base
       # params = { "codiceFiscale": "RGTVRB33C53B153U" }
       # params = { "codiceFiscale": "GRFJNU74M26Z148Q" }
       # params = { "codiceFiscale": "DPLKTY68L54Z140P" }
-      searchParams = { "codiceFiscale": cf_ricerca }
+      searchParams = { "CodiceFiscale": cf_ricerca }
 
       # TODO capire quali sono dati sensibili - vedere in codice demografici
 
@@ -255,17 +305,17 @@ class ApplicationController < ActionController::Base
       puts 'nascondi_sensibili? '+nascondi_sensibili.to_s
 
       if !nascondi_sensibili
-        searchParams[:mostraIndirizzo] = true
-        searchParams[:mostraMaternita] = true
-        searchParams[:mostraConiuge] = true
-        searchParams[:mostraDatidecesso] = true
-        searchParams[:mostraCartaIdentita] = true
-        searchParams[:mostraTitoloSoggiorno] = true
-        searchParams[:mostraProfessione] = true
-        searchParams[:mostraTitoloStudio] = true
-        searchParams[:mostraPatente] = true
-        searchParams[:mostraVeicoli] = true
-        searchParams[:mostraDatiStatoCivile] = true
+        searchParams[:MostraIndirizzo] = true
+        searchParams[:MostraDatiMaternita] = true
+        searchParams[:MostraConiuge] = true
+        searchParams[:MostraDatiDecesso] = true
+        searchParams[:MostraDatiCartaIdentita] = true
+        searchParams[:MostraDatiTitoloSoggiorno] = true
+        searchParams[:MostraDatiProfessione] = true
+        searchParams[:MostraDatiTitoloStudio] = true
+        searchParams[:MostraDatiPatenti] = true
+        searchParams[:MostraDatiVeicoli] = true
+        searchParams[:MostraDatiStatoCivile] = true
       end
 
       puts "searchParams: "
@@ -344,8 +394,8 @@ class ApplicationController < ActionController::Base
           searchParams = {}
           searchParams[:tenant] = session[:user]["api_next"]["tenant"]
           searchParams[:id_utente] = session["user"]["id"]
-          searchParams[:codice_fiscale] = cf_ricerca
-          richieste_certificati = Certificati.where("tenant = :tenant AND codice_fiscale = :codice_fiscale AND id_utente = :id_utente", searchParams)
+          # searchParams[:codice_fiscale] = cf_ricerca
+          richieste_certificati = Certificati.where("tenant = :tenant AND id_utente = :id_utente", searchParams)
           richieste_certificati.each do |richiesta_certificato|
             importo = 0
             if !richiesta_certificato.bollo.nil?
@@ -357,49 +407,73 @@ class ApplicationController < ActionController::Base
 
             if richiesta_certificato.stato == "pagato" || richiesta_certificato.stato == "da_pagare"
               url = richiesta_certificato.documento
+              scaduto = false
+              puts "data inserimento"
+              puts richiesta_certificato.data_inserimento
+              puts "180.days.ago"
+              puts 180.days.ago
+
+              if 180.days.ago >= richiesta_certificato.data_inserimento
+                scaduto = true
+              end
               
-              if richiesta_certificato.stato == "da_pagare"
+              if !scaduto && richiesta_certificato.stato == "da_pagare"
                 statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
                 if(!statoPagamenti.nil? && statoPagamenti["esito"]=="ok" && (statoPagamenti["esito"][0]["stato"]=="Pagato"))
                   # pagato, lascio scaricare il documento
                   url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
-                else
-                  date = richiesta_certificato.data_inserimento
-                  formatted_date = date.strftime('%d/%m/%Y')
-                  
-                  parametri = {
-                    importo: "#{importo}",
-                    descrizione: "Certificato #{richiesta_certificato.nome_certificato} per #{richiesta_certificato.codice_fiscale} - n.#{richiesta_certificato.id}",
-                    codice_applicazione: "demografici", # TODO va bene questo codice applicazione?
-                    url_back: request.protocol + request.host_with_port,
-                    idext: richiesta_certificato.id,
-                    tipo_elemento: "certificazione_td",
-                    nome_versante: session[:user]["nome"],
-                    cognome_versante: session[:user]["cognome"],
-                    codice_fiscale_versante: session[:cf],
-                    nome_pagatore: session[:user]["nome"],
-                    cognome_pagatore: session[:user]["cognome"],
-                    codice_fiscale_pagatore: session[:cf]
-                  }
-                  
-                  queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore].map{ |chiave|
-                      val = parametri[chiave] 
-                      "#{chiave}=#{val}"
-                  }.join('&')
-                  
-                  # puts "query string for sha1 is [#{queryString.strip}]"
-                  # queryString = "importo=#{value["importoResiduo"].gsub(',', '.')}&descrizione=#{value["codiceAvvisoDescrizione"]} - n.#{value["numeroAvviso"]}&codice_applicazione=tributi&url_back=#{request.original_url}&idext=#{value["idAvviso"]}&tipo_elemento=pagamento_tari&nome_versante=#{session[:nome]}&cognome_versante=#{session[:cognome]}&codice_fiscale_versante=#{session[:cf]}&nome_pagatore=#{session[:nome]}&cognome_pagatore=#{session[:cognome]}&codice_fiscale_pagatore=#{session[:cf]}"
-                  fullquerystring = URI.unescape(queryString)
-                  qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
-                  hqs = OpenSSL::Digest::SHA1.new(qs)
-                  # puts "hqs is [#{hqs}]"
+                else                  
                   url = "#{session[:dominio]}/servizi/pagamenti/"
+                  puts statoPagamenti
+                  puts statoPagamenti["esito"]
                   if(statoPagamenti.nil? || statoPagamenti["esito"]!="ok")
-                    url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa?#{queryString}"
+                    puts "statoPagamenti NOT OK"
+                    if false
+                      url = "/inserisci_pagamento?id=#{richiesta_certificato.id}"
+                    else
+                      importo = 0
+                      if !richiesta_certificato.bollo.nil?
+                        importo = importo+richiesta_certificato.bollo
+                      end
+                      if !richiesta_certificato.diritti_importo.nil?
+                        importo = importo+richiesta_certificato.diritti_importo
+                      end
+                      parametri = {
+                        importo: "#{importo}",
+                        descrizione: "Certificato #{richiesta_certificato.nome_certificato} per #{richiesta_certificato.codice_fiscale} - n.#{richiesta_certificato.id}",
+                        codice_applicazione: "demografici", # TODO va bene questo codice applicazione?
+                        url_back: request.protocol + request.host_with_port,
+                        idext: richiesta_certificato.id,
+                        tipo_elemento: "certificazione_td",
+                        nome_versante: session[:user]["nome"],
+                        cognome_versante: session[:user]["cognome"],
+                        codice_fiscale_versante: session[:cf],
+                        nome_pagatore: session[:user]["nome"],
+                        cognome_pagatore: session[:user]["cognome"],
+                        codice_fiscale_pagatore: session[:cf]
+                      }
+                      
+                      queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore].map{ |chiave|
+                          val = parametri[chiave] 
+                          "#{chiave}=#{val}"
+                      }.join('&')
+                      
+                      # puts "query string for sha1 is [#{queryString.strip}]"
+                      # queryString = "importo=#{value["importoResiduo"].gsub(',', '.')}&descrizione=#{value["codiceAvvisoDescrizione"]} - n.#{value["numeroAvviso"]}&codice_applicazione=tributi&url_back=#{request.original_url}&idext=#{value["idAvviso"]}&tipo_elemento=pagamento_tari&nome_versante=#{session[:nome]}&cognome_versante=#{session[:cognome]}&codice_fiscale_versante=#{session[:cf]}&nome_pagatore=#{session[:nome]}&cognome_pagatore=#{session[:cognome]}&codice_fiscale_pagatore=#{session[:cf]}"
+                      fullquerystring = URI.unescape(queryString)
+                      # qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
+                      qs = queryString+"3ur0s3rv1z1"
+                      hqs = OpenSSL::Digest::SHA1.new(qs)
+                      url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa.json?#{queryString}&hqs=#{hqs}&id_utente=#{session[:user]["id"]}&sid=#{session[:user]["sid"]}"
+                    end
+                  else
+                    puts "statoPagamenti OK"
                   end
                 end
-              else
+              elsif !scaduto && richiesta_certificato.stato == "pagato"
                 url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
+              else
+                url = ""
               end
               # TODO scaricabile solo una volta, vedere su velletri o giugliano, aggiungere avviso
               # TODO prevedere scadenza 180gg, se stato scaduto si vede ma non si scarica più
@@ -407,7 +481,7 @@ class ApplicationController < ActionController::Base
                 "id": richiesta_certificato.id, 
                 "nome_certificato": richiesta_certificato.nome_certificato, 
                 "codice_fiscale": richiesta_certificato.codice_fiscale, 
-                "stato": richiesta_certificato.stato, 
+                "stato": scaduto ? "scaduto" : richiesta_certificato.stato, 
                 "documento": url,
                 "data_prenotazione": richiesta_certificato.data_prenotazione,
                 "data_inserimento": richiesta_certificato.data_inserimento,

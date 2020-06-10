@@ -9,18 +9,23 @@ import ReactDOM from 'react-dom';
 import Select from 'react-select';
 import BootstrapTable from 'react-bootstrap-table-next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCircleNotch, faShoppingCart, faPrint } from '@fortawesome/free-solid-svg-icons'
+import { faCircleNotch, faShoppingCart, faPrint, faCheck, faCross, faExclamation } from '@fortawesome/free-solid-svg-icons'
 
 demograficiData.descrizioniStatus = {"D":"DECEDUTO", "R":"RESIDENTE", "A":"RESIDENTE AIRE", "I":"IRREPERIBILE", "E":"EMIGRATO"}
 
 function buttonFormatter(cell,row) {
-  var label = "Stampa";
-  var icon = <FontAwesomeIcon icon={faPrint} />
+  var button = ""
 
-  if (cell.indexOf("aggiungi_pagamento_pagopa")>-1) { label = "Paga con PagoPA"; icon = <FontAwesomeIcon icon={faShoppingCart} /> }
-  else if(cell.indexOf("servizi/pagamenti")>-1) { label = "Vai al carrello"; icon = <FontAwesomeIcon icon={faShoppingCart} /> }
+  if (cell.indexOf("aggiungi_pagamento_pagopa")>-1 || cell.indexOf("inserisci_pagamento")>-1) { button = <span>
+    <a className="btn-async" href={cell} title="Aggiungi al carrello"><FontAwesomeIcon icon={faShoppingCart} /></a>
+    <FontAwesomeIcon className="hidden wait-icon" icon={faCircleNotch} spin />
+    <FontAwesomeIcon className="hidden done-icon text-success" icon={faCheck} />
+    <a href=""><FontAwesomeIcon className="hidden error-icon text-danger" icon={faExclamation} /></a>
+  </span> }
+  else if(cell.indexOf("servizi/pagamenti")>-1) { button = <span><FontAwesomeIcon className="text-success" icon={faCheck} /></span> }
+  else if(cell.indexOf("scarica_certificato")>-1) { button = <a href={cell} className="btn" title="Stampa"><FontAwesomeIcon icon={faPrint} /></a> }
   // return  <a href={cell} target="_blank" className="btn btn-default">{label} {icon}</a>;
-  return  <a href={cell} title={label}>{icon}</a>;
+  return button;
 } 
 
 function statiFormatter(stato) {
@@ -343,8 +348,8 @@ class DettagliPersona extends React.Component{
         { name: "descrizioneCittadinanza", label: "Cittadinanza", value: datiAnagrafica.descrizioneCittadinanza },
         { name: "statoCivile", label: "Stato civile", value: datiAnagrafica.datiStatoCivile?datiAnagrafica.datiStatoCivile.statoCivile:"" },
       ], [
-        { name: "codiceTitoloStudio", label: "Titolo studio", value: datiAnagrafica.datiTitoloStudio?datiAnagrafica.datiTitoloStudio.codiceTitoloStudio:"" },
-        { name: "codiceProfessione", label: "Professione", value: datiAnagrafica.datiProfessione?datiAnagrafica.datiProfessione.codiceProfessione:"" },
+        { name: "titoloStudio", label: "Titolo studio", value: datiAnagrafica.datiTitoloStudio!=null?datiAnagrafica.datiTitoloStudio.descrizione:"" },
+        { name: "professione", label: "Professione", value: datiAnagrafica.datiProfessione!=null?datiAnagrafica.datiProfessione.descrizione:"" },
         { name: "", value: "" },
       ]
     ];
@@ -360,7 +365,7 @@ class DettagliPersona extends React.Component{
     //   ]);
     // }
 
-    if(datiAnagrafica.datiCartaIdentita && datiAnagrafica.datiCartaIdentita.length) {
+    if(datiAnagrafica.datiCartaIdentita!=null) {
       var documento = datiAnagrafica.datiCartaIdentita;
       var rilasciataDa = "";
       if(documento.comuneRilascio) { rilasciataDa = "Comune di "+documento.comuneRilascio; }
@@ -375,13 +380,14 @@ class DettagliPersona extends React.Component{
       ]);
     }
 
-    if(datiAnagrafica.datiTitoloSoggiorno && datiAnagrafica.datiTitoloSoggiorno.length) {
+    if(datiAnagrafica.datiTitoloSoggiorno!=null) {
       var documento = datiAnagrafica.datiTitoloSoggiorno;
       var rilasciataDa = "";
       if(documento.comuneRilascio) { rilasciataDa = "Comune di "+documento.comuneRilascio; }
-      else if(documento.consolatoRilascio) { rilasciataDa = "Comune di "+documento.consolatoRilascio; }
-      result.dati.documenti.push([
-        { name: "tipoDocumento", label: "Tipo", value: "Titolo di soggiorno" },
+      else if(documento.consolatoRilascio) { rilasciataDa = "Consolato di "+documento.consolatoRilascio; }
+      else if(documento.questuraRilascio) { rilasciataDa = "Questura di "+documento.questuraRilascio; }
+      result.dati.scheda_anagrafica.push([
+        { name: "titoloSoggiorno", label: "Titolo di soggiorno", value: documento.tipo },
         { name: "numero", value: documento.numero },
         { name: "comuneRilascio", label: "Rilasciato da", value: rilasciataDa },
         { name: "dataRilascio", label: "In data", value: dateFormatter(documento.dataRilascio) },
@@ -538,6 +544,7 @@ class DettagliPersona extends React.Component{
     selectEsenzioni = <select className="form-control" defaultValue="" name="esenzioneBollo" id="esenzioneBollo">{selectEsenzioni}</select>
 
     var urlModifica = $("#dominio_portale").text()+"/dettagli_utente?modifica";
+    var urlCarrello = $("#dominio_portale").text()+"/servizi/pagamenti/";
     var selectTipiDoc = []
     selectTipiDoc.push(<option value=""></option>)
     selectTipiDoc.push(<option value={demograficiData.esenzioniBollo[e].id}>{demograficiData.esenzioniBollo[e].descrizione}</option>);
@@ -561,10 +568,10 @@ class DettagliPersona extends React.Component{
     ],[
       { name:"cartaLiberaBollo", label: "Il certificato dovrà essere rilasciato in Carta Libera o in Bollo?", labelCols:4, valueSize:5, value: <div>
         <label className="radio-inline">
-              <input type="radio" name="certificatoBollo" id="carta_libera" onChange={this.certRequestType} defaultValue="false"/>Carta Libera
+              <input type="radio" name="certificatoBollo" id="carta_libera" defaultValue="false"/>Carta Libera
             </label>
             <label className="radio-inline">
-              <input type="radio" name="certificatoBollo" id="bollo" onChange={this.certRequestType} defaultValue="true" defaultChecked="checked"/>
+              <input type="radio" name="certificatoBollo" id="bollo" defaultValue="true" defaultChecked="checked"/>
               Bollo
             </label>
       </div>, html: true }
@@ -610,7 +617,7 @@ class DettagliPersona extends React.Component{
           columns={[
             // { dataField: "id", text: "id" }, 
             { dataField: "nome_certificato", text: "Tipo certificato", formatter: tipoCertFormatter }, 
-            // { dataField: "codice_fiscale", text: "CF Intestatario" }, // non serve più? li mostro sulla scheda dell'intestatario
+            { dataField: "codice_fiscale", text: "CF Intestatario" }, // non serve più? li mostro sulla scheda dell'intestatario
             { dataField: "stato", text: "Stato richiesta", formatter: statiFormatter }, 
             { dataField: "data_prenotazione", text: "Data richiesta", formatter: dateFormatter }, 
             // { dataField: "data_inserimento", text: "Emesso il", formatter: dateFormatter },
@@ -624,6 +631,9 @@ class DettagliPersona extends React.Component{
         />, html: true }
         ]
       );
+      result.dati.certificati.push([
+        { name:"", labelCols:1, valueSize:10, value: <div className="text-center"><a className="btn btn-primary ml10" id="btnCarrello" href={urlCarrello}>Vai al carrello</a></div>, html: true }
+      ]);
     }
 
     if(datiAnagrafica.richiesteCertificati && datiAnagrafica.richiesteCertificati.length) {
@@ -640,7 +650,7 @@ class DettagliPersona extends React.Component{
           columns={[
             // { dataField: "id", text: "id" }, 
             { dataField: "nome_certificato", text: "Tipo certificato", formatter: tipoCertFormatter }, 
-            // { dataField: "codice_fiscale", text: "CF Intestatario" }, // non serve più? li mostro sulla scheda dell'intestatario
+            { dataField: "codice_fiscale", text: "CF Intestatario" }, // non serve più? li mostro sulla scheda dell'intestatario
             { dataField: "stato", text: "Stato richiesta", formatter: statiFormatter }, 
             { dataField: "data_prenotazione", text: "Data richiesta", formatter: dateFormatter },
             // { dataField: "esenzione", text: "Esenzione", formatter: esenzioneFormatter },
@@ -665,6 +675,8 @@ class DettagliPersona extends React.Component{
         var label = ucfirst(tabName.replace(/_/g," "));
         tabsHtml.push(<li key={tabName} role="presentation" className={className}><a href={"#"+tabName} aria-controls={tabName} role="tab" data-toggle={tabName}>{label}</a></li>);
         className = "";
+      } else {
+        console.log("dati for "+tabName+" not present");
       }
     }
     return <ul className="nav nav-tabs">{tabsHtml}</ul>
@@ -746,5 +758,59 @@ if(document.getElementById('app_demografici_container') !== null){
     $(".nav-tabs li").removeClass("active");
     $("#"+$(this).data("toggle")+".tab-pane").removeClass("hidden");
     $(this).parent().addClass("active");
+  });
+
+  $('#portal_container').on('click', 'a.btn-async', function(e){
+    e.preventDefault();
+    console.log("clicked async link");
+    var url = $(this).attr("href");
+    var $wait = $(this).parent().find(".wait-icon");
+    var $done = $(this).parent().find(".done-icon");
+    var $error = $(this).parent().find(".error-icon");
+    console.log("got url "+url);
+    console.log("displaying icons");
+    $(this).hide();
+    $wait.show().removeClass("hidden");
+    $done.hide().removeClass("hidden");
+    $error.hide().removeClass("hidden");
+    
+
+    // url = url.replace(".json","");
+    console.log("doing request on "+url);
+    $.ajax({   
+      type: "POST",
+      url: url,
+      dataType: 'json',
+      crossDomain: true,
+      xhrFields: {
+        withCredentials: true
+      },
+      // contentType: "application/json" ,
+      contentType: "text/plain" ,
+    }).done(function( response ) {
+      console.log("request done");
+      console.log(response);      
+      $wait.hide();
+      // TODO trovare un modo di recepire la risposta
+      $done.show();
+      // if(response.ok=="true") {
+      //   $done.show();
+      // } else {
+      //   $error.show();
+      // }
+    }).fail(function(response) {
+      console.log("request error");
+      console.log(response);
+      $wait.hide();
+      // $error.show();
+      // TODO trovare un modo di recepire la risposta
+      $done.show();
+    });
+  });
+
+  $('#portal_container').on('click', '.error-icon', function(e){
+    e.preventDefault();
+    $(this).parent().find("a.btn-async").show();
+    $(this).hide();
   });
 }
