@@ -211,6 +211,7 @@ class ApiController < ActionController::Base
         searchParams[:id] = params[:richiesta]
         searchParams[:stato] = "richiesto"
         richiesta_certificato = Certificati.find_by_id(params[:richiesta])  
+        # TODO rimettere a nuovo
         if richiesta_certificato.blank? || richiesta_certificato.nil?
           array_json << {
             "codice_esito": "003-Errore generico",
