@@ -10,12 +10,29 @@ module: {
       loader: 'babel-loader',
       options: {
         presets: [
-          ['env', { modules: false }]
+          [
+            "@babel/preset-env",
+            {
+              "targets": {
+                "browsers": [
+                  "last 2 versions",
+                  "ie >= 11"
+                ],
+                "corejs": "2",
+                "useBuiltIns": "usage"
+              }
+            }
+          ],
+          "@babel/preset-react"
+        ],
+        plugins: [
+          "@babel/plugin-proposal-class-properties"
         ]
       }
     },
   ]
 }
+
 
 environment.loaders.get('sass').use.splice(-1, 0, {
   loader: 'resolve-url-loader',

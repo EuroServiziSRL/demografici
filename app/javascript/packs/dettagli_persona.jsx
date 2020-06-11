@@ -813,9 +813,9 @@ if(document.getElementById('app_demografici_container') !== null){
       url: url,
       dataType: 'json',
       crossDomain: true,
-      xhrFields: {
-        withCredentials: true
-      },
+      //xhrFields: {
+      //  withCredentials: true
+      //},
       // contentType: "application/json" ,
       contentType: "text/plain" ,
     }).done(function( response ) {
