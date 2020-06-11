@@ -47,3 +47,12 @@ body {
 .done-icon {
   cursor: default;
 }
+
+a.done-icon.text-success:hover {
+  color:#2b542c
+}
+
+.done-icon.btn:active {
+  -webkit-box-shadow: none;
+  box-shadow: none;
+}
