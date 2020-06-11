@@ -252,6 +252,7 @@ class DettagliPersona extends React.Component{
     console.log($("#btnCarrello"));
     console.log($(".done-icon").not(".hidden"));
     $("#btnCarrello").removeClass("hidden").toggle($(".done-icon").not(".hidden").length>0);
+    this.motivoEsenzione();
   }
 
   authenticate() {
@@ -332,6 +333,10 @@ class DettagliPersona extends React.Component{
 
   certRequestType() {
     $("#esenzioneBollo").parent().parent().toggle($("#bollo").is(":checked"));
+  }
+
+  motivoEsenzione() {
+    $("#motivo_esenzione").parent().parent().toggle($("#esenzioneBollo").val()=="99");
   }
 
   formatData(datiAnagrafica) {
@@ -570,7 +575,7 @@ class DettagliPersona extends React.Component{
     for(var e in demograficiData.esenzioniBollo) {
       selectEsenzioni.push(<option value={demograficiData.esenzioniBollo[e].id}>{demograficiData.esenzioniBollo[e].descrizione}</option>)
     }
-    selectEsenzioni = <select className="form-control" defaultValue="" name="esenzioneBollo" id="esenzioneBollo">{selectEsenzioni}</select>
+    selectEsenzioni = <select className="form-control" defaultValue="" name="esenzioneBollo" onChange={this.motivoEsenzione} id="esenzioneBollo">{selectEsenzioni}</select>
 
     var urlModifica = $("#dominio_portale").text()+"/dettagli_utente?modifica";
     var urlCarrello = $("#dominio_portale").text()+"/servizi/pagamenti/";
@@ -580,6 +585,7 @@ class DettagliPersona extends React.Component{
     selectTipiDoc = <select className="form-control" defaultValue="" name="esenzioneBollo" id="esenzioneBollo">{selectEsenzioni}</select>
 
     // TODO aggiungere in base ai permessi
+    // TODO aggiungere controlli validità dati
     var stringaRichiedente = datiAnagrafica.datiRichiedente.cognome.toUpperCase()+
     " "+datiAnagrafica.datiRichiedente.nome.toUpperCase()+
     " - "+(datiAnagrafica.datiRichiedente.tipo_documento=="CI"?"Carta d'Identità":datiAnagrafica.datiRichiedente.tipo_documento)+
@@ -605,6 +611,8 @@ class DettagliPersona extends React.Component{
       </div>, html: true }
     ],[
       { name:"certificatoEsenzione", label: "Esenzione", labelCols:4, valueSize:5, value: selectEsenzioni, html: true }
+    ],[
+      { name:"altroMotivoEsenzione", label: "Specificare il motivo dell'esenzione", labelCols:4, valueSize:5, value: <input className="form-control" type="text"  id="motivo_esenzione" name="motivoEsenzione" />, html: true }
     ]);
 
     /*[
@@ -638,9 +646,12 @@ class DettagliPersona extends React.Component{
         { name:null, value: <p className="alert alert-warning">Attenzione: si informa che i certificati sono scaricabili una volta sola.</p>, html: true }
       ]);
       result.dati.certificati.push([
-          { name: "ricevuti", labelCols:1, value: <BootstrapTable
+        { name:"", labelCols:1, valueSize:10, value: <div className="text-center"><a className="btn btn-primary hidden" id="btnCarrello" href={urlCarrello}>Vai al carrello</a></div>, html: true }
+      ]);
+      result.dati.certificati.push([
+          { name: "Richiesti", labelCols:1, value: <BootstrapTable
           id="tableCertificati"
-          keyField={"data_inserimento"}
+          keyField={"id"}
           data={datiAnagrafica.certificati}
           columns={[
             // { dataField: "id", text: "id" }, 
@@ -659,38 +670,8 @@ class DettagliPersona extends React.Component{
         />, html: true }
         ]
       );
-      result.dati.certificati.push([
-        { name:"", labelCols:1, valueSize:10, value: <div className="text-center"><a className="btn btn-primary hidden" id="btnCarrello" href={urlCarrello}>Vai al carrello</a></div>, html: true }
-      ]);
     }
 
-    if(datiAnagrafica.richiesteCertificati && datiAnagrafica.richiesteCertificati.length) {
-      if(datiAnagrafica.certificati && !datiAnagrafica.certificati.length) {
-        result.dati.certificati.push([
-          { name:null, value: <p className="alert alert-warning">Attenzione: si informa che i certificati sono scaricabili una volta sola.</p>, html: true }
-        ]);
-      }
-      result.dati.certificati.push([
-          { name: "richiesti", labelCols:1, value: <BootstrapTable
-          id="tableRichieste"
-          keyField={"data_prenotazione"}
-          data={datiAnagrafica.richiesteCertificati}
-          columns={[
-            // { dataField: "id", text: "id" }, 
-            { dataField: "nome_certificato", text: "Tipo certificato", formatter: tipoCertFormatter }, 
-            { dataField: "codice_fiscale", text: "CF Intestatario" }, // non serve più? li mostro sulla scheda dell'intestatario
-            { dataField: "stato", text: "Stato richiesta", formatter: statiFormatter }, 
-            { dataField: "data_prenotazione", text: "Data richiesta", formatter: dateFormatter },
-            // { dataField: "esenzione", text: "Esenzione", formatter: esenzioneFormatter },
-            { dataField: "importo", text: "Importo", formatter: moneyFormatter }            
-          ]}
-          classes="table-responsive"
-          striped
-          hover
-        />, html: true }
-        ]
-      );
-    }
 
     return result;
   }

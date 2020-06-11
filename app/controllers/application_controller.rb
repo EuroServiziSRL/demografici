@@ -26,8 +26,8 @@ class ApplicationController < ActionController::Base
 
     # 
     #carico cf in variabile per usarla sulla view
-    puts "logged user cf: "+session[:cf]
-    # puts "cf interrogazione: "+session[:cf_visualizzato]
+    puts "index - session[:cf]: "+session[:cf]
+    puts "index - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s
     @cf_utente_loggato = session[:cf]
     @page_app = "dettagli_persona"
      
@@ -36,15 +36,20 @@ class ApplicationController < ActionController::Base
   end
 
   def dettagli_persona
-    puts "logged user cf: "+session[:cf]
+    puts "dettagli_persona - session[:cf]: "+session[:cf]
+    puts "dettagli_persona - params[\"codice_fiscale\"]: "+params["codice_fiscale"]
+    puts "dettagli_persona - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s
     @page_app = "dettagli_persona"
 
     if params["codice_fiscale"] == session[:cf]
       session[:cf_visualizzato] = nil
+      puts "session[:cf_visualizzato] set to null"
     else
       session[:cf_visualizzato] = params["codice_fiscale"]
-      puts "cf interrogazione: "+session[:cf_visualizzato].to_s
+      puts "session[:cf_visualizzato] now is: "+session[:cf_visualizzato].to_s
     end
+    puts "session is:"
+    puts session.class.inspect
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
   end
 
@@ -95,7 +100,7 @@ class ApplicationController < ActionController::Base
       # diritti_importo: importo_segreteria,
       diritti_importo: 0, # per ora sempre a 0 perchè non cè l'api
       # TODO aggiungere uso 
-      # uso: "",
+      uso: params[:motivoEsenzione],
       richiedente_cf: session[:cf],
       richiedente_nome: session[:user]["nome"],
       richiedente_cognome: session[:user]["cognome"],
@@ -126,7 +131,10 @@ class ApplicationController < ActionController::Base
   end
   
   def authenticate  
-    params = {
+    puts "authenticate - session[:cf]: "+session[:cf]
+    puts "authenticate - params[\"codice_fiscale\"]: "+params["codice_fiscale"].to_s
+    puts "authenticate - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s
+    requestParams = {
       "resource": "#{@@api_resource.sub("https","http")}", 
       "tenant": "#{session[:user]["api_next"]["tenant"]}",
       "client_id": "#{session[:user]["api_next"]["client_id"]}",
@@ -140,10 +148,10 @@ class ApplicationController < ActionController::Base
     # puts params
 
     
-    oauthURL = "https://login.microsoftonline.com/#{params[:tenant]}/oauth2/token";
+    oauthURL = "https://login.microsoftonline.com/#{requestParams[:tenant]}/oauth2/token";
     # puts oauthURL
     result = HTTParty.post(oauthURL, 
-      :body => params.to_query,
+      :body => requestParams.to_query,
       :headers => { 'Content-Type' => 'application/x-www-form-urlencoded','Accept' => 'application/json'  } ,
       :debug_output => $stdout
     )
@@ -262,7 +270,8 @@ class ApplicationController < ActionController::Base
 
   def ricerca_individui
     
-    puts "logged user cf: "+session[:cf]
+    puts "ricerca_individui - logged user cf: "+session[:cf]
+    puts "ricerca_individui - cf_visualizzato: "+session[:cf_visualizzato].to_s
 
     tipologia_richiesta = ""
         
@@ -359,8 +368,8 @@ class ApplicationController < ActionController::Base
         if !comune.blank? && !comune.nil? && comune
           result["comuneNascitaDescrizione"] = comune
         elsif !result["descrizioneComuneNascitaEstero"].blank?
-          # TODO aggiungere tabella stati esteri e recuperare stato nascita come comune nascita ita
-          result["comuneNascitaDescrizione"] = result["descrizioneComuneNascitaEstero"]+" ("+result["codiceIstatNazioneNascitaEstero"]+")"
+          stato = get_stato_estero(result["codiceIstatNazioneNascitaEstero"], result["dataNascita"])
+          result["comuneNascitaDescrizione"] = result["descrizioneComuneNascitaEstero"]+" (#{stato})"
         else
           result["comuneNascitaDescrizione"] = "";
         end
@@ -396,7 +405,7 @@ class ApplicationController < ActionController::Base
           searchParams[:tenant] = session[:user]["api_next"]["tenant"]
           searchParams[:id_utente] = session["user"]["id"]
           # searchParams[:codice_fiscale] = cf_ricerca
-          richieste_certificati = Certificati.where("tenant = :tenant AND id_utente = :id_utente", searchParams)
+          richieste_certificati = Certificati.where("tenant = :tenant AND id_utente = :id_utente", searchParams).order("created_at DESC")
           richieste_certificati.each do |richiesta_certificato|
             importo = 0
             if !richiesta_certificato.bollo.nil?
@@ -490,12 +499,14 @@ class ApplicationController < ActionController::Base
                 "importo": importo
               }
             else
-              result["richiesteCertificati"] << { 
+              result["certificati"] << { 
                 "id": richiesta_certificato.id, 
                 "nome_certificato": richiesta_certificato.nome_certificato, 
                 "codice_fiscale": richiesta_certificato.codice_fiscale, 
                 "stato": richiesta_certificato.stato, 
+                "documento": "",
                 "data_prenotazione": richiesta_certificato.data_prenotazione,
+                "data_inserimento": "",
                 "esenzione": richiesta_certificato.bollo_esenzione, 
                 "importo": importo
               }
@@ -591,10 +602,25 @@ class ApplicationController < ActionController::Base
     return comuneString
   end
 
+  def get_stato_estero(codice, dataEvento)
+    statoString = false
+    puts "codice: #{codice}"
+    puts "dataEvento: #{dataEvento}"
+    dataEvento = Date.parse dataEvento
+    puts "dataEvento: #{dataEvento}"
+    stato = StatiEsteri.where(codistat: codice).where("dataistituzione <= ? AND datacessazione >= ? ", dataEvento, dataEvento).first
+    puts stato
+    if !stato.blank? && !stato.nil?
+      statoString = "#{stato.denominazione_it}"
+    end
+    return statoString
+  end
+
   def is_self
     is_self = false
 
     if session[:cf_visualizzato].nil? || session[:cf_visualizzato].blank?
+      puts "is_self setting session[:cf_visualizzato] to #{session[:cf]}"
       session[:cf_visualizzato] = session[:cf]
     end
     
@@ -609,6 +635,7 @@ class ApplicationController < ActionController::Base
     is_family = false
 
     if session[:cf_visualizzato].nil? || session[:cf_visualizzato].blank?
+      puts "is_family setting session[:cf_visualizzato] to #{session[:cf]}"
       session[:cf_visualizzato] = session[:cf]
     end
     
