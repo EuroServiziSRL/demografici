@@ -17,13 +17,13 @@ function buttonFormatter(cell,row) {
   var button = ""
 
   if (cell.indexOf("aggiungi_pagamento_pagopa")>-1 || cell.indexOf("inserisci_pagamento")>-1) { button = <span>
-    <a className="btn-async" href={cell} title="Aggiungi al carrello"><FontAwesomeIcon icon={faShoppingCart} /></a>
-    <FontAwesomeIcon className="hidden wait-icon" icon={faCircleNotch} spin />
-    <FontAwesomeIcon className="hidden done-icon text-success" icon={faCheck} />
-    <a href=""><FontAwesomeIcon className="hidden error-icon text-danger" icon={faExclamation} /></a>
+    <a className="btn btn-async" href={cell} title="Aggiungi al carrello"><FontAwesomeIcon icon={faShoppingCart} /></a>
+    <a className="btn hidden wait-icon" title="Attendi..."><FontAwesomeIcon icon={faCircleNotch} spin /></a>
+    <a className="btn hidden done-icon text-success" title="Pagamento aggiunto al carrello"><FontAwesomeIcon icon={faCheck} /></a>
+    <a className="btn hidden error-icon text-danger" href="#" title="Errore durante l'aggiunta del pagamento"><FontAwesomeIcon icon={faExclamation} /></a>
   </span> }
-  else if(cell.indexOf("servizi/pagamenti")>-1) { button = <span><FontAwesomeIcon className="text-success" icon={faCheck} /></span> }
-  else if(cell.indexOf("scarica_certificato")>-1) { button = <a href={cell} className="btn" title="Stampa"><FontAwesomeIcon icon={faPrint} /></a> }
+  else if(cell.indexOf("servizi/pagamenti")>-1) { button = <span><a className="btn done-icon text-success" title="Pagamento aggiunto al carrello"><FontAwesomeIcon icon={faCheck} /></a></span> }
+  else if(cell.indexOf("scarica_certificato")>-1) { button = <span><a className="btn" href={cell} title="Stampa"><FontAwesomeIcon icon={faPrint} /></a></span> }
   // return  <a href={cell} target="_blank" className="btn btn-default">{label} {icon}</a>;
   return button;
 } 
@@ -249,6 +249,9 @@ class DettagliPersona extends React.Component{
         tableToUl($("#"+id));
       } else  { console.log("tableToUl is not a function ("+typeof(tableToUl)+") or no css available for responsive tables"); } 
     });
+    console.log($("#btnCarrello"));
+    console.log($(".done-icon").not(".hidden"));
+    $("#btnCarrello").removeClass("hidden").toggle($(".done-icon").not(".hidden").length>0);
   }
 
   authenticate() {
@@ -577,7 +580,6 @@ class DettagliPersona extends React.Component{
     selectTipiDoc = <select className="form-control" defaultValue="" name="esenzioneBollo" id="esenzioneBollo">{selectEsenzioni}</select>
 
     // TODO aggiungere in base ai permessi
-    // TODO alert dati documento mancanti
     var stringaRichiedente = datiAnagrafica.datiRichiedente.cognome.toUpperCase()+
     " "+datiAnagrafica.datiRichiedente.nome.toUpperCase()+
     " - "+(datiAnagrafica.datiRichiedente.tipo_documento=="CI"?"Carta d'Identità":datiAnagrafica.datiRichiedente.tipo_documento)+
@@ -622,7 +624,7 @@ class DettagliPersona extends React.Component{
         { name:null, value: <p className="alert alert-danger">Attenzione: dati documento mancanti o incompleti. Completa i dati per abilitare l'invio della richiesta:</p>, html: true }
       ]);
       result.dati.certificati.push([
-        { name:"", labelCols:2, valueSize:8, value: <div className="text-center"><a className="btn btn-default ml10" href={urlModifica}>Completa i dati documento</a></div>, html: true }
+        { name:"", labelCols:2, valueSize:8, value: <div className="text-center"><a className="btn btn-default" href={urlModifica}>Completa i dati documento</a></div>, html: true }
       ]);
     } else {
       result.dati.certificati.push([
@@ -658,7 +660,7 @@ class DettagliPersona extends React.Component{
         ]
       );
       result.dati.certificati.push([
-        { name:"", labelCols:1, valueSize:10, value: <div className="text-center"><a className="btn btn-primary ml10" id="btnCarrello" href={urlCarrello}>Vai al carrello</a></div>, html: true }
+        { name:"", labelCols:1, valueSize:10, value: <div className="text-center"><a className="btn btn-primary hidden" id="btnCarrello" href={urlCarrello}>Vai al carrello</a></div>, html: true }
       ]);
     }
 
@@ -742,6 +744,7 @@ class DettagliPersona extends React.Component{
     // console.log(datiAnagrafica);
     var found = this.state.datiCittadino && this.state.datiCittadino!=null && this.state.datiCittadino.length;
     var returnVal = <div className="alert alert-warning">Dati contribuente non presenti nel sistema</div>
+    
     if(this.state.loading) {
       returnVal = <div className="alert alert-info">Caricamento...</div>
     }
@@ -819,24 +822,24 @@ if(document.getElementById('app_demografici_container') !== null){
       console.log("request done");
       console.log(response);      
       $wait.hide();
-      // TODO trovare un modo di recepire la risposta
-      $done.show();
-      // if(response.ok=="true") {
-      //   $done.show();
-      // } else {
-      //   $error.show();
-      // }
+      if(response.indexOf("aggiunto") || response.ok=="true") {
+        $done.show();
+      } else {
+        $error.show();
+      }
+      $("#btnCarrello").toggle($(".done-icon").not(".hidden").length>0);
     }).fail(function(response) {
       console.log("request error");
       console.log(response);
       $wait.hide();
-      // $error.show();
+      $error.show();
       // TODO trovare un modo di recepire la risposta
-      $done.show();
+      // $done.show();
+      $("#btnCarrello").toggle($(".done-icon").not(".hidden").length>0);
     });
   });
 
-  $('#portal_container').on('click', '.error-icon', function(e){
+  $('#portal_container').on('click', 'a.error-icon', function(e){
     e.preventDefault();
     $(this).parent().find("a.btn-async").show();
     $(this).hide();

@@ -44,3 +44,6 @@ body {
 #richiesteCertificati li:not(.table-header) div:nth-of-type(5) {
   text-align: right;
 } */
+.done-icon {
+  cursor: default;
+}
