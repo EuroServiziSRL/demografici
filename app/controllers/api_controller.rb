@@ -212,16 +212,17 @@ class ApiController < ActionController::Base
         searchParams[:id] = params[:richiesta]
         searchParams[:stato] = "richiesto"
         richiesta_certificato = Certificati.find_by_id(params[:richiesta])  
-        # TODO rimettere a nuovo
         if richiesta_certificato.blank? || richiesta_certificato.nil?
           array_json << {
             "codice_esito": "003-Errore generico",
             "errore_descrizione": "richiesta non trovata"
           }
         else
-          richiesta_certificato.stato = "errore"
-          richiesta_certificato.descrizione_errore = "Errore durante la ricezione del certificato"
-          richiesta_certificato.data_inserimento = Time.now
+          # richiesta_certificato.stato = "errore"
+          # richiesta_certificato.descrizione_errore = "Errore durante la ricezione del certificato"
+          # richiesta_certificato.data_inserimento = Time.now
+          # richiesta_certificato.save
+          richiesta_certificato.stato = "nuovo"
           richiesta_certificato.save
 
           array_json << {
