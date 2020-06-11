@@ -208,6 +208,8 @@ class DettagliPersona extends React.Component{
     "vedovanza":[],
     "unione_civile":[],
     "scioglimento_unione_civile":[], // TODO aggiungere dentro divorzio?
+    "maternita":[],
+    "paternita":[],
     "elettorale":[],
     "documenti":[],
     "famiglia":[],
@@ -257,7 +259,13 @@ class DettagliPersona extends React.Component{
     $.get(demograficiData.dominio+"/authenticate").done(function( response ) {
       console.log("response is loaded");
       console.log(response);
-      if(response.hasError) {
+      /*if(!response) {
+        var state = self.state;
+        state.error = true;
+        state.debug = "Si è verificato un errore generico durante l'autenticazione";
+        state.loading = false;
+        self.setState(state);
+      } else*/ if(response.hasError) {
         var state = self.state;
         state.error = true;
         state.debug = "Errore di autenticazione";
@@ -371,7 +379,7 @@ class DettagliPersona extends React.Component{
       if(documento.comuneRilascio) { rilasciataDa = "Comune di "+documento.comuneRilascio; }
       else if(documento.consolatoRilascio) { rilasciataDa = "Comune di "+documento.consolatoRilascio; }
       result.dati.documenti.push([
-        { name: "tipoDocumento", label: "Tipo", value: "Carta d'identit&agrave;" },
+        { name: "tipoDocumento", label: "Tipo", value: "Carta d'identità" },
         { name: "numero", value: documento.numero },
         { name: "comuneRilascio", label: "Rilasciata da", value: rilasciataDa },
         // { name: "stato", value: todo("manca l'informazione","danger") },
@@ -394,7 +402,7 @@ class DettagliPersona extends React.Component{
       ]);
     }
 
-    if(datiAnagrafica.datiVeicoli && datiAnagrafica.datiVeicoli.length) {
+    if(datiAnagrafica.datiVeicoli!=null) {
       var documento = datiAnagrafica.datiVeicoli;
       result.dati.documenti.push([
         { name: "possessoVeicoli", label: "Possesso veicoli", value: documento.possesso },
@@ -404,7 +412,7 @@ class DettagliPersona extends React.Component{
       ]);
     }
 
-    if(datiAnagrafica.datiPatente && datiAnagrafica.datiPatente.length) {
+    if(datiAnagrafica.datiPatente!=null) {
       var documento = datiAnagrafica.datiPatente;
       result.dati.documenti.push([
         { name: "possessoPatente", label: "Possesso patente", value: documento.possesso },
@@ -433,7 +441,7 @@ class DettagliPersona extends React.Component{
           { name: "codiceFamiglia", label: "Famiglia N.", value: datiAnagrafica.codiceFamiglia },
           { name: "numeroComponenti", label: "Numero componenti", value: datiAnagrafica.famiglia?datiAnagrafica.famiglia.length:1 },
         ],[
-          { name: "componenti", value: <DemograficiList list={famigliaFormatted} linked="true"/>, html: true },
+          { name: "componenti", value: <DemograficiList list={famigliaFormatted} linked="true"/>, valueSize:5, html: true },
           { name: "", value: "" },
         ]
       ];
@@ -457,6 +465,24 @@ class DettagliPersona extends React.Component{
         { name: "coniugeMatrimonio", name: "Coniuge", value: (datiMatrimonio.coniuge.cognome?datiMatrimonio.coniuge.cognome:"")+" "+(datiMatrimonio.coniuge.nome?datiMatrimonio.coniuge.nome:"") },
         { name: "comuneMatrimonio", name: "Comune", value: datiMatrimonio.comune },
         { name: "dataMatrimonio", name: "Data", value: dateFormatter(datiMatrimonio.data) },
+      ]);
+    }
+
+    result.dati.maternita = [];
+    if(datiAnagrafica.datiMaternita != null) {
+      result.dati.maternita.push([
+        { name: "maternitaNome", name: "Nome", value: datiAnagrafica.datiMaternita.nome },
+        { name: "maternitaCogome", name: "Cogome", value: datiAnagrafica.datiMaternita.cognome },
+        { name: "maternitaCF", name: "Codice Fiscale", value: datiAnagrafica.datiMaternita.codiceFiscale },
+      ]);
+    }
+
+    result.dati.paternita = [];
+    if(datiAnagrafica.datiPaternita != null) {
+      result.dati.paternita.push([
+        { name: "paternitaNome", name: "Nome", value: datiAnagrafica.datiPaternita.nome },
+        { name: "paternitaCogome", name: "Cogome", value: datiAnagrafica.datiPaternita.cognome },
+        { name: "paternitaCF", name: "Codice Fiscale", value: datiAnagrafica.datiPaternita.codiceFiscale },
       ]);
     }
 
@@ -673,6 +699,8 @@ class DettagliPersona extends React.Component{
     for(var tabName in this.tabs) {
       if(this.state.dati[tabName].length) {
         var label = ucfirst(tabName.replace(/_/g," "));
+        if(label=="Maternita") { label = "Maternità"; }
+        if(label=="Paternita") { label = "Paternità"; }
         tabsHtml.push(<li key={tabName} role="presentation" className={className}><a href={"#"+tabName} aria-controls={tabName} role="tab" data-toggle={tabName}>{label}</a></li>);
         className = "";
       } else {
