@@ -307,6 +307,7 @@ class ApplicationController < ActionController::Base
       if !nascondi_sensibili
         searchParams[:MostraIndirizzo] = true
         searchParams[:MostraDatiMaternita] = true
+        searchParams[:MostraDatiPaternita] = true
         searchParams[:MostraConiuge] = true
         searchParams[:MostraDatiDecesso] = true
         searchParams[:MostraDatiCartaIdentita] = true
