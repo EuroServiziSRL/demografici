@@ -259,17 +259,10 @@ class DettagliPersona extends React.Component{
     console.log("demograficiData.dominio: "+demograficiData.dominio);
     var self = this;
     console.log("Dettagli persona - Authenticating on "+demograficiData.dominio+"/authenticate...");
-    // TODO gestire caso login errato su microsoft per accesso api
     $.get(demograficiData.dominio+"/authenticate").done(function( response ) {
       console.log("response is loaded");
       console.log(response);
-      /*if(!response) {
-        var state = self.state;
-        state.error = true;
-        state.debug = "Si è verificato un errore generico durante l'autenticazione";
-        state.loading = false;
-        self.setState(state);
-      } else*/ if(response.hasError) {
+      if(response.hasError) {
         var state = self.state;
         state.error = true;
         state.debug = "Errore di autenticazione";

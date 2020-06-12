@@ -99,7 +99,6 @@ class ApplicationController < ActionController::Base
       # TODO aggiungere importo quando l'api lo fornirà
       # diritti_importo: importo_segreteria,
       diritti_importo: 0, # per ora sempre a 0 perchè non cè l'api
-      # TODO aggiungere uso 
       uso: params[:motivoEsenzione],
       richiedente_cf: session[:cf],
       richiedente_nome: session[:user]["nome"],
@@ -157,8 +156,21 @@ class ApplicationController < ActionController::Base
     )
 
     if !result["access_token"].nil? && result["access_token"].length > 0
+      puts "setting token into session"
       session[:token] = result["access_token"]
       result["csrf"] = form_authenticity_token
+    elsif !result["message"].nil? && result["message"].length > 0
+      if result["message"] == "Authorization has been denied for this request."
+        result = { 
+          "errore": true, 
+          "messaggio_errore": "Si è verificato un problema di connessione al servizio.", 
+        }
+      else
+        result = { 
+          "errore": true, 
+          "messaggio_errore": "Errore generico durante la connessione al servizio.", 
+        }
+      end
     end
     
     # result["url"] = oauthURL
@@ -331,15 +343,15 @@ class ApplicationController < ActionController::Base
       puts "searchParams: "
       puts searchParams
 
-      result = HTTParty.post(
+      fullResult = HTTParty.post(
         "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
         :body => searchParams.to_json,
         :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } ,
         :debug_output => $stdout
       )    
       # result = result.response.body
-      result = JSON.parse(result.response.body)
-      result = result[0]
+      fullResult = JSON.parse(fullResult.response.body)
+      result = fullResult[0]
       if !result.nil? && result.length > 0
 
         result["datiRichiedente"] = {
@@ -514,10 +526,25 @@ class ApplicationController < ActionController::Base
           end
 
         end
-      else 
+      elsif !result.nil? && result.length == 0
         result = { 
           "errore": true, 
-          "messaggio_errore": "Dati utente non presenti nel sistema.", 
+          "messaggio_errore": "Impossibile trovare l'anagrafica richiesta.", 
+        }
+      elsif result.nil? && fullResult.nil?
+        result = { 
+          "errore": true, 
+          "messaggio_errore": "Impossibile recuperare i dati.", 
+        }
+      elsif !fullResult["message"].nil? && fullResult["message"].length > 0 && fullResult["message"] == "Authorization has been denied for this request."
+        result = { 
+          "errore": true, 
+          "messaggio_errore": "Si è verificato un problema di connessione al servizio. Si prega di riprovare più tardi.", 
+        }
+      else
+        result = { 
+          "errore": true, 
+          "messaggio_errore": "Si è verificato un errore generico durante l'interrogazione dei dati.", 
         }
       end
 
