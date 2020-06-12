@@ -202,15 +202,14 @@ class DemograficiList extends React.Component{
 class DettagliPersona extends React.Component{
   tabs= {
     "scheda_anagrafica":[],
+    "nascita":[],
     "decesso":[],
     "matrimonio":[],
     "divorzio":[],
     "vedovanza":[],
     "unione_civile":[],
     "scioglimento_unione_civile":[], // TODO aggiungere dentro divorzio?
-    "maternita":[],
-    "paternita":[],
-    "elettorale":[],
+    // "elettorale":[],
     "documenti":[],
     "famiglia":[],
     "autocertificazioni":[],
@@ -356,11 +355,85 @@ class DettagliPersona extends React.Component{
         { name: "indirizzo", label: "Via di residenza", value: datiAnagrafica.indirizzo },
         { name: "descrizioneCittadinanza", label: "Cittadinanza", value: datiAnagrafica.descrizioneCittadinanza },
         { name: "statoCivile", label: "Stato civile", value: datiAnagrafica.datiStatoCivile?datiAnagrafica.datiStatoCivile.statoCivile:"" },
+      ], 
+    ];
+
+    // così aggiungo una riga
+    var genitori = [];
+    if(datiAnagrafica.datiMaternita != null) {
+      genitori.push(
+        { name: "madre", value: datiAnagrafica.datiMaternita.cognome+" "+datiAnagrafica.datiMaternita.nome },
+      );
+    }
+    if(datiAnagrafica.datiPaternita != null) {
+      genitori.push(
+        { name: "padre", value: datiAnagrafica.datiPaternita.cognome+" "+datiAnagrafica.datiPaternita.nome },
+      );
+    }
+    if(genitori.length) {
+      genitori.push({ name: "", value: "" }); 
+      if(genitori.length==2){genitori.push({ name: "", value: "" });}
+      result.dati.scheda_anagrafica.push(genitori);
+    }
+
+    result.dati.scheda_anagrafica.push([
+      { name: "titoloStudio", label: "Titolo studio", value: datiAnagrafica.datiTitoloStudio!=null?datiAnagrafica.datiTitoloStudio.descrizione:"" },
+      { name: "professione", label: "Professione", value: datiAnagrafica.datiProfessione!=null?datiAnagrafica.datiProfessione.descrizione:"" },
+      { name: "", value: "" },
+    ]);
+
+    if(datiAnagrafica.datiIscrizione!=null) {
+      var iscrizione = datiAnagrafica.datiIscrizione;
+      var rilascio = []
+      result.dati.scheda_anagrafica.push([
+        { name:null, value: <h4>Dati iscrizione</h4>, html: true }
+      ],[
+        { name: "motivoIscrizione", label: "Motivo", value: iscrizione.motivo },
+        { name: "dataDecorrenzaIscrizione", label: "Data decorrenza", value: dateFormatter(iscrizione.dataDecorrenza) },
+        { name: "praticaIscrizione", label: "Pratica", value: "n."+iscrizione.numeroPratica+" proveniente da "+iscrizione.comuneProvenienza }
+      ]);
+    }
+
+    if(datiAnagrafica.datiCancellazione!=null) {
+      var cancellazione = datiAnagrafica.datiCancellazione;
+      var rilascio = []
+      result.dati.scheda_anagrafica.push([
+        { name:null, value: <h4>Dati iscrizione</h4>, html: true }
+      ],[
+        { name: "motivoCancellazione", label: "Motivo", value: cancellazione.motivo },
+        { name: "dataDecorrenzaCancellazione", label: "Data decorrenza", value: dateFormatter(cancellazione.dataDecorrenza) },
+        { name: "praticaCancellazione", label: "Pratica", value: "n."+cancellazione.numeroPratica+" proveniente da "+cancellazione.comuneProvenienza }
+      ]);
+    }
+
+    if(datiAnagrafica.datiTitoloSoggiorno!=null) {
+      var documento = datiAnagrafica.datiTitoloSoggiorno;
+      var rilascio = []
+      if(documento.comuneRilascio) { rilascio.push("Comune di "+documento.comuneRilascio); }
+      if(documento.consolatoRilascio) { rilascio.push("Consolato di "+documento.consolatoRilascio); }
+      if(documento.questuraRilascio) { rilascio.push("Questura di "+documento.questuraRilascio); }
+      result.dati.scheda_anagrafica.push([
+        { name:null, value: <h4>Permesso di soggiorno</h4>, html: true }
+      ],[
+        { name: "titoloSoggiorno", label: "Permesso di soggiorno", value: documento.tipo+" n."+documento.numero+" del "+dateFormatter(documento.dataRilascio) },
+        { name: "scadenza", value: dateFormatter(documento.dataScadenza) },
+        { name: "comuneRilascio", label: "Rilasciato da", value: rilascio.join(", ") }
+      ]);
+    }
+
+    result.dati.nascita = [[
+        { name: "cognome", value: datiAnagrafica.cognome },
+        { name: "nome", value: datiAnagrafica.nome },
+        { name: "sesso", value: datiAnagrafica.sesso },
       ], [
-        { name: "titoloStudio", label: "Titolo studio", value: datiAnagrafica.datiTitoloStudio!=null?datiAnagrafica.datiTitoloStudio.descrizione:"" },
-        { name: "professione", label: "Professione", value: datiAnagrafica.datiProfessione!=null?datiAnagrafica.datiProfessione.descrizione:"" },
-        { name: "", value: "" },
-      ]
+        { name: "dataNascita", label: "Data nascita", value: datiAnagrafica.dataNascita },
+        { name: "oraNascita", label: "Ora nascita", value: "" }, // non c'è
+        { name: "comuneNascitaDescrizione", label: "Comune di nascita", value: datiAnagrafica.comuneNascitaDescrizione }, 
+      ], [
+        { name: "statoCivile", label: "Stato civile", value: datiAnagrafica.datiStatoCivile?datiAnagrafica.datiStatoCivile.statoCivile:"" },
+        genitori.length?genitori[0]:{ name: "", value: "" },
+        genitori.length?genitori[1]:{ name: "", value: "" },
+      ], 
     ];
 
     result.dati.documenti = [];
@@ -378,49 +451,36 @@ class DettagliPersona extends React.Component{
       var documento = datiAnagrafica.datiCartaIdentita;
       var rilasciataDa = "";
       if(documento.comuneRilascio) { rilasciataDa = "Comune di "+documento.comuneRilascio; }
-      else if(documento.consolatoRilascio) { rilasciataDa = "Comune di "+documento.consolatoRilascio; }
+      else if(documento.consolatoRilascio) { rilasciataDa = "Consolato di "+documento.consolatoRilascio; }
       result.dati.documenti.push([
         { name: "tipoDocumento", label: "Tipo", value: "Carta d'identità" },
         { name: "numero", value: documento.numero },
+        { name: "stato", value: documento.validaEspatrio?"valida per espatrio":"non valida per espatrio" },
+      ],[
         { name: "comuneRilascio", label: "Rilasciata da", value: rilasciataDa },
-        // { name: "stato", value: todo("manca l'informazione","danger") },
         { name: "dataRilascio", label: "In data", value: dateFormatter(documento.dataRilascio) },
-        // { name: "scadenza", value: todo("manca l'informazione","danger") },
+        { name: "dataScadenza", label: "Scadenza", value: dateFormatter(documento.dataScadenza) },
       ]);
     }
 
-    if(datiAnagrafica.datiTitoloSoggiorno!=null) {
-      var documento = datiAnagrafica.datiTitoloSoggiorno;
-      var rilasciataDa = "";
-      if(documento.comuneRilascio) { rilasciataDa = "Comune di "+documento.comuneRilascio; }
-      else if(documento.consolatoRilascio) { rilasciataDa = "Consolato di "+documento.consolatoRilascio; }
-      else if(documento.questuraRilascio) { rilasciataDa = "Questura di "+documento.questuraRilascio; }
-      result.dati.scheda_anagrafica.push([
-        { name: "titoloSoggiorno", label: "Titolo di soggiorno", value: documento.tipo },
-        { name: "numero", value: documento.numero },
-        { name: "comuneRilascio", label: "Rilasciato da", value: rilasciataDa },
-        { name: "dataRilascio", label: "In data", value: dateFormatter(documento.dataRilascio) },
-      ]);
-    }
-
+    var altriDoc = []
     if(datiAnagrafica.datiVeicoli!=null) {
       var documento = datiAnagrafica.datiVeicoli;
-      result.dati.documenti.push([
-        { name: "possessoVeicoli", label: "Possesso veicoli", value: documento.possesso },
-        { name: "", value: "" },
-        { name: "", value: "" },
-        { name: "", value: "" },
-      ]);
+      altriDoc.push(
+        { name: "possessoVeicoli", label: "Possiede veicoli", value: documento.possesso=="S"?"sì":"no" }
+      );
     }
-
     if(datiAnagrafica.datiPatente!=null) {
       var documento = datiAnagrafica.datiPatente;
-      result.dati.documenti.push([
-        { name: "possessoPatente", label: "Possesso patente", value: documento.possesso },
-        { name: "", value: "" },
-        { name: "", value: "" },
-        { name: "", value: "" },
-      ]);
+      altriDoc.push(
+        { name: "possessoPatente", label: "Possiede patente", value: documento.possesso=="S"?"sì":"no" }
+      );
+    }
+    if(altriDoc.length) {
+      altriDoc.push({ name: "", value: "" }); 
+      if(altriDoc.length==2){altriDoc.push({ name: "", value: "" });}
+      result.dati.documenti.push([{ name:null, value: <h4>Altre informazioni</h4>, html: true }]);
+      result.dati.documenti.push(altriDoc);
     }
 
     result.dati.famiglia = []
@@ -452,10 +512,10 @@ class DettagliPersona extends React.Component{
     if(datiAnagrafica.datiDecesso) {
       var datiDecesso = datiAnagrafica.datiDecesso;
       result.dati.decesso.push([
-        { name: "comuneDecesso", name: "Comune", value: datiDecesso.comune },
-        { name: "dataDecesso", name: "Data", value: dateFormatter(datiDecesso.data) },
-        { name: "", value: "" },
-        { name: "", value: "" },
+        { name: "nominativoDecesso", name: "Nominativo", value: nominativo },
+        { name: "comuneDecesso", name: "Luogo del decesso", value: datiDecesso.comune },
+        { name: "dataDecesso", name: "Data del decesso", value: dateFormatter(datiDecesso.data) },
+        { name: "dataDecesso", name: "Ora del decesso", value: datiDecesso.data.replace(/.*T/g,"") },
       ]);
     }
     
@@ -464,26 +524,8 @@ class DettagliPersona extends React.Component{
       var datiMatrimonio = datiAnagrafica.datiStatoCivile.matrimonio;
       result.dati.matrimonio.push([
         { name: "coniugeMatrimonio", name: "Coniuge", value: (datiMatrimonio.coniuge.cognome?datiMatrimonio.coniuge.cognome:"")+" "+(datiMatrimonio.coniuge.nome?datiMatrimonio.coniuge.nome:"") },
-        { name: "comuneMatrimonio", name: "Comune", value: datiMatrimonio.comune },
-        { name: "dataMatrimonio", name: "Data", value: dateFormatter(datiMatrimonio.data) },
-      ]);
-    }
-
-    result.dati.maternita = [];
-    if(datiAnagrafica.datiMaternita != null) {
-      result.dati.maternita.push([
-        { name: "maternitaNome", name: "Nome", value: datiAnagrafica.datiMaternita.nome },
-        { name: "maternitaCogome", name: "Cogome", value: datiAnagrafica.datiMaternita.cognome },
-        { name: "maternitaCF", name: "Codice Fiscale", value: datiAnagrafica.datiMaternita.codiceFiscale },
-      ]);
-    }
-
-    result.dati.paternita = [];
-    if(datiAnagrafica.datiPaternita != null) {
-      result.dati.paternita.push([
-        { name: "paternitaNome", name: "Nome", value: datiAnagrafica.datiPaternita.nome },
-        { name: "paternitaCogome", name: "Cogome", value: datiAnagrafica.datiPaternita.cognome },
-        { name: "paternitaCF", name: "Codice Fiscale", value: datiAnagrafica.datiPaternita.codiceFiscale },
+        { name: "comuneMatrimonio", name: "Comune celebrazione matrimonio", value: datiMatrimonio.comune },
+        { name: "dataMatrimonio", name: "Data matrimonio", value: dateFormatter(datiMatrimonio.data) },
       ]);
     }
 
@@ -491,9 +533,13 @@ class DettagliPersona extends React.Component{
     if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.divorzio) {
       var datiDivorzio = datiAnagrafica.datiStatoCivile.divorzio;
       result.dati.divorzio.push([
-        { name: "coniugeDivorzio", name: "Coniuge", value: (datiDivorzio.coniuge.cognome?datiDivorzio.coniuge.cognome:"")+" "+(datiDivorzio.coniuge.nome?datiDivorzio.coniuge.nome:"") },
-        { name: "tribunale", value: datiDivorzio.tribunale },
-        { name: "dataDivorzio", name: "Data", value: dateFormatter(datiDivorzio.data) },
+        { name: "coniugeDivorzio", name: "Ex Coniuge", value: (datiDivorzio.coniuge.cognome?datiDivorzio.coniuge.cognome:"")+" "+(datiDivorzio.coniuge.nome?datiDivorzio.coniuge.nome:"") },
+        { name: "sentenzaDivorzio", name: "Tipo sentenza", value: datiDivorzio.tipo },
+        { name: "dataDivorzio", name: "Data sentenza", value: dateFormatter(datiDivorzio.dataSentenza) },
+      ],[
+        { name: "comuneDivorzio", value: datiDivorzio.comune },
+        { name: "tribunaleDivorzio", value: datiDivorzio.tribunale },
+        { name: "", value: "" },
       ]);
     }
 
@@ -502,8 +548,8 @@ class DettagliPersona extends React.Component{
       var datiVedovanza = datiAnagrafica.datiStatoCivile.vedovanza;
       result.dati.vedovanza.push([
         { name: "coniugeVedovanza", name: "Coniuge", value: (datiVedovanza.coniuge.cognome?datiVedovanza.coniuge.cognome:"")+" "+(datiVedovanza.coniuge.nome?datiVedovanza.coniuge.nome:"") },
-        { name: "comuneVedovanza", name: "Comune", value: datiVedovanza.comune },
-        { name: "dataVedovanza", name: "Data", value: dateFormatter(datiVedovanza.data) },
+        { name: "dataVedovanza", name: "Data morte", value: dateFormatter(datiVedovanza.data) },
+        { name: "comuneVedovanza", name: "Comune morte", value: datiVedovanza.comune },
       ]);
     }
 
@@ -540,19 +586,19 @@ class DettagliPersona extends React.Component{
       ]]
     }
 
-    result.dati.elettorale = [];
-    if(demograficiData.test) {
-      result.dati.elettorale = [[
-          { name: "statusElettore", label: "Stato elettore", value: todo("da dove si prende?","danger") },
-          { name: "iscrizione", value: todo("da dove si prende?","danger") },
-          { name: "fascicolo", value: todo("da dove si prende?","danger") }
-        ],[
-          { name: "numeroDiGenerale", label: "Numero di generale", value: todo("da dove si prende?","danger") },
-          { name: "sezioneDiAppartenenza", label: "Sezione di appartenenza", value: todo("da dove si prende?","danger") },
-          { name: "sezionale", value: todo("da dove si prende?","danger") }
-        ]
-      ];
-    }
+    // result.dati.elettorale = [];
+    // if(demograficiData.test) {
+    //   result.dati.elettorale = [[
+    //       { name: "statusElettore", label: "Stato elettore", value: todo("da dove si prende?","danger") },
+    //       { name: "iscrizione", value: todo("da dove si prende?","danger") },
+    //       { name: "fascicolo", value: todo("da dove si prende?","danger") }
+    //     ],[
+    //       { name: "numeroDiGenerale", label: "Numero di generale", value: todo("da dove si prende?","danger") },
+    //       { name: "sezioneDiAppartenenza", label: "Sezione di appartenenza", value: todo("da dove si prende?","danger") },
+    //       { name: "sezionale", value: todo("da dove si prende?","danger") }
+    //     ]
+    //   ];
+    // }
 
     result.dati.certificati = []
 
@@ -675,8 +721,6 @@ class DettagliPersona extends React.Component{
     for(var tabName in this.tabs) {
       if(this.state.dati[tabName].length) {
         var label = ucfirst(tabName.replace(/_/g," "));
-        if(label=="Maternita") { label = "Maternità"; }
-        if(label=="Paternita") { label = "Paternità"; }
         tabsHtml.push(<li key={tabName} role="presentation" className={className}><a href={"#"+tabName} aria-controls={tabName} role="tab" data-toggle={tabName}>{label}</a></li>);
         className = "";
       } else {
@@ -727,7 +771,7 @@ class DettagliPersona extends React.Component{
     } else if(found) {
       
       returnVal =       <div itemID="app_tributi">
-        <h4>Dettagli persona</h4>
+        <h3>Dettagli persona</h3>
         <div className="form-horizontal"><DemograficiForm rows={this.state.datiCittadino}/></div>
         
         <p></p>
