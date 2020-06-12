@@ -90,7 +90,7 @@ class ApplicationController < ActionController::Base
     end
 
     certificato = {
-      tenant: session[:user]["api_next"]["tenant"], 
+      tenant: session[:api_next_tenant], 
       codice_fiscale: cf_certificato,
       codici_certificato: [params[:tipoCertificato].to_i],
       bollo: importo_bollo,
@@ -99,19 +99,20 @@ class ApplicationController < ActionController::Base
       # TODO aggiungere importo quando l'api lo fornirà
       # diritti_importo: importo_segreteria,
       diritti_importo: 0, # per ora sempre a 0 perchè non cè l'api
+      # TODO aggiungere uso 
       uso: params[:motivoEsenzione],
       richiedente_cf: session[:cf],
-      richiedente_nome: session[:user]["nome"],
-      richiedente_cognome: session[:user]["cognome"],
-      richiedente_doc_riconoscimento: "#{session[:user]["tipo_documento"]} #{session[:user]["numero_documento"]}",
-      richiedente_doc_data: session[:user]["data_documento"],
-      richiedente_data_nascita: session[:user]["data_nascita"],
+      richiedente_nome: session[:nome],
+      richiedente_cognome: session[:cognome],
+      richiedente_doc_riconoscimento: "#{session[:tipo_documento]} #{session[:numero_documento]}",
+      richiedente_doc_data: session[:data_documento],
+      richiedente_data_nascita: session[:data_nascita],
       # richiesta: "", # non usato
       stato: "nuovo",
       # data_inserimento: "", # data inserimento del certificato che verrà inserito dall'ente
       data_prenotazione: Time.now,
       email: session[:email],
-      id_utente: session["user"]["id"],
+      id_utente: session[:user_id],
       # documento: "", # il certificato che verrà inserito dall'ente
     }
 
@@ -123,7 +124,7 @@ class ApplicationController < ActionController::Base
 
   def ricerca_anagrafiche
     @page_app = "ricerca_anagrafiche"
-    @nome = session[:user]["nome"]
+    @nome = session[:nome]
 
     # session[:cf_visualizzato] = params["codice_fiscale"]
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
@@ -135,9 +136,9 @@ class ApplicationController < ActionController::Base
     puts "authenticate - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s
     requestParams = {
       "resource": "#{@@api_resource.sub("https","http")}", 
-      "tenant": "#{session[:user]["api_next"]["tenant"]}",
-      "client_id": "#{session[:user]["api_next"]["client_id"]}",
-      "client_secret": "#{session[:user]["api_next"]["secret"]}",
+      "tenant": "#{session[:api_next_tenant]}",
+      "client_id": "#{session[:api_next_client_id]}",
+      "client_secret": "#{session[:api_next_secret]}",
       "grant_type": 'client_credentials'
     }
 
@@ -233,8 +234,8 @@ class ApplicationController < ActionController::Base
 
   def inserisci_pagamento
     searchParams = {}
-    searchParams[:tenant] = session[:user]["api_next"]["tenant"]
-    searchParams[:id_utente] = session["user"]["id"]
+    searchParams[:tenant] = session[:api_next_tenant]
+    searchParams[:id_utente] = session[:user_id]
     searchParams[:id] = params[:id]
     richiesta_certificato = Certificati.where("id = :id AND tenant = :tenant AND id_utente = :id_utente", searchParams).first
     importo = 0
@@ -251,11 +252,11 @@ class ApplicationController < ActionController::Base
       url_back: request.protocol + request.host_with_port,
       idext: richiesta_certificato.id,
       tipo_elemento: "certificazione_td",
-      nome_versante: session[:user]["nome"],
-      cognome_versante: session[:user]["cognome"],
+      nome_versante: session[:nome],
+      cognome_versante: session[:cognome],
       codice_fiscale_versante: session[:cf],
-      nome_pagatore: session[:user]["nome"],
-      cognome_pagatore: session[:user]["cognome"],
+      nome_pagatore: session[:nome],
+      cognome_pagatore: session[:cognome],
       codice_fiscale_pagatore: session[:cf]
     }
     
@@ -284,6 +285,7 @@ class ApplicationController < ActionController::Base
     
     puts "ricerca_individui - logged user cf: "+session[:cf]
     puts "ricerca_individui - cf_visualizzato: "+session[:cf_visualizzato].to_s
+    puts "ricerca_individui - \"cf_visualizzato\": "+session["cf_visualizzato"].to_s
 
     tipologia_richiesta = ""
         
@@ -319,10 +321,10 @@ class ApplicationController < ActionController::Base
 
       # TODO capire quali sono dati sensibili - vedere in codice demografici
 
-      nascondi_sensibili = !is_self && session["user"]["permessi"].include?("ricercare_anagrafiche_no_sensibili")
+      nascondi_sensibili = !is_self && session[:permessi].include?("ricercare_anagrafiche_no_sensibili")
 
       puts "is_self? "+is_self.to_s
-      puts 'session["user"]["permessi"].include?("ricercare_anagrafiche_no_sensibili")? '+session["user"]["permessi"].include?("ricercare_anagrafiche_no_sensibili").to_s
+      puts 'session[:permessi].include?("ricercare_anagrafiche_no_sensibili")? '+session[:permessi].include?("ricercare_anagrafiche_no_sensibili").to_s
       puts 'nascondi_sensibili? '+nascondi_sensibili.to_s
 
       if !nascondi_sensibili
@@ -343,25 +345,25 @@ class ApplicationController < ActionController::Base
       puts "searchParams: "
       puts searchParams
 
-      fullResult = HTTParty.post(
+      result = HTTParty.post(
         "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
         :body => searchParams.to_json,
         :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } ,
         :debug_output => $stdout
       )    
       # result = result.response.body
-      fullResult = JSON.parse(fullResult.response.body)
-      result = fullResult[0]
+      result = JSON.parse(result.response.body)
+      result = result[0]
       if !result.nil? && result.length > 0
 
         result["datiRichiedente"] = {
-          "nome": session[:user]["nome"], 
-          "cognome": session[:user]["cognome"], 
+          "nome": session[:nome], 
+          "cognome": session[:cognome], 
           "cf": session[:cf], 
-          "data_nascita": session[:user]["data_nascita"], 
-          "tipo_documento": session[:user]["tipo_documento"], 
-          "numero_documento": session[:user]["numero_documento"], 
-          "data_documento": session[:user]["data_documento"], 
+          "data_nascita": session[:data_nascita], 
+          "tipo_documento": session[:tipo_documento], 
+          "numero_documento": session[:numero_documento], 
+          "data_documento": session[:data_documento], 
         }
 
         puts "datiRichiedente set to"
@@ -414,8 +416,8 @@ class ApplicationController < ActionController::Base
           result["richiesteCertificati"] = []
 
           searchParams = {}
-          searchParams[:tenant] = session[:user]["api_next"]["tenant"]
-          searchParams[:id_utente] = session["user"]["id"]
+          searchParams[:tenant] = session[:api_next_tenant]
+          searchParams[:id_utente] = session[:user_id]
           # searchParams[:codice_fiscale] = cf_ricerca
           richieste_certificati = Certificati.where("tenant = :tenant AND id_utente = :id_utente", searchParams).order("created_at DESC")
           richieste_certificati.each do |richiesta_certificato|
@@ -467,11 +469,11 @@ class ApplicationController < ActionController::Base
                         url_back: request.protocol + request.host_with_port,
                         idext: richiesta_certificato.id,
                         tipo_elemento: "certificazione_td",
-                        nome_versante: session[:user]["nome"],
-                        cognome_versante: session[:user]["cognome"],
+                        nome_versante: session[:nome],
+                        cognome_versante: session[:cognome],
                         codice_fiscale_versante: session[:cf],
-                        nome_pagatore: session[:user]["nome"],
-                        cognome_pagatore: session[:user]["cognome"],
+                        nome_pagatore: session[:nome],
+                        cognome_pagatore: session[:cognome],
                         codice_fiscale_pagatore: session[:cf]
                       }
                       
@@ -603,7 +605,7 @@ class ApplicationController < ActionController::Base
       # tenant: session[:tenant],#TODO aggiungere tenant in traccia
       obj_created: now,
       obj_modified: now,
-      utente_id: session["user"]["id"],
+      utente_id: session[:user_id],
       ip: request.remote_ip,
       pagina: request.path,
       parametri: request.query_string, # TODO questo dev'essere un json non un query string
@@ -679,30 +681,30 @@ class ApplicationController < ActionController::Base
   end
 
   def can_see_others
-    return session["user"]["permessi"].include?("ricercare_anagrafiche") || session["user"]["permessi"].include?("ricercare_anagrafiche_no_sensibili") || session["user"]["permessi"].include?("elencare_anagrafiche") || session["user"]["permessi"].include?("professionisti")
+    return session[:permessi].include?("ricercare_anagrafiche") || session[:permessi].include?("ricercare_anagrafiche_no_sensibili") || session[:permessi].include?("elencare_anagrafiche") || session[:permessi].include?("professionisti")
   end
 
   def verifica_permessi(azione)
     autorizzato = false
     
     # TODO test rimuovere
-    session["user"]["permessi"] = ["vedere_solo_famiglia","elencare_anagrafiche"]
+    session[:permessi] = ["vedere_solo_famiglia","elencare_anagrafiche"]
 
     # il comportamento cambia a seconda se sto visualizzando i dettagli o facendo una ricerca
     # TODO quali sovrascrivono quali?
     if azione == "visualizza_anagrafica"
-      if session["user"]["permessi"].include?("ricercare_anagrafiche") # TODO ricerca completa
+      if session[:permessi].include?("ricercare_anagrafiche") # TODO ricerca completa
         autorizzato = can_see_others
-      elsif session["user"]["permessi"].include?("ricercare_anagrafiche_no_sensibili") 
+      elsif session[:permessi].include?("ricercare_anagrafiche_no_sensibili") 
         # TODO sovrascrive ricercare_anagrafiche se presente?
         autorizzato = can_see_others
-      elsif session["user"]["permessi"].include?("elencare_anagrafiche") # TODO solo elenco ma non si clicca
+      elsif session[:permessi].include?("elencare_anagrafiche") # TODO solo elenco ma non si clicca
         autorizzato = can_see_others
-      elsif session["user"]["permessi"].include?("professionisti") # TODO ricerca ridotta solo nomecognome e cf
+      elsif session[:permessi].include?("professionisti") # TODO ricerca ridotta solo nomecognome e cf
         autorizzato = can_see_others
-      elsif session["user"]["permessi"].include?("professionisti_limitato") # TODO ricerca ridotta solo nomecognome e cf ma quando visualizza scheda può vedere solo la scheda dei certificati, da aggiungere tra i profili portal
+      elsif session[:permessi].include?("professionisti_limitato") # TODO ricerca ridotta solo nomecognome e cf ma quando visualizza scheda può vedere solo la scheda dei certificati, da aggiungere tra i profili portal
         autorizzato = can_see_others
-      elsif session["user"]["permessi"].include?("vedere_solo_famiglia") 
+      elsif session[:permessi].include?("vedere_solo_famiglia") 
         autorizzato = is_self || is_family # l'utente può vedere solo la sua anagrafica e le anagrafiche dei familiari
       else
         autorizzato = is_self # l'utente può vedere solo la sua anagrafica
@@ -717,7 +719,7 @@ class ApplicationController < ActionController::Base
   end
 
   def carica_variabili_layout
-    @nome = session[:user]["nome"]
+    @nome = session[:nome]
     @demografici_data = { "tipiCertificato" => {}, "esenzioniBollo" => {}  }
 
     # tipiCertificato = []
@@ -760,13 +762,14 @@ class ApplicationController < ActionController::Base
 
   def get_dominio_sessione_utente
     begin
+      # puts session.inspect
       # reset_session
       #permetto di usare tutti i parametri e li converto in hash
       hash_params = params.permit!.to_hash
       if !hash_params['c_id'].blank? && session[:client_id] != hash_params['c_id']
         reset_session
       end
-      if session.blank? || session[:user].blank? || false #controllo se ho fatto login
+      if session.blank? || session[:user_id].blank? || false #controllo se ho fatto login
         puts "received hash params"
         puts hash_params
         #se ho la sessione vuota devo ottenere una sessione dal portale
@@ -813,20 +816,41 @@ class ApplicationController < ActionController::Base
           #impostare durata sessione in application.rb: ora dura 30 minuti
           if !hash_result.blank? && !hash_result["stato"].nil? && hash_result["stato"] == 'ok'
             jwt_data = JsonWebToken.decode(hash_result['token'])
-            session[:user] = jwt_data #uso questo oggetto per capire se utente connesso!
-            puts "received user data hash"
-            puts jwt_data
-            puts "received cf is "+jwt_data[:cf]
+
+            # inserisco dati in sessione uno per uno per evitare conversione oggetti e cookie overflow
+            # puts jwt_data
+            session[:user_id] = jwt_data["id"]
+            session[:permessi] = jwt_data["permessi"]
+            session[:user_sid] = jwt_data["sid"]
+            session[:nome] = jwt_data[:nome]
+            session[:cognome] = jwt_data[:cognome]
             session[:cf] = jwt_data[:cf]
-            @nome = jwt_data[:nome] 
-            @cognome = jwt_data[:cognome]
+            session[:user_sid] = jwt_data["sid"]
+            session[:data_nascita] = jwt_data["data_nascita"]
+            session[:tipo_documento] = jwt_data["tipo_documento"]
+            session[:numero_documento] = jwt_data["numero_documento"]
+            session[:data_documento] = jwt_data["data_documento"]
+            session[:api_next_tenant] = jwt_data["api_next"]["tenant"]
+            session[:api_next_client_id] = jwt_data["api_next"]["client_id"]
+            session[:api_next_secret] = jwt_data["api_next"]["secret"]
             session[:client_id] = hash_params['c_id']
+            session[:famiglia] = []
+
+            # puts session.inspect
+
+            # session[:user] = jwt_data #uso questo oggetto per capire se utente connesso!
+            # puts "received user data hash"
+            # puts jwt_data
+            # puts "received cf is "+jwt_data[:cf]
+            # session[:cf] = jwt_data[:cf]
+            # @nome = jwt_data[:nome] 
+            # @cognome = jwt_data[:cognome]
+            # session[:client_id] = hash_params['c_id']
             # session[:tipo_documento] = jwt_data[:tipo_documento]
             # session[:numero_documento] = jwt_data[:numero_documento]
             # session[:data_documento] = jwt_data[:data_documento]
             # session[:data_nascita] = "" # TODO recuperare da portal
             # session[:tenant] = jwt_data[:api_next][:tenant]
-            session[:famiglia] = []
             # TODO gestire meglio il dominio, aspettiamo setup a db
             solo_dom = @dominio.gsub("/portal","")
             
