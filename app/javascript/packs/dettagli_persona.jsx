@@ -779,37 +779,29 @@ if(document.getElementById('app_demografici_container') !== null){
     $done.hide().removeClass("hidden");
     $error.hide().removeClass("hidden");
     
-
-    // url = url.replace(".json","");
     console.log("doing request on "+url);
     $.ajax({   
       type: "POST",
       url: url,
       dataType: 'json',
       crossDomain: true,
-      xhrFields: {
-        withCredentials: true
-      },
-      // contentType: "application/json" ,
       contentType: "text/plain" ,
     }).done(function( response ) {
       console.log("request done");
       console.log(response);      
       $wait.hide();
-      if(response.indexOf("aggiunto") || response.ok=="true") {
+      if(response.ok) {
         $done.show();
       } else {
         $error.show();
       }
-      $("#btnCarrello").toggle($(".done-icon").not(".hidden").length>0);
+      $("#btnCarrello").toggle($(".done-icon:visible").length>0);
     }).fail(function(response) {
       console.log("request error");
       console.log(response);
       $wait.hide();
       $error.show();
-      // TODO trovare un modo di recepire la risposta
-      // $done.show();
-      $("#btnCarrello").toggle($(".done-icon").not(".hidden").length>0);
+      $("#btnCarrello").toggle($(".done-icon:visible").length>0);
     });
   });
 
