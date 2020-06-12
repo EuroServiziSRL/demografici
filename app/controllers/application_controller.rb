@@ -271,7 +271,7 @@ class ApplicationController < ActionController::Base
     # qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
     qs = queryString+"3ur0s3rv1z1"
     hqs = OpenSSL::Digest::SHA1.new(qs)
-    url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa.json?#{queryString}&hqs=#{hqs}&id_utente=#{session[:user]["id"]}&sid=#{session[:user]["sid"]}"
+    url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa.json?#{queryString}&hqs=#{hqs}&id_utente=#{session[:user_id]}&sid=#{session[:user_sid]}"
     result = HTTParty.post(
       url, 
       :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json' } ,
@@ -488,7 +488,7 @@ class ApplicationController < ActionController::Base
                       # qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
                       qs = queryString+"3ur0s3rv1z1"
                       hqs = OpenSSL::Digest::SHA1.new(qs)
-                      url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa.json?#{queryString}&hqs=#{hqs}&id_utente=#{session[:user]["id"]}&sid=#{session[:user]["sid"]}"
+                      url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa.json?#{queryString}&hqs=#{hqs}&id_utente=#{session[:user_id]}&sid=#{session[:user_sid]}"
                     end
                   else
                     puts "statoPagamenti OK"
@@ -860,7 +860,7 @@ class ApplicationController < ActionController::Base
               redirect_to @dominio+"/?err"
               return
             else
-              redirect_to sconosciuto_url
+              redirect_to sconosciuto
               return   
             end
             
@@ -872,7 +872,7 @@ class ApplicationController < ActionController::Base
             redirect_to @dominio+"/autenticazione"
             return
           else
-            redirect_to sconosciuto_url
+            redirect_to sconosciuto
             return    
           end
 
