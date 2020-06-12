@@ -637,10 +637,10 @@ class ApplicationController < ActionController::Base
     puts "dataEvento: #{dataEvento}"
     dataEvento = Date.parse dataEvento
     puts "dataEvento: #{dataEvento}"
-    stato = StatiEsteri.where(codistat: codice).where("dataistituzione <= ? AND datacessazione >= ? ", dataEvento, dataEvento).first
+    stato = StatiEsteri.where(codistat: codice).where("datainiziovalidita <= ? AND datafinevalidita >= ? ", dataEvento, dataEvento).first
     puts stato
     if !stato.blank? && !stato.nil?
-      statoString = "#{stato.denominazione_it}"
+      statoString = "#{stato.denominazione}"
     end
     return statoString
   end
