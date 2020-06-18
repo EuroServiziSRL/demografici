@@ -36,12 +36,15 @@ class ApplicationController < ActionController::Base
   end
 
   def dettagli_persona
-    puts "dettagli_persona - session[:cf]: "+session[:cf]
-    puts "dettagli_persona - params[\"codice_fiscale\"]: "+params["codice_fiscale"]
-    puts "dettagli_persona - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s
+    # puts "dettagli_persona - session[:cf]: "+session[:cf]
+    # puts "dettagli_persona - params[\"codice_fiscale\"]: "+params["codice_fiscale"]
+    # puts "dettagli_persona - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s
     @page_app = "dettagli_persona"
 
-    if params["codice_fiscale"] == session[:cf]
+    if params["codice_fiscale"].nil?
+      params["codice_fiscale"] = session[:cf]
+      session[:cf_visualizzato] = nil
+    elsif params["codice_fiscale"] == session[:cf]
       session[:cf_visualizzato] = nil
       puts "session[:cf_visualizzato] set to null"
     else
@@ -182,16 +185,15 @@ class ApplicationController < ActionController::Base
 
   def ricerca_anagrafiche_individui
     puts "ricerca_anagrafiche_individui"
-    puts params
 
-    page = params[:page]
-    if page.nil? || page.blank?
-      page = 1
-    end
+    # page = params[:page]
+    # if page.nil? || page.blank?
+    #   page = 1
+    # end
 
     # TODO aggiungere wildcard ad altri campi ricerca e verificare che nomeCognome funzioni
-    if !params[:nomeCognome].nil? || !params[:nomeCognome].blank?
-      params[:nomeCognome] = "%#{params[:nomeCognome]}%"
+    if !params[:cognomeNome].nil? || !params[:cognomeNome].blank?
+      params[:cognomeNome] = "%#{params[:cognomeNome]}%"
     end
     # params[:MostraIndirizzo] = true
     # params[:MostraMaternita] = true
@@ -206,6 +208,8 @@ class ApplicationController < ActionController::Base
     # params[:MostraDatiStatoCivile] = true
     # params[:itemsPerPage] = 100
     # params[:pageNumber] = 4
+
+    puts params
 
     tipologia_richiesta = "ricerca anagrafiche"
 
@@ -526,7 +530,7 @@ class ApplicationController < ActionController::Base
               }
             end
           end
-
+          result["isSelf"] = is_self
         end
       elsif !result.nil? && result.length == 0
         result = { 
@@ -589,7 +593,17 @@ class ApplicationController < ActionController::Base
   def error_dati
   end
     
-  #Va a pulire la sessione e chiama il logout sul portale
+  # fa redirect su portale
+  def portale
+    redirect_to session['dominio']
+  end
+    
+  # fa redirect su propria anagrafica
+  def self
+    redirect_to request.protocol + request.host_with_port + "/dettagli_persona?codice_fiscale=#{session[:cf]}"
+  end
+
+  # va a pulire la sessione e chiama il logout sul portale
   def logout
     url_logout = File.join(session['dominio'],"autenticazione/logout")
     reset_session
@@ -720,7 +734,7 @@ class ApplicationController < ActionController::Base
 
   def carica_variabili_layout
     @nome = session[:nome]
-    @demografici_data = { "tipiCertificato" => {}, "esenzioniBollo" => {}  }
+    @demografici_data = { "tipiCertificato" => {}, "esenzioniBollo" => {}, "cittadinanze" => {} }
 
     # tipiCertificato = []
     # TipoCertificato.all.each do |tipoCertificato|
@@ -749,6 +763,13 @@ class ApplicationController < ActionController::Base
       esenzioniBollo << esenzione
     end
     @demografici_data["esenzioniBollo"] = esenzioniBollo
+
+    # cittadinanze = []
+    # StatiEsteri.all.each do |stato|
+    #   cittadinanza = { "id": stato.id, "descrizione": stato.denominazione }
+    #   cittadinanze << cittadinanza
+    # end
+    # @demografici_data["cittadinanze"] = cittadinanze
 
     if params["debug"] 
       @demografici_data["test"] = true

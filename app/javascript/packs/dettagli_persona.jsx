@@ -223,6 +223,7 @@ class DettagliPersona extends React.Component{
     error_message:false,  
     dati:{},   
     datiCittadino: [],
+    isSelf:false, 
     loading: true
   } 
 
@@ -304,6 +305,7 @@ class DettagliPersona extends React.Component{
           response = self.formatData(response);
           state.dati = response.dati;
           state.datiCittadino = response.datiCittadino;
+          state.isSelf = response.isSelf;
           state.datiRichiedente = response.datiRichiedente;
         } else {
           state.error = true;
@@ -333,7 +335,7 @@ class DettagliPersona extends React.Component{
 
   formatData(datiAnagrafica) {
     var nominativo = datiAnagrafica.cognome+" "+datiAnagrafica.nome;
-    var result = {"dati":{}};
+    var result = {"dati":{}, "isSelf": datiAnagrafica.isSelf };   
     result.datiCittadino = [[
         { name: "nominativo", value: nominativo },
         { name: "indirizzo", value: datiAnagrafica.indirizzo },
@@ -635,11 +637,13 @@ class DettagliPersona extends React.Component{
     ],[
       { name:"nomeCognomeRichiesta", label: "Si richiede il certificato per", labelCols:4, valueSize:5, value: <span>{nominativo}</span> }
     ],[
+      { name:null, value: <p className="alert alert-info">Per richiedere il certificato è necessario che le informazioni riguardanti il tuo documento di identificazione siano aggiornate ed il documento non sia scaduto. Verifica la correttezza dei tuoi dati prima di proseguire:</p>, html: true }
+    ],[
       { name:"nomeCognomeRichiedente", label: "Il certificato viene richiesto da", labelCols:4, valueSize:5, value: <span>{stringaRichiedente} <a className="btn btn-default ml10" href={urlModifica}>Modifica</a></span> }
     ],[
       { name:"certificatoTipo", label: "Tipo certificato", labelCols:4, valueSize:5, value: selectTipiCertificato, html: true }
     ],[
-      { name:"cartaLiberaBollo", label: "Il certificato dovrà essere rilasciato in Carta Libera o in Bollo?", labelCols:4, valueSize:5, value: <div>
+      { name:"cartaLiberaBollo", label: "Il certificato dovrà essere rilasciato in Carta Libera o in Bollo?", labelCols:4, valueSize:5, value: <>
         <label className="radio-inline">
               <input type="radio" name="certificatoBollo" id="carta_libera" defaultValue="false"/>Carta Libera
             </label>
@@ -647,7 +651,7 @@ class DettagliPersona extends React.Component{
               <input type="radio" name="certificatoBollo" id="bollo" defaultValue="true" defaultChecked="checked"/>
               Bollo
             </label>
-      </div>, html: true }
+      </>, html: true }
     ],[
       { name:"certificatoEsenzione", label: "Esenzione", labelCols:4, valueSize:5, value: selectEsenzioni, html: true }
     ],[
@@ -763,7 +767,9 @@ class DettagliPersona extends React.Component{
     var found = this.state.datiCittadino && this.state.datiCittadino!=null && this.state.datiCittadino.length;
     var returnVal = <div className="alert alert-warning">Dati contribuente non presenti nel sistema</div>
     
-    if(this.state.loading) {
+    if(typeof(this.state) == "undefined") {
+      returnVal = <div className="alert alert-danger">Si è verificato un errore, si prega di riprovare.</div>
+    } else if(this.state.loading) {
       returnVal = <div className="alert alert-info">Caricamento...</div>
     }
     else if(this.state.error) {
@@ -783,6 +789,20 @@ class DettagliPersona extends React.Component{
           {this.displayPanels()}
 
         </div>
+
+        <div className="bottoni_pagina mb20">
+          <div className="row">
+            <div className="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+              <div className="back">
+                {this.state.backToSearch?<a className="btn" href="/ricerca_anagrafiche">Torna alla ricerca</a>:<a className="btn" href="/portale">Torna al portale</a>}
+                
+              </div>
+              {this.state.isSelf?"":<a className="btn btn-default ml10" href="/self">Torna alla tua anagrafica</a>}
+              <a className="btn btn-default ml10" href="/ricerca_anagrafiche">Ricerca anagrafiche</a>
+            </div>
+          </div>
+        </div>
+
         {demograficiData.test?<pre style={{"whiteSpace": "break-spaces"}}><code>{this.state.debug?JSON.stringify(this.state.debug, null, 2):""}</code></pre>:""}
 
       </div>  
@@ -798,7 +818,7 @@ if(document.getElementById('app_demografici_container') !== null){
   var $links = $("#topbar").find(".row");
   $links.find("div").last().remove();
   $links.find("div").first().removeClass("col-lg-offset-3").removeClass("col-md-offset-3");
-  $links.append('<div class="col-lg-2 col-md-2 text-center"><a href="'+$("dominio_portale").text()+'/" title="Sezione Privata">CIAO<br>'+$("#nome_utente").text()+'</a></div>');
+  $links.append('<div class="col-lg-2 col-md-2 text-center"><a href="/portale" title="Sezione Privata">CIAO<br>'+$("#nome_utente").text()+'</a></div>');
   $links.append('<div class="col-lg-1 col-md-1 logout_link"><a href="logout" title="Logout"><span class="glyphicon glyphicon-log-out" aria-hidden="true"></span></a></div>');
 
   $('#portal_container').on('click', '.nav-tabs a', function(e){

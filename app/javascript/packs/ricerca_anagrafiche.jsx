@@ -7,82 +7,7 @@ import Select from 'react-select';
 import BootstrapTable from 'react-bootstrap-table-next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCircleNotch } from '@fortawesome/free-solid-svg-icons'
-
-function buttonFormatter(cell,row) {
-  var label = "Stampa";
-  var icon = <FontAwesomeIcon icon={faPrint} />
-
-  if (cell.indexOf("aggiungi_pagamento_pagopa")>-1) {label = "Paga con PagoPA"; icon = <FontAwesomeIcon icon={faCreditCard} />}
-  else if(cell.indexOf("servizi/pagamenti")>-1) { label = "Vai al carrello"; icon = <FontAwesomeIcon icon={faShoppingCart} /> }
-  return  <a href={cell} target="_blank" className="btn btn-default">{label} {icon}</a>;
-} 
-
-function statiFormatter(stato) {
-  var type = "muted";
-
-  if(stato == "da_pagare" ){
-    type = "info";
-  } else if(stato == "scaricato" ){
-    type = "success";
-  } else if(stato == "pagato" ){
-    type = "success";
-  } else if(stato=="errore"){
-    type = "danger";
-  } else if(stato=="non_emettibile"){
-    stato = "certificato_non_emettibile";
-    type = "danger";
-  } else if(stato=="annullato"){
-    stato=="annullata";
-    type = "danger";
-  } else if(stato=="in_attesa"){
-    stato = "in_elaborazione";
-    type = "warning";
-  } else if(stato=="nuovo"){
-    stato = "inviata";
-  }
-  
-  return  <span className={"text-"+type}>{ucfirst(stato.replace(/_/g," "))}</span>;
-} 
-
-function moneyFormatter(number) {  
-  if(number>0) {
-    return  <span>&euro; {number.toFixed(2).replace(/\./g,",")}</span>;
-  } else {
-    return  <span className="text-success">gratuito</span>;
-  }
-} 
-
-function esenzioneFormatter(idEsenzione) {  
-  if(idEsenzione) {
-    var esenzioneFound = false
-    for(var e in demograficiData.esenzioniBollo) {
-      if (demograficiData.esenzioniBollo[e].id == idEsenzione) { esenzioneFound = demograficiData.esenzioniBollo[e].descrizione; break; }
-    }
-    if(esenzioneFound) {
-      return esenzioneFound;
-    } else {
-      return "";
-    }
-  } else {
-    return "";
-  }
-} 
-
-function dateFormatter(dateTimeString) {
-  var formatted = "";
-  if(dateTimeString) {
-    var date = new Date(dateTimeString.replace(/-/g,"/").replace(/T/g," ").replace(/\.\d{3}Z/g,""));
-    formatted = date.toLocaleDateString("IT");
-  }
-  return formatted;
-}
-
-function todo(message, type) {
-  if(typeof(type)=="undefined") { type="warning"; }
-  if(demograficiData.test) {
-    return <span className={"ml10 alert alert-"+type}>({message})</span>
-  }
-}
+// import DatePicker from 'react-datepicker';
 
 function ucfirst(str){
   return str?str.replace(/(\b)([a-zA-Z])/,
@@ -121,7 +46,7 @@ class DemograficiForm extends React.Component{
       var fields = this.rows[r];
       var fieldCols = this.cols/fields.length;
       var labelCols = Math.floor(fieldCols/3);
-      if(labelCols>2) { labelCols = this.maxLabelCols; } // senò è enorme dai
+      if(labelCols>this.maxLabelCols) { labelCols = this.maxLabelCols; } // senò è enorme dai
       var valueSize = fieldCols-labelCols;
       for(var f in fields) {
         if( typeof(fields[f].labelCols) == "undefined" ) { fields[f].labelCols = labelCols; }
@@ -146,6 +71,7 @@ class DemograficiForm extends React.Component{
     return rowsHtml;
   }
 }
+
 class RicercaAnagrafiche extends React.Component{
 
   state = {
@@ -153,8 +79,11 @@ class RicercaAnagrafiche extends React.Component{
     error:false, 
     error_message:false,  
     dati: undefined,   
-    loading: true,
-    csrf: ""
+    dataNascitaDal: undefined, 
+    dataNascitaAl: undefined,
+    loading: undefined,
+    csrf: "",
+    page: 1
   } 
 
   columns = [
@@ -207,7 +136,7 @@ class RicercaAnagrafiche extends React.Component{
         console.log("setting csrf");
         state.csrf = response.csrf;
         self.setState(state);
-        self.ricercaAnagrafiche();
+        // self.ricercaAnagrafiche();
       }
     }).fail(function(response) {
       console.log("authentication fail!");
@@ -220,25 +149,41 @@ class RicercaAnagrafiche extends React.Component{
     });
   } 
 
+  disableForm(disable, force) {
+    $('#formRicercaAnagrafiche input, #formRicercaAnagrafiche select, #formRicercaAnagrafiche radio').each(function(){
+      if(($(this).val()=="" && disable)||force) {
+        $(this).attr("disabled","true")
+      } else {
+        $(this).removeAttr("disabled")
+      }
+    });
+  }
+
   ricercaAnagrafiche(e) {
     console.log(e);
     if(e){e.preventDefault();}
     var self = this;
     var state = self.state;
     state.loading = true;
-    state.dati = undefined;
+    // state.dati = undefined;
     self.setState(state);
     console.log("ricercaAnagrafiche...");    
-    $.get(demograficiData.dominio+"/ricerca_anagrafiche_individui", $('#formRicercaAnagrafiche').serialize()).done(function( response ) {
+    self.disableForm(true,false); 
+    var serialized = $('#formRicercaAnagrafiche').serialize();
+    self.disableForm(true,true);
+    $.get(demograficiData.dominio+"/ricerca_anagrafiche_individui", serialized).done(function( response ) {
       console.log("ricercaAnagrafiche response is loaded");
       console.log(response);
       if(response.hasError) {
         console.log("response error");
       } else {
         state = self.state;
+        state.dati = undefined;
         state.error = false;
         state.debug = response;
+        self.setState(state);
         if(!response.errore) {
+          console.log(response);
           state.dati = response.data;
           state.debug = response;
         } else {
@@ -249,47 +194,245 @@ class RicercaAnagrafiche extends React.Component{
         self.setState(state);
         console.log("state.dati");
         console.log(self.state.dati);
+        self.disableForm(false,false);
       }
     }).fail(function(response) {
       console.log("ricercaAnagrafiche fail!");
       console.log(response);
       var state = self.state;
+      state.dati = undefined;
       state.error = true;
       state.error_message = "Si è verificato un errore generico durante l'interrogazione dati.";
       state.loading = false;
       self.setState(state);
+      self.disableForm(false,false);
     });
   }
 
+  goToPage(number) {
+    var state = this.state;
+    state.page = number;
+    this.setState(state);
+    $("#page").val(this.state.page);
+    scrollToElement($(".table-header"))
+    this.ricercaAnagrafiche()
+  }
+
+  prevPage() {
+    this.goToPage(this.state.page==1?1:this.state.page-1)
+  }
+
+  nextPage() {
+    this.goToPage(this.state.page+1)
+  }
+
+  setStartDate() {
+    console.log("start date changed!");
+    // console.log(date);
+    // var state = this.state;
+    // state.dataNascitaDal = date;
+    // this.setState(state);
+  };
+
+  setEndDate() {
+    console.log("end date changed!");
+    // console.log(date);
+    // var state = this.state;
+    // state.dataNascitaAl = date;
+    // this.setState(state);
+  };
+
   render() {
     console.log("rendering");
-    var content = <div>
-      {this.state.csrf=="" ? <div className="alert alert-info">Caricamento...</div> : <form method="post" action="" className="form-ricerca form-horizontal panel panel-default col-lg-12 col-md-12 col-sm-12 col-xs-12" onSubmit={this.ricercaAnagrafiche.bind(this)} id="formRicercaAnagrafiche">
-        <DemograficiForm rows={[
-          [
-            { name:"cognomeNome", label:"Cognome/Nome", value: <input type="text" className="form-control" name="cognomeNome" id="cognomeNome"/>, html: true },
-          ],
-          [
-            { name:"codiceFiscale", label:"Codice Fiscale", value: <input type="text" className="form-control" name="codiceFiscale" id="codiceFiscale"/>, html: true },
-            { name:"indirizzo", value: <input type="text" className="form-control" name="indirizzo" id="indirizzo"/>, html: true }
-          ],
-          [
-            { name:"", value: <input type="submit" name="invia" className="btn btn-default" value="Cerca"/>, html: true },
-            { name: "", value: <input type="hidden" name="authenticity_token" value={this.state.csrf}/>, html: true }
-          ]
-        ]}/>
-      </form>}
-        
-      {this.state.loading ? <p className="text-center"><FontAwesomeIcon icon={faCircleNotch}  size="2x" spin /><span className="sr-only">caricamento...</span></p> : this.state.dati.length > 0 ? <div><BootstrapTable
-        id="ricercaAnagrafiche"
-        keyField={"codiceCittadino"}
-        data={this.state.dati}
-        columns={this.columns}
-        classes="table-responsive"
-        striped
-        hover
-      /></div> : <p className="text-center">Nessun risultato</p> }
+    var loading = <p className="text-center" id={this.state.dati?"loading":""}><FontAwesomeIcon icon={faCircleNotch} size="2x" spin /><span className="sr-only">caricamento...</span></p>;
+    var table = "";
+    if (this.state.dati && this.state.dati.length > 0) {
+      var paginatorLinks = []
+      console.log("this.state.dati[0]: ");
+      console.log(this.state.dati[0]);
+      var lastPage = Math.ceil(this.state.dati[0].paging.totalCount/this.state.dati[0].paging.itemsPerPage);
+      console.log("lastPage: "+lastPage);
+      var startPaginator = this.state.page-4>0?this.state.page-4:1;
+      console.log("startPaginator: "+startPaginator);
+      var endPaginator = this.state.page+5<=lastPage?this.state.page+5:lastPage;
+      console.log("endPaginator: "+endPaginator);
+      if(this.state.page>1) {
+        paginatorLinks.push(<button className="btn btn-default" type="button" title={"pagina iniziale"} onClick={() => this.goToPage(1).bind(this)}>&lt;&lt;</button>);
+        paginatorLinks.push(<button className="btn btn-default" type="button" title={"pagina precedente"} onClick={this.prevPage.bind(this)}>&lt;</button>);
+      }
+      if(startPaginator>1) {
+        var p = startPaginator-1;
+        paginatorLinks.push(<button className="btn btn-default" type="button" title={"pagine precedenti"} onClick={this.goToPage.bind(this,p)}>...</button>);
+      }
+      for(var p = startPaginator; p < this.state.page; p++) {
+        paginatorLinks.push(<button className="btn btn-default" type="button" title={"pagina "+p} onClick={this.goToPage.bind(this,p)}>{p}</button>);
+      }
+      paginatorLinks.push(<span className="btn btn-primary disabled" type="button" title={"pagina "+p}>{this.state.page}</span>);
+      for(var p = this.state.page+1; p < endPaginator; p++) {
+        paginatorLinks.push(<button className="btn btn-default" type="button" title={"pagina "+p} onClick={this.goToPage.bind(this,p)}>{p}</button>);
+      }
+      if(endPaginator<lastPage) {
+        var p = endPaginator;
+        paginatorLinks.push(<button className="btn btn-default" type="button" title={"pagine successive"} onClick={this.goToPage.bind(this,p)}>...</button>);
+      }
+      if(this.state.page<lastPage) {
+        paginatorLinks.push(<button className="btn btn-default" type="button" title={"pagina successiva"} onClick={this.nextPage.bind(this)}>&gt;</button>);
+        paginatorLinks.push(<button className="btn btn-default" type="button" title={"ultima paigna"} onClick={() => this.goToPage(lastPage).bind(this)}>&gt;&gt;</button>);
+      }
 
+      table = <div>{this.state.loading==true?loading:""}<div className={"row"+(this.state.loading==true?" transparent":"")}>
+        <div className="col-lg-12">
+          <BootstrapTable
+            id="ricercaAnagrafiche"
+            keyField={"codiceCittadino"}
+            data={this.state.dati}
+            columns={this.columns}
+            classes="table-responsive"
+            striped
+            hover
+          />
+        </div>
+      </div>
+      {this.state.loading==true?"":<div className="row">
+        <div className="col-lg-12 btn-toolbar mb20">
+          <div className="btn-group" role="group">
+            <span className="btn">Pagina {this.state.page} di {lastPage}</span>
+          </div>
+          <div className="btn-group" role="group">
+            {paginatorLinks}
+          </div>
+        </div>
+      </div>}
+      {/* <div className="table_delibere_pageForm" id="table_delibere_pageForm" align="center"> */}
+        {/* <a class="button" title="Prima" href="">&lt;&lt;</a>
+        <a class="button" title="Precedente" href="">&lt;</a>
+        <a class="button" title="..." href="">…</a>
+        <a class="button" title="2" href="">2</a>
+        <a class="button" title="3" href="">3</a>
+        <a class="button" title="4" href="">4</a>
+        <a class="button" title={"pagina "+this.state.page-1} href="">{this.state.page-1}</a>
+        <span class="button" style="color: #959595;">{this.state.page}</span>
+        <a class="button" title="7" href="">7</a>
+        <a class="button" title="8" href="">8</a>
+        <a class="button" title="9" href="">9</a>
+        <a class="button" title="..." href="">…</a>
+        <a class="button" title="Successiva" href="">&gt;</a>
+        <a class="button" title="Ultima" href="">&gt;&gt;</a> */}
+      {/* </div> */}
+      {/* <div className="bottoni_pagina mb20">
+        <div className="row">
+          <div className="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+            <div className="back">
+              <a className={"btn"+(this.state.page>1?"":" disabled")} onClick={this.prevPage.bind(this)}>Pagina precedente</a>
+            </div>
+          </div>
+          <div className="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+            {this.state.dati.length==50?<div className="fw pull-right">
+              <a className="btn" onClick={this.nextPage.bind(this)}>Pagina successiva</a>
+            </div>:""}
+          </div>
+        </div>
+      </div> */}
+    </div>
+    } else if (this.state.loading==true) {
+      console.log("loading & not dati");
+      table = <div className="row"><div className="col-lg-12">{loading}</div></div>
+    } else if (this.state.loading==false && this.state.dati.length < 1) {
+      console.log("not loading & not dati");
+      table = <div className="row"><div className="col-lg-12"><p className="text-center">Nessun risultato</p></div></div>
+    } else if (this.state.loading==undefined && this.state.csrf!="") {
+      console.log("loading undefined?");
+      table = <div className="row"><div className="col-lg-12"><p className="alert alert-info">Effettua una ricerca per visualizzare le anagrafiche.</p></div></div>
+    }
+    console.log("startDate is ");
+    var startDate = this.state.dataNascitaDal
+    console.log(startDate);
+    console.log("endDate is ");
+    var endDate = this.state.dataNascitaAl
+    console.log(endDate);
+
+    // var selectCittadinanze = []
+    // selectCittadinanze.push(<option value=""></option>)
+    // for(var e in demograficiData.cittadinanze) {
+    //   selectCittadinanze.push(<option value={demograficiData.esenzioniBollo[e].id}>{demograficiData.esenzioniBollo[e].descrizione}</option>)
+    // }
+    // selectCittadinanze = <select className="form-control" defaultValue="" name="idCittadinanza">{selectCittadinanze}</select>
+
+    var content = <div>
+      {this.state.csrf=="" ? <div className="row"><div className="col-lg-12"><p className="alert alert-info">Caricamento...</p></div></div> : <div className="row form-ricerca form-horizontal"><form method="post" action="" className="col-lg-12 col-md-12 col-sm-12 col-xs-12" onSubmit={this.ricercaAnagrafiche.bind(this)} id="formRicercaAnagrafiche"><h3>Ricerca anagrafiche</h3>
+        <div className="panel panel-default">
+          <DemograficiForm rows={[
+            [
+              { name: "", value: <input type="hidden" id="page" name="pageNumber" value={this.state.page}/>, html: true }
+            ],
+            [
+              { name:"cognomeNome", label:"Cognome/Nome", value: <input type="text" className="form-control" name="cognomeNome" id="cognomeNome"/>, html: true },
+              { name:"codiceFiscale", label:"Codice Fiscale", value: <input type="text" className="form-control" name="codiceFiscale" id="codiceFiscale"/>, html: true },
+            ],
+            [
+              // TODO capire che id usa
+              // { name:"cittadinanza", value:selectCittadinanze, html: true },
+              // { name:"cittadinanza", value: <select name="idCittadinanza" className="form-control">
+              //   <option></option>
+              //   <option value="1">Italiana</option>
+              //   <option value="2">Straniera</option>
+              //   <option value="3">Straniera paesi U.E.</option>
+              //   <option value="4">Straniera paesi dello Spazio Economico Europeo e paesi con accordi di associazione</option>
+              //   <option value="5">Straniera paesi non U.E.</option>
+              //   <option value="6">Tutte</option>
+              // </select>, html: true },
+              { name:"sesso", value: <>
+              <label className="radio-inline">
+                    <input type="radio" name="sesso" id="sessoM" defaultValue="M"/> maschio
+                  </label>
+                  <label className="radio-inline">
+                    <input type="radio" name="sesso" id="sessoF" defaultValue="F"/> femmina
+                  </label>
+            </>, html: true }
+            ]/*,
+            [
+              { name:"dataNascitaDal", label:"Data di nascita dal", value: <>
+              <DatePicker
+                selected={startDate}
+                onChange={this.setStartDate().bind(this)}
+                selectsStart
+                startDate={startDate}
+                endDate={endDate}
+              />
+              <DatePicker
+                selected={endDate}
+                onChange={this.setEndDate().bind(this)}
+                selectsEnd
+                startDate={startDate}
+                endDate={endDate}
+                minDate={startDate}
+              />
+              </>, html: true },
+              { name:"dataNascitaAl", label:"al", value: <input type="text" className="form-control" name="dataNascitaAl" id="dataNascitaAl"/>, html: true },
+              { name:"indirizzo", value: <input type="text" className="form-control" name="indirizzo" id="indirizzo"/>, html: true }
+            ]*/,
+            [
+              { name:"", value: <input type="submit" name="invia" className="btn btn-default" value="Cerca"/>, html: true },
+              { name: "", value: <input type="hidden" name="authenticity_token" value={this.state.csrf}/>, html: true }
+            ]
+          ]}/>
+        </div>
+      </form></div>}
+
+      
+      {table}
+
+      <div className="bottoni_pagina mb20">
+        <div className="row">
+          <div className="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+            <div className="back">
+              <a className="btn" href="/portale">Torna al portale</a>              
+            </div>
+            <a className="btn btn-default ml10" href="/self">Torna alla tua anagrafica</a>
+          </div>
+        </div>
+      </div>
+        
       {demograficiData.test?<pre style={{"whiteSpace": "break-spaces"}}><code>{this.state.debug?JSON.stringify(this.state.debug, null, 2):""}</code></pre>:""}
 
     </div>
