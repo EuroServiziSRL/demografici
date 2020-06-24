@@ -514,10 +514,10 @@ class DettagliPersona extends React.Component{
     if(datiAnagrafica.datiDecesso) {
       var datiDecesso = datiAnagrafica.datiDecesso;
       result.dati.decesso.push([
-        { name: "nominativoDecesso", name: "Nominativo", value: nominativo },
-        { name: "comuneDecesso", name: "Luogo del decesso", value: datiDecesso.comune },
-        { name: "dataDecesso", name: "Data del decesso", value: dateFormatter(datiDecesso.data) },
-        { name: "dataDecesso", name: "Ora del decesso", value: datiDecesso.data.replace(/.*T/g,"") },
+        { name: "nominativoDecesso", label: "Nominativo", value: nominativo },
+        { name: "comuneDecesso", label: "Luogo del decesso", value: datiDecesso.comune },
+        { name: "dataDecesso", label: "Data del decesso", value: dateFormatter(datiDecesso.data) },
+        { name: "dataDecesso", label: "Ora del decesso", value: datiDecesso.data.replace(/.*T/g,"") },
       ]);
     }
     
@@ -525,9 +525,9 @@ class DettagliPersona extends React.Component{
     if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.matrimonio) {
       var datiMatrimonio = datiAnagrafica.datiStatoCivile.matrimonio;
       result.dati.matrimonio.push([
-        { name: "coniugeMatrimonio", name: "Coniuge", value: (datiMatrimonio.coniuge.cognome?datiMatrimonio.coniuge.cognome:"")+" "+(datiMatrimonio.coniuge.nome?datiMatrimonio.coniuge.nome:"") },
-        { name: "comuneMatrimonio", name: "Comune celebrazione matrimonio", value: datiMatrimonio.comune },
-        { name: "dataMatrimonio", name: "Data matrimonio", value: dateFormatter(datiMatrimonio.data) },
+        { name: "coniugeMatrimonio", label: "Coniuge", value: (datiMatrimonio.coniuge.cognome?datiMatrimonio.coniuge.cognome:"")+" "+(datiMatrimonio.coniuge.nome?datiMatrimonio.coniuge.nome:"") },
+        { name: "comuneMatrimonio", label: "Comune celebrazione matrimonio", value: datiMatrimonio.comune },
+        { name: "dataMatrimonio", label: "Data matrimonio", value: dateFormatter(datiMatrimonio.data) },
       ]);
     }
 
@@ -535,9 +535,9 @@ class DettagliPersona extends React.Component{
     if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.divorzio) {
       var datiDivorzio = datiAnagrafica.datiStatoCivile.divorzio;
       result.dati.divorzio.push([
-        { name: "coniugeDivorzio", name: "Ex Coniuge", value: (datiDivorzio.coniuge.cognome?datiDivorzio.coniuge.cognome:"")+" "+(datiDivorzio.coniuge.nome?datiDivorzio.coniuge.nome:"") },
-        { name: "sentenzaDivorzio", name: "Tipo sentenza", value: datiDivorzio.tipo },
-        { name: "dataDivorzio", name: "Data sentenza", value: dateFormatter(datiDivorzio.dataSentenza) },
+        { name: "coniugeDivorzio", label: "Ex Coniuge", value: (datiDivorzio.coniuge.cognome?datiDivorzio.coniuge.cognome:"")+" "+(datiDivorzio.coniuge.nome?datiDivorzio.coniuge.nome:"") },
+        { name: "sentenzaDivorzio", label: "Tipo sentenza", value: datiDivorzio.tipo },
+        { name: "dataDivorzio", label: "Data sentenza", value: dateFormatter(datiDivorzio.dataSentenza) },
       ],[
         { name: "comuneDivorzio", value: datiDivorzio.comune },
         { name: "tribunaleDivorzio", value: datiDivorzio.tribunale },
@@ -549,9 +549,9 @@ class DettagliPersona extends React.Component{
     if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.vedovanza) {
       var datiVedovanza = datiAnagrafica.datiStatoCivile.vedovanza;
       result.dati.vedovanza.push([
-        { name: "coniugeVedovanza", name: "Coniuge", value: (datiVedovanza.coniuge.cognome?datiVedovanza.coniuge.cognome:"")+" "+(datiVedovanza.coniuge.nome?datiVedovanza.coniuge.nome:"") },
-        { name: "dataVedovanza", name: "Data morte", value: dateFormatter(datiVedovanza.data) },
-        { name: "comuneVedovanza", name: "Comune morte", value: datiVedovanza.comune },
+        { name: "coniugeVedovanza", label: "Coniuge", value: (datiVedovanza.coniuge.cognome?datiVedovanza.coniuge.cognome:"")+" "+(datiVedovanza.coniuge.nome?datiVedovanza.coniuge.nome:"") },
+        { name: "dataVedovanza", label: "Data morte", value: dateFormatter(datiVedovanza.data) },
+        { name: "comuneVedovanza", label: "Comune morte", value: datiVedovanza.comune },
       ]);
     }
 
@@ -559,9 +559,9 @@ class DettagliPersona extends React.Component{
     if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.unioneCivile) {
       var datiUnioneCivile = datiAnagrafica.datiStatoCivile.unioneCivile;
       result.dati.unione_civile.push([
-        { name: "coniugeUnioneCivile", name: "Unito civilmente", value: (datiUnioneCivile.unitoCivilmente.cognome?datiUnioneCivile.unitoCivilmente.cognome:"")+" "+(datiUnioneCivile.unitoCivilmente.nome?datiUnioneCivile.unitoCivilmente.nome:"") },
-        { name: "comuneUnioneCivile", name: "Comune", value: datiUnioneCivile.comune },
-        { name: "dataUnioneCivile", name: "Data", value: dateFormatter(datiUnioneCivile.data) },
+        { name: "coniugeUnioneCivile", label: "Unito civilmente", value: (datiUnioneCivile.unitoCivilmente.cognome?datiUnioneCivile.unitoCivilmente.cognome:"")+" "+(datiUnioneCivile.unitoCivilmente.nome?datiUnioneCivile.unitoCivilmente.nome:"") },
+        { name: "comuneUnioneCivile", label: "Comune", value: datiUnioneCivile.comune },
+        { name: "dataUnioneCivile", label: "Data", value: dateFormatter(datiUnioneCivile.data) },
       ]);
     }
 
@@ -569,9 +569,9 @@ class DettagliPersona extends React.Component{
     if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.scioglimentoUnione) {
       var datiScioglimento = datiAnagrafica.datiStatoCivile.scioglimentoUnione;
       result.dati.scioglimento_unione_civile.push([
-        { name: "coniugeScioglimentoUnione", name: "Unito civilmente", value: (datiUniondatiScioglimentoeCivile.unitoCivilmente.cognome?datiScioglimento.unitoCivilmente.cognome:"")+" "+(datiScioglimento.unitoCivilmente.nome?datiScioglimento.unitoCivilmente.nome:"") },
-        { name: "comuneScioglimentoUnione", name: "Comune", value: datiScioglimento.comune },
-        { name: "dataScioglimentoUnione", name: "Data", value: dateFormatter(datiScioglimento.data) },
+        { name: "coniugeScioglimentoUnione", label: "Unito civilmente", value: (datiUniondatiScioglimentoeCivile.unitoCivilmente.cognome?datiScioglimento.unitoCivilmente.cognome:"")+" "+(datiScioglimento.unitoCivilmente.nome?datiScioglimento.unitoCivilmente.nome:"") },
+        { name: "comuneScioglimentoUnione", label: "Comune", value: datiScioglimento.comune },
+        { name: "dataScioglimentoUnione", label: "Data", value: dateFormatter(datiScioglimento.data) },
       ]);
     }
 
@@ -584,12 +584,12 @@ class DettagliPersona extends React.Component{
         url: demograficiData.dominio+"/autocertificazione?codice_fiscale="+datiAnagrafica.codiceFiscale+"&nome=Nome documento"
       }]
       result.dati.autocertificazioni = [[
-        { name:"listaAutocertificazioni", value: <DemograficiList list={testList}/>, html: true }
+        { name:"listaAutocertificazioni", label:"Autocertificazioni", value: <DemograficiList list={testList}/>, html: true }
       ]]
     }
     if(datiAnagrafica.autocertificazioni) {
       result.dati.autocertificazioni = [[
-        { name:"listaAutocertificazioni", value: <DemograficiList list={datiAnagrafica.autocertificazioni}/>, html: true }
+        { name:"", labelCols:0, valueSize:12, value: <DemograficiList list={datiAnagrafica.autocertificazioni} linked="true"/>, html: true }
       ]]
     }
 

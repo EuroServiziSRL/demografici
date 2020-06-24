@@ -8,6 +8,9 @@ import BootstrapTable from 'react-bootstrap-table-next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCircleNotch } from '@fortawesome/free-solid-svg-icons'
 // import DatePicker from 'react-datepicker';
+// import it from 'date-fns/locale/it';
+demograficiData.descrizioniStatus = {"D":"DECEDUTO", "R":"RESIDENTE", "A":"RESIDENTE AIRE", "I":"IRREPERIBILE", "E":"EMIGRATO"}
+
 
 function ucfirst(str){
   return str?str.replace(/(\b)([a-zA-Z])/,
@@ -19,6 +22,10 @@ function ucfirst(str){
 function linkAnagraficaFormatter(cell,row) {
   return  <a href={demograficiData.dominio+"/dettagli_persona?codice_fiscale="+cell}>{cell}</a>;
 } 
+
+function posizioneAnagraficaFormatter(cell) {
+  return demograficiData.descrizioniStatus[cell]
+}
 
 class DemograficiForm extends React.Component{
   cols = 12
@@ -93,6 +100,8 @@ class RicercaAnagrafiche extends React.Component{
     { dataField: "descrizioneCittadinanza", text: "Cittadinanza" },
     { dataField: "sesso", text: "Sesso" },
     { dataField: "dataNascita", text: "Data di nascita" },
+    { dataField: "indirizzo", text: "Indirizzo" },
+    { dataField: "posizioneAnagrafica", text: "Status", formatter: posizioneAnagraficaFormatter },
   ];
 
   constructor(props){
@@ -226,12 +235,12 @@ class RicercaAnagrafiche extends React.Component{
     this.goToPage(this.state.page+1)
   }
 
-  setStartDate() {
+  setStartDate = date =>  {
     console.log("start date changed!");
-    // console.log(date);
-    // var state = this.state;
-    // state.dataNascitaDal = date;
-    // this.setState(state);
+    console.log(date);
+    var state = this.state;
+    state.dataNascitaDal = date;
+    this.setState(state);
   };
 
   setEndDate() {
@@ -303,36 +312,6 @@ class RicercaAnagrafiche extends React.Component{
           </div>
         </div>
       </div>}
-      {/* <div className="table_delibere_pageForm" id="table_delibere_pageForm" align="center"> */}
-        {/* <a class="button" title="Prima" href="">&lt;&lt;</a>
-        <a class="button" title="Precedente" href="">&lt;</a>
-        <a class="button" title="..." href="">…</a>
-        <a class="button" title="2" href="">2</a>
-        <a class="button" title="3" href="">3</a>
-        <a class="button" title="4" href="">4</a>
-        <a class="button" title={"pagina "+this.state.page-1} href="">{this.state.page-1}</a>
-        <span class="button" style="color: #959595;">{this.state.page}</span>
-        <a class="button" title="7" href="">7</a>
-        <a class="button" title="8" href="">8</a>
-        <a class="button" title="9" href="">9</a>
-        <a class="button" title="..." href="">…</a>
-        <a class="button" title="Successiva" href="">&gt;</a>
-        <a class="button" title="Ultima" href="">&gt;&gt;</a> */}
-      {/* </div> */}
-      {/* <div className="bottoni_pagina mb20">
-        <div className="row">
-          <div className="col-lg-6 col-md-6 col-sm-12 col-xs-12">
-            <div className="back">
-              <a className={"btn"+(this.state.page>1?"":" disabled")} onClick={this.prevPage.bind(this)}>Pagina precedente</a>
-            </div>
-          </div>
-          <div className="col-lg-6 col-md-6 col-sm-12 col-xs-12">
-            {this.state.dati.length==50?<div className="fw pull-right">
-              <a className="btn" onClick={this.nextPage.bind(this)}>Pagina successiva</a>
-            </div>:""}
-          </div>
-        </div>
-      </div> */}
     </div>
     } else if (this.state.loading==true) {
       console.log("loading & not dati");
@@ -394,18 +373,21 @@ class RicercaAnagrafiche extends React.Component{
               { name:"dataNascitaDal", label:"Data di nascita dal", value: <>
               <DatePicker
                 selected={startDate}
-                onChange={this.setStartDate().bind(this)}
+                onSelect={this.setStartDate}
+                onChange={this.setStartDate}
                 selectsStart
                 startDate={startDate}
                 endDate={endDate}
+                locale = "it"
               />
               <DatePicker
                 selected={endDate}
-                onChange={this.setEndDate().bind(this)}
+                onChange={() => this.setEndDate().bind(this)}
                 selectsEnd
                 startDate={startDate}
                 endDate={endDate}
                 minDate={startDate}
+                locale = "it"
               />
               </>, html: true },
               { name:"dataNascitaAl", label:"al", value: <input type="text" className="form-control" name="dataNascitaAl" id="dataNascitaAl"/>, html: true },

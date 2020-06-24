@@ -209,7 +209,7 @@ class ApplicationController < ActionController::Base
     if !params[:cognomeNome].nil? || !params[:cognomeNome].blank?
       params[:cognomeNome] = "%#{params[:cognomeNome]}%"
     end
-    # params[:MostraIndirizzo] = true
+    params[:MostraIndirizzo] = true
     # params[:MostraMaternita] = true
     # params[:MostraConiuge] = true
     # params[:MostraDatidecesso] = true
@@ -557,7 +557,7 @@ class ApplicationController < ActionController::Base
               filename = File.basename(percorso)
               result["autocertificazioni"] << { 
                 "preText": filename.sub(".odt"," ").sub(/\d{1,2} /,""), 
-                "text": "scarica documento".html_safe, 
+                "text": " - scarica documento".html_safe, 
                 "url": request.protocol+request.host_with_port+"/scarica_autocertificazione/?nome=#{filename}", 
               }
             end
@@ -858,7 +858,6 @@ class ApplicationController < ActionController::Base
   private
 
   def traccia_operazione(tipologia_richiesta)
-    # TODO implementare su: visualizzazione scheda anagrafica e richiesta certificato, togliere da download certificato
     now = Time.now
     operazione = {
       # tenant: session[:tenant],#TODO aggiungere tenant in traccia
@@ -947,26 +946,26 @@ class ApplicationController < ActionController::Base
     autorizzato = false
     
     # TODO test rimuovere
-    session[:permessi] = ["vedere_solo_famiglia","elencare_anagrafiche"]
+    session[:permessi] = []
 
     # il comportamento cambia a seconda se sto visualizzando i dettagli o facendo una ricerca
-    # TODO quali sovrascrivono quali?
+    # non si sovrascrivono
+    # TODO gestire diverse visualizzazioni
     if azione == "visualizza_anagrafica"
-      if session[:permessi].include?("ricercare_anagrafiche") # TODO ricerca completa
+      if session[:permessi].include?("ricercare_anagrafiche") # ricerca completa
         autorizzato = can_see_others
       elsif session[:permessi].include?("ricercare_anagrafiche_no_sensibili") 
-        # TODO sovrascrive ricercare_anagrafiche se presente?
         autorizzato = can_see_others
-      elsif session[:permessi].include?("elencare_anagrafiche") # TODO solo elenco ma non si clicca
+      elsif session[:permessi].include?("elencare_anagrafiche") # solo elenco ma non si clicca
         autorizzato = can_see_others
-      elsif session[:permessi].include?("professionisti") # TODO ricerca ridotta solo nomecognome e cf
+      elsif session[:permessi].include?("professionisti") # ricerca ridotta solo nomecognome e cf
         autorizzato = can_see_others
-      elsif session[:permessi].include?("professionisti_limitato") # TODO ricerca ridotta solo nomecognome e cf ma quando visualizza scheda può vedere solo la scheda dei certificati, da aggiungere tra i profili portal
+      elsif session[:permessi].include?("professionisti_limitato") # ricerca ridotta solo nomecognome e cf ma quando visualizza scheda può vedere solo la scheda dei certificati, da aggiungere tra i profili portal
         autorizzato = can_see_others
       elsif session[:permessi].include?("vedere_solo_famiglia") 
-        autorizzato = is_self || is_family # l'utente può vedere solo la sua anagrafica e le anagrafiche dei familiari
+        autorizzato = can_see_others # quando entra nella scheda può vedere solo la famiglia e i dati non sensibili
       else
-        autorizzato = is_self # l'utente può vedere solo la sua anagrafica
+        autorizzato = is_self || is_family # utente cittadino, può vedere solo la sua anagrafica e quelle dei familiari
       end
     elsif azione == "ricerca_anagrafiche"
       autorizzato = is_self || is_family || can_see_others
