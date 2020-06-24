@@ -69,3 +69,5 @@ gem 'tzinfo-data', platforms: [:mingw, :mswin, :x64_mingw, :jruby]
 
 gem 'httparty', '= 0.17.0'
 gem 'jwt', '= 2.1.0'
+gem 'zip-zip' 
+gem 'serenity-odt', '= 0.2.1'

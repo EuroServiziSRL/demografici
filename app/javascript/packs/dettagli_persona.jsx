@@ -9,7 +9,7 @@ import ReactDOM from 'react-dom';
 import Select from 'react-select';
 import BootstrapTable from 'react-bootstrap-table-next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCircleNotch, faShoppingCart, faPrint, faCheck, faCross, faExclamation } from '@fortawesome/free-solid-svg-icons'
+import { faCircleNotch, faShoppingCart, faPrint, faCheck, faExclamation, faDownload } from '@fortawesome/free-solid-svg-icons'
 
 demograficiData.descrizioniStatus = {"D":"DECEDUTO", "R":"RESIDENTE", "A":"RESIDENTE AIRE", "I":"IRREPERIBILE", "E":"EMIGRATO"}
 
@@ -184,9 +184,9 @@ class DemograficiList extends React.Component{
     var html;
     if(this.list && this.list[0]) {
       if(this.linked) {
-        listItems.push(this.list.map((item, index) => <a className="list-group-item" key={index.toString()} href={item.url}>{item.preText?<span>{item.preText}</span> :""}{item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a>  ));
+        listItems.push(this.list.map((item, index) => <a className="list-group-item" key={index.toString()} href={item.url}>{item.preText?<span>{item.preText}</span> :""}{item.text.toLowerCase().indexOf("scarica")>-1?<span>{item.text} <FontAwesomeIcon icon={faDownload}/></span>:item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a>  ));
       } else {
-        listItems.push(this.list.map((item, index) => <li className="list-group-item" key={index.toString()}>{item.preText?<span>{item.preText}</span> :""}<a href={item.url}>{item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a></li>  ));
+        listItems.push(this.list.map((item, index) => <li className="list-group-item" key={index.toString()}>{item.preText?<span>{item.preText}</span> :""}<a href={item.url}>{item.text.toLowerCase().indexOf("scarica")>-1?<span>{item.text} <FontAwesomeIcon icon={faDownload}/></span>:item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a></li>  ));
       }
     }
     if(this.linked) {
@@ -585,6 +585,11 @@ class DettagliPersona extends React.Component{
       }]
       result.dati.autocertificazioni = [[
         { name:"listaAutocertificazioni", value: <DemograficiList list={testList}/>, html: true }
+      ]]
+    }
+    if(datiAnagrafica.autocertificazioni) {
+      result.dati.autocertificazioni = [[
+        { name:"listaAutocertificazioni", value: <DemograficiList list={datiAnagrafica.autocertificazioni}/>, html: true }
       ]]
     }
 

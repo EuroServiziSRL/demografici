@@ -2,6 +2,20 @@ require 'httparty'
 require 'uri'
 require "base64"
 require 'openssl'
+require 'zlib'
+require 'autocert_date_time'
+# begin
+#   require 'serenity' if ['odt', 'pdf'].include?(Spider.config.get('demografici.formato_autocertificazioni'))
+#   # require 'pdfkit'
+# rescue LoadError => exc
+# end
+
+begin
+  require 'serenity'
+rescue LoadError => exc
+  puts "error loading serenity"
+  puts exc
+end
 
 ## auth su api
 # https://login.microsoftonline.com/97d6a602-2492-4f4c-9585-d2991eb3bf4c/oauth2/token
@@ -13,10 +27,12 @@ require 'openssl'
 
 class ApplicationController < ActionController::Base
   include ApplicationHelper
+  # include Serenity::Generator if ['odt', 'pdf'].include?(Spider.config.get('demografici.formato_autocertificazioni'))
+  include Serenity::Generator
   # TODO aggiungere anche resource in config?
   # @@api_resource = "https://api.civilianextuat.it"
   @@api_resource = "https://api.civilianextdev.it"
-  @@api_url = "#{@@api_resource}/Demografici/"
+  @@api_url = "#{@@api_resource}/Demografici"
   before_action :get_dominio_sessione_utente, :get_layout_portale, :carica_variabili_layout
   
   #ROOT della main_app
@@ -78,14 +94,14 @@ class ApplicationController < ActionController::Base
 
     cartaLibera = !params[:certificatoBollo].nil? && !params[:certificatoBollo].blank? &&  params[:certificatoBollo] != "true"
     esenzioneBollo = !params[:esenzioneBollo].nil? && !params[:esenzioneBollo].blank? &&  params[:esenzioneBollo] != "0"
-    # TODO implementare recupero diritti segreteria da api quando sarà disponibile
+    # TODO -WAIT- implementare recupero diritti segreteria da api quando sarà disponibile
     if cartaLibera || esenzioneBollo
       importo_bollo = 0 # importo bollo è 0 su carta libera o se è specificata esenzione
     else
       importo_bollo = 16 # altrimenti è 16 (importo fisso)
     end
     
-    # TODO recuperare diritti segreteria da api quando sarà disponibile
+    # TODO -WAIT- recuperare diritti segreteria da api quando sarà disponibile
     # i diritti di segreteria sono solitamente 0.26 per carta libera e 0.52 per bollo, se vengono applicati
     importo_segreteria = ( rand(2)>0 ? 0 : 0.52 )
     if cartaLibera
@@ -99,10 +115,9 @@ class ApplicationController < ActionController::Base
       bollo: importo_bollo,
       bollo_esenzione: params[:esenzioneBollo],
       nome_certificato: nome_certificato,
-      # TODO aggiungere importo quando l'api lo fornirà
+      # TODO -WAIT- aggiungere importo quando l'api lo fornirà
       # diritti_importo: importo_segreteria,
       diritti_importo: 0, # per ora sempre a 0 perchè non cè l'api
-      # TODO aggiungere uso 
       uso: params[:motivoEsenzione],
       richiedente_cf: session[:cf],
       richiedente_nome: session[:nome],
@@ -191,7 +206,6 @@ class ApplicationController < ActionController::Base
     #   page = 1
     # end
 
-    # TODO aggiungere wildcard ad altri campi ricerca e verificare che nomeCognome funzioni
     if !params[:cognomeNome].nil? || !params[:cognomeNome].blank?
       params[:cognomeNome] = "%#{params[:cognomeNome]}%"
     end
@@ -224,7 +238,7 @@ class ApplicationController < ActionController::Base
       result = HTTParty.post(
         "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
         :body => params.to_json,
-        :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } ,
+        :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
         :debug_output => $stdout
       )   
       result = JSON.parse(result.response.body)
@@ -352,12 +366,16 @@ class ApplicationController < ActionController::Base
       result = HTTParty.post(
         "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
         :body => searchParams.to_json,
-        :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } ,
+        :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
         :debug_output => $stdout
       )    
       # result = result.response.body
-      result = JSON.parse(result.response.body)
-      result = result[0]
+      if result.response.body.length > 0
+        result = JSON.parse(result.response.body)
+        result = result[0]
+      else
+        result = ""
+      end
       if !result.nil? && result.length > 0
 
         result["datiRichiedente"] = {
@@ -399,7 +417,7 @@ class ApplicationController < ActionController::Base
           resultFamiglia = HTTParty.post(
             "#{@@api_url}/Anagrafe/RicercaComponentiFamiglia?v=1.0", 
             :body => searchParams.to_json,
-            :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "bearer #{session[:token]}" } ,
+            :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
             :debug_output => $stdout
           )    
           resultFamiglia = JSON.parse(resultFamiglia.response.body)
@@ -447,6 +465,9 @@ class ApplicationController < ActionController::Base
               
               if !scaduto && richiesta_certificato.stato == "da_pagare"
                 statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
+                # verificaPagamento = verifica_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.id)
+                # puts "verifica pagamento response"
+                # puts verificaPagamento
                 if(!statoPagamenti.nil? && statoPagamenti["esito"]=="ok" && (statoPagamenti["esito"][0]["stato"]=="Pagato"))
                   # pagato, lascio scaricare il documento
                   url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
@@ -503,8 +524,8 @@ class ApplicationController < ActionController::Base
               else
                 url = ""
               end
-              # TODO scaricabile solo una volta, vedere su velletri o giugliano, aggiungere avviso
-              # TODO prevedere scadenza 180gg, se stato scaduto si vede ma non si scarica più
+              # scaricabile solo una volta, vedere su velletri o giugliano
+              # TODO non mostrare certificati scaduti
               result["certificati"] << { 
                 "id": richiesta_certificato.id, 
                 "nome_certificato": richiesta_certificato.nome_certificato, 
@@ -527,6 +548,17 @@ class ApplicationController < ActionController::Base
                 "data_inserimento": "",
                 "esenzione": richiesta_certificato.bollo_esenzione, 
                 "importo": importo
+              }
+            end
+            # recupero anche le autocertificazioni
+            files = Dir.glob("#{Rails.root}/autocertificazioni/odt/*")
+            result["autocertificazioni"] = []
+            files.each do |percorso|
+              filename = File.basename(percorso)
+              result["autocertificazioni"] << { 
+                "preText": filename.sub(".odt"," ").sub(/\d{1,2} /,""), 
+                "text": "scarica documento".html_safe, 
+                "url": request.protocol+request.host_with_port+"/scarica_autocertificazione/?nome=#{filename}", 
               }
             end
           end
@@ -574,6 +606,219 @@ class ApplicationController < ActionController::Base
       traccia_operazione(tipologia_richiesta)
       render html: '<DOCTYPE html><html><head><title>Non autorizzato</title></head><body>Non sei autorizzato a visualizzare questo file.</body></html>'.html_safe
     end
+  end
+
+  def scarica_autocertificazione
+    content_type = {:rtf => "text/rtf", :pdf => "application/pdf", :odt => "application/vnd.oasis.opendocument.text"}
+    cf = params['codice_fiscale']
+    nome = CGI.unescape(params['nome'])
+    # new_pdf_method = true
+    # begin
+    #     require 'docsplit' if Spider.config.get('demografici.formato_autocertificazioni') == 'pdf'
+    # rescue LoadError => exc
+    #     new_pdf_method = false
+    # end
+    new_pdf_method = false
+    # end_format = Spider.config.get('demografici.formato_autocertificazioni').to_sym
+    end_format = :odt
+ 
+    if new_pdf_method
+        case end_format
+            when :odt, :pdf
+                format = :odt
+            when :rtf
+                format = end_format
+        end 
+    else 
+        format = end_format
+    end
+
+    cf_ricerca = session[:cf_visualizzato]
+    if session[:cf_visualizzato].nil? || session[:cf_visualizzato].blank? 
+      cf_ricerca = session[:cf]
+    elsif session[:cf_visualizzato] == session[:cf]
+      cf_ricerca = session[:cf]
+    end
+
+    searchParams = { "CodiceFiscale": cf_ricerca }
+    searchParams[:MostraIndirizzo] = true
+    searchParams[:MostraConiuge] = true
+    searchParams[:MostraDatiStatoCivile] = true
+
+    result = HTTParty.post(
+      "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
+      :body => searchParams.to_json,
+      :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
+      :debug_output => $stdout
+    )    
+    result = JSON.parse(result.response.body)
+    result = result[0]
+    if !result.nil? && result.length > 0
+
+      comune = get_comune(result["codiceIstatComuneNascitaItaliano"], result["dataNascita"])
+      if !comune.blank? && !comune.nil? && comune
+        result["comuneNascitaDescrizione"] = comune
+      elsif !result["descrizioneComuneNascitaEstero"].blank?
+        stato = get_stato_estero(result["codiceIstatNazioneNascitaEstero"], result["dataNascita"])
+        result["comuneNascitaDescrizione"] = result["descrizioneComuneNascitaEstero"]+" (#{stato})"
+      else
+        result["comuneNascitaDescrizione"] = "";
+      end
+
+      now = Time.now.strftime("%d/%m/%y")
+      comune = get_comune(result["codiceIstatComuneResidenzaItaliano"], now)
+      if !comune.blank? && !comune.nil? && comune
+        result["comuneResidenzaDescrizione"] = comune
+      elsif !result["descrizioneComuneResidenzaEstero"].blank?
+        stato = get_stato_estero(result["codiceIstatResidenzaResidenzaEstero"], now)
+        result["comuneResidenzaDescrizione"] = result["descrizioneComuneNascitaEstero"]+" (#{stato})"
+      else
+        result["comuneResidenzaDescrizione"] = "";
+      end
+
+      coniuge = { "cognome" => "", "nome" => "", "oa" => "", "comune_nascita" => "", "data_nascita" => "" }
+      if !result["datiStatoCivile"]["matrimonio"].blank? && !result["datiStatoCivile"]["matrimonio"].nil?
+        resultConiuge = result["datiStatoCivile"]["matrimonio"]["coniuge"]
+        coniuge = { 
+          "cognome" => resultConiuge["cognome"], 
+          "nome" => resultConiuge["cognome"], 
+          "oa" => "", 
+          "comune_nascita" => "", 
+          "data_nascita" => "" 
+        }
+      end
+
+
+      @persona = {
+        "nome" => result["nome"],
+        "cognome" => result["cognome"],
+        "codice_fiscale" => result["codiceFiscale"],
+        "comune_nascita" => result["comuneNascitaDescrizione"],
+        "data_nascita" => result["dataNascita"],
+        # "indirizzo_residenza" => indirizzo,
+        "cittadinanza" => { "descrizione" => result["descrizioneCittadinanza"] },
+        "coniuge" => { "cognome" => "", "nome" => "", "oa" => "", "comune_nascita" => "", "data_nascita" => "" },
+        "stato_civile" => { "codice_istat" => result["statoCivile"] },
+      }
+      @oa = result["sesso"] == "M" ? "o": "a"
+      @illa = result["sesso"] == "M" ? "il": "la" 
+      @data = now
+      searchParams = { 
+        "codiceAggregazione": result["codiceFamiglia"], 
+      }
+      resultFamiglia = HTTParty.post(
+        "#{@@api_url}/Anagrafe/RicercaComponentiFamiglia?v=1.0", 
+        :body => searchParams.to_json,
+        :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
+        :debug_output => $stdout
+      )    
+      resultFamiglia = JSON.parse(resultFamiglia.response.body)
+      @famiglia = []
+      resultFamiglia.each do |componente|
+        relazione = RelazioniParentela.where(id_relazione: componente["codiceRelazioneParentelaANPR"]).first
+        puts "TYPEOF "
+        puts relazione.inspect
+        componente["relazioneParentela"] = relazione.descrizione
+        @famiglia << {
+          "nome" => componente["nome"],
+          "cognome" => componente["cognome"],
+          "relazione_parentela" => componente["relazioneParentela"],
+          "data_nascita" => componente["dataNascita"],
+          "comune_nascita" => "", # non c'è!
+        }
+      end
+
+      json = @persona.to_json
+      @persona = JSON.parse(json, object_class: OpenStruct)
+
+      @persona.data_nascita = AutocertDateTime.parse(@persona.data_nascita).to_date
+      @persona.indirizzo_residenza = Indirizzo.new({ "indirizzo" => result["indirizzo"], "comune" => result["comuneResidenzaDescrizione"] })
+
+      # puts "persona is"
+      # puts @persona
+      # puts "data_nascita is"
+      # puts @persona.data_nascita.class.name
+      # puts "indirizzo_residenza is"
+      # puts @persona.indirizzo_residenza
+      # puts @persona.indirizzo_residenza.comune
+      # puts @persona.indirizzo_residenza.indirizzo
+      # puts @persona.indirizzo_residenza.class.name
+      # puts "data_nascita.lformat"
+      # puts @persona.data_nascita.lformat
+
+      json = @famiglia.to_json
+      @famiglia = JSON.parse(json, object_class: OpenStruct)
+      @famiglia.each_with_index do |membro,index|
+        membro.data_nascita = AutocertDateTime.parse(membro.data_nascita).to_date
+        @famiglia[index] = membro
+      end 
+      puts @famiglia
+      # @famiglia.each do |indice,membro|
+      #   membro.data_nascita = AutocertDateTime.parse(membro.data_nascita).to_date
+      #   @famiglia[indice] = membro
+      # end
+    end
+
+    raise NotFound.new("Autocertificazione #{nome} formato '#{format}'") unless [:rtf, :pdf, :odt].include?(format)
+
+    
+    # salva_traccia('autocertificazioni', @request.params.convert_object.to_json)
+
+    if format == :rtf
+      # ???
+      # if RUBY_VERSION =~ /1.8/
+      #     scene.data = iconv.iconv(scene.data)
+      # else
+      #     scene.data = scene.data.encode('cp1252','utf-8').force_encoding('utf-8')
+      #     scene.persona.indirizzo_residenza.via.descrizione = scene.persona.indirizzo_residenza.via.descrizione.encode('cp1252','utf-8').force_encoding('utf-8')
+      # end
+      # scene_binding = scene.instance_eval{ binding }
+      # cf = persona.codice_fiscale
+      # if RUBY_VERSION =~ /1.8/
+      #     definitive_file = ERB.new(IO.read(res.path)).result(scene_binding)
+      # else
+      #     definitive_file = ERB.new(IO.read(res.path).force_encoding('binary')).result(scene_binding)
+      # end
+    elsif format == :pdf
+      # ???
+      # template = load_template_from_path(res.path, Demografici)
+      # template.init(scene)
+      # html = StringIO.new
+      # $out.output_to(html) do
+      #     template.render
+      # end
+      # kit = PDFKit.new(html.string, :page_size => 'A4')
+      # definitive_file = kit.to_pdf
+    elsif format == :odt
+      filename_in = "#{Rails.root}/autocertificazioni/odt/#{nome}"
+      pathfile = "#{Rails.root}/data/#{result["codiceFiscale"]}/"
+      FileUtils.mkpath(pathfile)
+      filename_out = pathfile+"#{nome}"
+
+      puts "rendering odt #{filename_in} to #{filename_out}"
+      render_odt(filename_in, "#{filename_out}")
+      if end_format == format
+        definitive_file = IO.read("#{filename_out}")                    
+      elsif end_format == :pdf
+        Docsplit.extract_pdf("#{filename_out}", :output => pathfile) 
+        definitive_file = IO.read("#{filename_out}")
+      end
+    end
+    File.open(filename_out, 'r') do |f|
+      send_data f.read, type: "application/vnd.oasis.opendocument.text", filename: nome
+    end
+    # File.delete(file_path)
+    # send_file "#{filename_out}", type: "application/vnd.oasis.opendocument.text", x_sendfile: true
+    FileUtils.rm_rf(pathfile)
+    # File.delete(filename_out) if File.exist?(filename_out)
+    # @response.headers['Content-Disposition'] = "attachment; filename=\"#{nome}.#{end_format.to_s}\""
+    # @response.headers['Content-Type'] = content_type[end_format]
+    # if RUBY_VERSION =~ /1.8/
+    #     $out << definitive_file
+    # else
+    #     $out << definitive_file.force_encoding('BINARY')
+    # end  
+    # FileUtils.remove_dir(Spider.paths[:data]+"/#{result["codiceFiscale"]}") if File.directory?(Spider.paths[:data]+"/#{result["codiceFiscale"]}")
   end
 
   # richiesta da portale cittadino
