@@ -171,6 +171,8 @@ class DemograficiList extends React.Component{
     console.log(props);
     this.list = props.list;
     this.linked = props.linked;
+    this.nostyle = props.nostyle;
+    if(!this.nostyle){this.nostyle=false;}
     console.log("constructor end");
   }
 
@@ -180,19 +182,29 @@ class DemograficiList extends React.Component{
     console.log(this.list);
     console.log("linked");
     console.log(this.linked);
+    console.log("nostyle");
+    console.log(this.nostyle);
     var listItems = [];
     var html;
+    var classNameLi = 'list-group-item"';
+    var classNameUl = 'list-group"';
+    var separator = <></>;
+    if(this.nostyle) {
+      classNameLi = 'btn';
+      classNameUl = '';
+      separator = <br/>;
+    }
     if(this.list && this.list[0]) {
       if(this.linked) {
-        listItems.push(this.list.map((item, index) => <a className="list-group-item" key={index.toString()} href={item.url}>{item.preText?<span>{item.preText}</span> :""}{item.text.toLowerCase().indexOf("scarica")>-1?<span>{item.text} <FontAwesomeIcon icon={faDownload}/></span>:item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a>  ));
+        listItems.push(this.list.map((item, index) => <><a className={classNameLi} key={index.toString()} href={item.url}>{item.preText?<span>{item.preText}</span> :""}{item.text.toLowerCase().indexOf("scarica")>-1?<span><FontAwesomeIcon icon={faDownload}/></span>:item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a>{separator}</> ));
       } else {
-        listItems.push(this.list.map((item, index) => <li className="list-group-item" key={index.toString()}>{item.preText?<span>{item.preText}</span> :""}<a href={item.url}>{item.text.toLowerCase().indexOf("scarica")>-1?<span>{item.text} <FontAwesomeIcon icon={faDownload}/></span>:item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a></li>  ));
+        listItems.push(this.list.map((item, index) => <li className={classNameLi} key={index.toString()}>{item.preText?<span>{item.preText}</span> :""}<a href={item.url}>{item.text.toLowerCase().indexOf("scarica")>-1?<span><FontAwesomeIcon icon={faDownload}/></span>:item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a></li>  ));
       }
     }
     if(this.linked) {
-      html = <div className="list-group">{listItems}</div>
+      html = <div className={classNameUl}>{listItems}</div>
     } else {
-      html = <ul className="list-group">{listItems}</ul>
+      html = <ul className={classNameUl}>{listItems}</ul>
     }
     console.log(html);
     return(html);
@@ -589,7 +601,7 @@ class DettagliPersona extends React.Component{
     }
     if(datiAnagrafica.autocertificazioni) {
       result.dati.autocertificazioni = [[
-        { name:"", labelCols:0, valueSize:12, value: <DemograficiList list={datiAnagrafica.autocertificazioni} linked="true"/>, html: true }
+        { name:"", labelCols:0, valueSize:12, value: <DemograficiList list={datiAnagrafica.autocertificazioni} linked="true" nostyle="true"/>, html: true }
       ]]
     }
 
