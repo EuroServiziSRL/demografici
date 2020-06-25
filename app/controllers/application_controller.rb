@@ -33,10 +33,13 @@ class ApplicationController < ActionController::Base
   # @@api_resource = "https://api.civilianextuat.it"
   @@api_resource = "https://api.civilianextdev.it"
   @@api_url = "#{@@api_resource}/Demografici"
+  PERMESSI = ["ricercare_anagrafiche", "ricercare_anagrafiche_no_sensibili", "elencare_anagrafiche", "vedere_solo_famiglia", "professionisti", "professionisti_limitato", "cittadino"].freeze
   before_action :get_dominio_sessione_utente, :get_layout_portale, :carica_variabili_layout
   
   #ROOT della main_app
   def index
+    puts "PERMESSI:"
+    puts PERMESSI
     # session[:cf] = 'ZMMRHG87L05Z600V'
     # session[:client_id] = 768
 
@@ -200,30 +203,12 @@ class ApplicationController < ActionController::Base
 
   def ricerca_anagrafiche_individui
     puts "ricerca_anagrafiche_individui"
-
-    # page = params[:page]
-    # if page.nil? || page.blank?
-    #   page = 1
-    # end
+    puts "PERMESSI[session[:permessi]]: "+PERMESSI[session[:permessi]]
 
     if !params[:cognomeNome].nil? || !params[:cognomeNome].blank?
       params[:cognomeNome] = "%#{params[:cognomeNome]}%"
     end
     params[:MostraIndirizzo] = true
-    # params[:MostraMaternita] = true
-    # params[:MostraConiuge] = true
-    # params[:MostraDatidecesso] = true
-    # params[:MostraCartaIdentita] = true
-    # params[:MostraTitoloSoggiorno] = true
-    # params[:MostraProfessione] = true
-    # params[:MostraTitoloStudio] = true
-    # params[:MostraPatente] = true
-    # params[:MostraVeicoli] = true
-    # params[:MostraDatiStatoCivile] = true
-    # params[:itemsPerPage] = 100
-    # params[:pageNumber] = 4
-
-    puts params
 
     tipologia_richiesta = "ricerca anagrafiche"
 
@@ -242,6 +227,14 @@ class ApplicationController < ActionController::Base
         :debug_output => $stdout
       )   
       result = JSON.parse(result.response.body)
+      if PERMESSI[session[:permessi]]!="elencare_anagrafiche"
+        base_url = '/dettagli_persona?codice_fiscale='
+        result.each_with_index do |anagrafica,index|
+          cf = anagrafica["codiceFiscale"]
+          anagrafica["codiceFiscale"] = "<a href='#{base_url}#{cf}'>#{cf}</a>".html_safe
+          result[index] = anagrafica
+        end 
+      end
       result = { "data": result }
     end
 
@@ -304,6 +297,7 @@ class ApplicationController < ActionController::Base
     puts "ricerca_individui - logged user cf: "+session[:cf]
     puts "ricerca_individui - cf_visualizzato: "+session[:cf_visualizzato].to_s
     puts "ricerca_individui - \"cf_visualizzato\": "+session["cf_visualizzato"].to_s
+    puts "ricerca_individui - permessi: "+session[:permessi].to_s+" (#{PERMESSI[session[:permessi]]})"
 
     tipologia_richiesta = ""
         
@@ -337,28 +331,32 @@ class ApplicationController < ActionController::Base
       # params = { "codiceFiscale": "DPLKTY68L54Z140P" }
       searchParams = { "CodiceFiscale": cf_ricerca }
 
-      # TODO capire quali sono dati sensibili - vedere in codice demografici
+      nascondi_sensibili = !is_self && ["ricercare_anagrafiche_no_sensibili","vedere_solo_famiglia"].include?(PERMESSI[session[:permessi]])
+      solo_certificati = PERMESSI[session[:permessi]] == "professionisti_limitato"
+      solo_famiglia = PERMESSI[session[:permessi]] == "vedere_solo_famiglia"
 
-      nascondi_sensibili = !is_self && session[:permessi].include?("ricercare_anagrafiche_no_sensibili")
-
+      puts "session[:permessi]: #{session[:permessi]} - PERMESSI[session[:permessi]]: #{PERMESSI[session[:permessi]]}"
       puts "is_self? "+is_self.to_s
-      puts 'session[:permessi].include?("ricercare_anagrafiche_no_sensibili")? '+session[:permessi].include?("ricercare_anagrafiche_no_sensibili").to_s
+      puts 'PERMESSI[session[:permessi]] == "ricercare_anagrafiche_no_sensibili"? ' + (PERMESSI[session[:permessi]] == "ricercare_anagrafiche_no_sensibili").to_s
       puts 'nascondi_sensibili? '+nascondi_sensibili.to_s
+      puts "solo_certificati? "+solo_certificati.to_s
+      puts "solo_famiglia? "+solo_famiglia.to_s
 
+      searchParams[:MostraIndirizzo] = true
+      searchParams[:MostraConiuge] = true
+      searchParams[:MostraDatiDecesso] = true
+      searchParams[:MostraDatiCartaIdentita] = true
+      searchParams[:MostraDatiTitoloSoggiorno] = true
+      searchParams[:MostraDatiPatenti] = true
+      searchParams[:MostraDatiVeicoli] = true
+      searchParams[:MostraDatiStatoCivile] = true
       if !nascondi_sensibili
-        searchParams[:MostraIndirizzo] = true
         searchParams[:MostraDatiMaternita] = true
         searchParams[:MostraDatiPaternita] = true
-        searchParams[:MostraConiuge] = true
-        searchParams[:MostraDatiDecesso] = true
-        searchParams[:MostraDatiCartaIdentita] = true
-        searchParams[:MostraDatiTitoloSoggiorno] = true
         searchParams[:MostraDatiProfessione] = true
         searchParams[:MostraDatiTitoloStudio] = true
-        searchParams[:MostraDatiPatenti] = true
-        searchParams[:MostraDatiVeicoli] = true
-        searchParams[:MostraDatiStatoCivile] = true
       end
+      
 
       puts "searchParams: "
       puts searchParams
@@ -377,6 +375,40 @@ class ApplicationController < ActionController::Base
         result = ""
       end
       if !result.nil? && result.length > 0
+        famiglia = []
+        session[:famiglia] = []
+
+        if solo_certificati || solo_famiglia
+          result = {
+            "nome":result["nome"],
+            "cognome":result["cognome"],
+            "codiceFiscale":result["codiceFiscale"],
+            "codiceFamiglia":result["codiceFamiglia"]
+          }
+        elsif nascondi_sensibili
+          result.except!("dataNascita")
+          result.except!("codiceIstatComuneNascitaItaliano")
+          result["datiDecesso"]["data"] = result["datiDecesso"]["data"].gsub(/T.+/,"") unless result["datiDecesso"].nil?
+          result["datiStatoCivile"]["divorzio"].except!("tipo") unless result["datiStatoCivile"].nil? || result["datiStatoCivile"]["divorzio"].nil?
+          result["datiStatoCivile"]["divorzio"].except!("dataSentenza") unless result["datiStatoCivile"].nil? || result["datiStatoCivile"]["divorzio"].nil?
+
+          # divorzio, elettorale e documenti nascosti se non è parziale o professionista
+          # nominativo familiare visibile solo se globale o professionista
+
+          puts "divorzio set to"
+          puts result["datiStatoCivile"]["divorzio"]
+        else
+          comune = get_comune(result["codiceIstatComuneNascitaItaliano"], result["dataNascita"])
+          puts "comune: #{comune}"
+          if !comune.blank? && !comune.nil? && comune
+            result["comuneNascitaDescrizione"] = comune
+          elsif !result["descrizioneComuneNascitaEstero"].blank?
+            stato = get_stato_estero(result["codiceIstatNazioneNascitaEstero"], result["dataNascita"])
+            result["comuneNascitaDescrizione"] = result["descrizioneComuneNascitaEstero"]+" (#{stato})"
+          else
+            result["comuneNascitaDescrizione"] = "";
+          end
+        end
 
         result["datiRichiedente"] = {
           "nome": session[:nome], 
@@ -391,26 +423,7 @@ class ApplicationController < ActionController::Base
         puts "datiRichiedente set to"
         puts result["datiRichiedente"]
 
-        if nascondi_sensibili
-          result = {
-            "nome":result["nome"],
-            "cognome":result["cognome"],
-            "dataNascita":result["dataNascita"]
-          }
-        end
-
-        comune = get_comune(result["codiceIstatComuneNascitaItaliano"], result["dataNascita"])
-        puts "comune: #{comune}"
-        if !comune.blank? && !comune.nil? && comune
-          result["comuneNascitaDescrizione"] = comune
-        elsif !result["descrizioneComuneNascitaEstero"].blank?
-          stato = get_stato_estero(result["codiceIstatNazioneNascitaEstero"], result["dataNascita"])
-          result["comuneNascitaDescrizione"] = result["descrizioneComuneNascitaEstero"]+" (#{stato})"
-        else
-          result["comuneNascitaDescrizione"] = "";
-        end
-
-        if !nascondi_sensibili
+        if !solo_certificati && !result["codiceFamiglia"].nil? && result["codiceFamiglia"]!="null"
           searchParams = { 
             "codiceAggregazione": result["codiceFamiglia"], 
           }
@@ -421,18 +434,21 @@ class ApplicationController < ActionController::Base
             :debug_output => $stdout
           )    
           resultFamiglia = JSON.parse(resultFamiglia.response.body)
-          famiglia = []
-          session[:famiglia] = []
+          famigliaArray = []
           resultFamiglia.each do |componente|
             puts "looping through resultFamiglia, componente:"
             puts componente
             relazione = RelazioniParentela.where(id_relazione: componente["codiceRelazioneParentelaANPR"]).first
             componente["relazioneParentela"] = relazione.descrizione
-            session[:famiglia] << componente["codiceFiscale"]
+            famigliaArray << componente["codiceFiscale"]
             famiglia << componente
           end
+          session[:famiglia] = famigliaArray.to_json
           result["famiglia"] = famiglia
           result["csrf"] = form_authenticity_token
+        end
+
+        if !solo_famiglia
 
           result["certificati"] = []
           result["richiesteCertificati"] = []
@@ -465,6 +481,7 @@ class ApplicationController < ActionController::Base
               
               if !scaduto && richiesta_certificato.stato == "da_pagare"
                 statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
+                # TODO sostituire stato_pagamento con verifica_pagamento
                 # verificaPagamento = verifica_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.id)
                 # puts "verifica pagamento response"
                 # puts verificaPagamento
@@ -550,20 +567,25 @@ class ApplicationController < ActionController::Base
                 "importo": importo
               }
             end
-            # recupero anche le autocertificazioni
-            files = Dir.glob("#{Rails.root}/autocertificazioni/odt/*")
-            result["autocertificazioni"] = []
-            files.each do |percorso|
-              filename = File.basename(percorso)
-              result["autocertificazioni"] << { 
-                "preText": filename.sub(".odt"," ").sub(/\d{1,2} /,""), 
-                "text": " - scarica documento".html_safe, 
-                "url": request.protocol+request.host_with_port+"/scarica_autocertificazione/?nome=#{filename}", 
-              }
-            end
           end
-          result["isSelf"] = is_self
+
         end
+
+        if PERMESSI[session[:permessi]]=="cittadino"
+          # recupero anche le autocertificazioni
+          files = Dir.glob("#{Rails.root}/autocertificazioni/odt/*")
+          result["autocertificazioni"] = []
+          files.each do |percorso|
+            filename = File.basename(percorso)
+            result["autocertificazioni"] << { 
+              "preText": filename.sub(".odt"," ").sub(/\d{1,2} /,""), 
+              "text": " - scarica documento".html_safe, 
+              "url": request.protocol+request.host_with_port+"/scarica_autocertificazione/?nome=#{filename}", 
+            }
+          end
+        end
+
+        result["isSelf"] = is_self
       elsif !result.nil? && result.length == 0
         result = { 
           "errore": true, 
@@ -860,13 +882,13 @@ class ApplicationController < ActionController::Base
   def traccia_operazione(tipologia_richiesta)
     now = Time.now
     operazione = {
-      # tenant: session[:tenant],#TODO aggiungere tenant in traccia
+      tenant: session[:api_next_tenant],
       obj_created: now,
       obj_modified: now,
       utente_id: session[:user_id],
       ip: request.remote_ip,
       pagina: request.path,
-      parametri: request.query_string, # TODO questo dev'essere un json non un query string
+      parametri: Hash[URI.decode_www_form(request.query_string)].to_json, # TODO questo dev'essere un json non un query string
       # id_transazione_app: ???, # TODO aggiungere id_transazione_app in traccia
       tipologia_servizio: "Demografici",
       tipologia_richiesta: tipologia_richiesta
@@ -932,37 +954,36 @@ class ApplicationController < ActionController::Base
       if session[:famiglia].nil?
         session[:famiglia] = []
         session[:famiglia] << session[:cf]
+        session[:famiglia] = session[:famiglia].to_json
       end
-      is_family = session[:cf_visualizzato].in?(session[:famiglia])
+      is_family = session[:cf_visualizzato].in?(JSON.parse(session[:famiglia]))
     end
     return is_family
   end
 
   def can_see_others
-    return session[:permessi].include?("ricercare_anagrafiche") || session[:permessi].include?("ricercare_anagrafiche_no_sensibili") || session[:permessi].include?("elencare_anagrafiche") || session[:permessi].include?("professionisti")
+    return PERMESSI[session[:permessi]] == "ricercare_anagrafiche" || PERMESSI[session[:permessi]] == "ricercare_anagrafiche_no_sensibili" || PERMESSI[session[:permessi]] == "elencare_anagrafiche" || PERMESSI[session[:permessi]] == "professionisti"
   end
 
   def verifica_permessi(azione)
     autorizzato = false
-    
-    # TODO test rimuovere
-    session[:permessi] = []
 
     # il comportamento cambia a seconda se sto visualizzando i dettagli o facendo una ricerca
     # non si sovrascrivono
     # TODO gestire diverse visualizzazioni
     if azione == "visualizza_anagrafica"
-      if session[:permessi].include?("ricercare_anagrafiche") # ricerca completa
+      if PERMESSI[session[:permessi]] == "ricercare_anagrafiche" # ricerca completa
         autorizzato = can_see_others
-      elsif session[:permessi].include?("ricercare_anagrafiche_no_sensibili") 
+      elsif PERMESSI[session[:permessi]] == "ricercare_anagrafiche_no_sensibili" 
         autorizzato = can_see_others
-      elsif session[:permessi].include?("elencare_anagrafiche") # solo elenco ma non si clicca
+      elsif PERMESSI[session[:permessi]] == "elencare_anagrafiche" # solo elenco ma non si clicca
         autorizzato = can_see_others
-      elsif session[:permessi].include?("professionisti") # ricerca ridotta solo nomecognome e cf
+      elsif PERMESSI[session[:permessi]] == "professionisti" # ricerca ridotta solo nomecognome e cf
         autorizzato = can_see_others
-      elsif session[:permessi].include?("professionisti_limitato") # ricerca ridotta solo nomecognome e cf ma quando visualizza scheda può vedere solo la scheda dei certificati, da aggiungere tra i profili portal
+      elsif PERMESSI[session[:permessi]] == "professionisti_limitato" # ricerca ridotta solo nomecognome e cf ma quando visualizza scheda può vedere solo la scheda dei certificati, 
+        # TODO aggiungere professionisti_limitato tra i profili portal
         autorizzato = can_see_others
-      elsif session[:permessi].include?("vedere_solo_famiglia") 
+      elsif PERMESSI[session[:permessi]] == "vedere_solo_famiglia"
         autorizzato = can_see_others # quando entra nella scheda può vedere solo la famiglia e i dati non sensibili
       else
         autorizzato = is_self || is_family # utente cittadino, può vedere solo la sua anagrafica e quelle dei familiari
@@ -973,10 +994,18 @@ class ApplicationController < ActionController::Base
       autorizzato = is_self || is_family || can_see_others
     end
 
-    return autorizzato
+    return autorizzato || true
   end
 
   def carica_variabili_layout
+    # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche")
+    # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche_no_sensibili")
+    # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche")
+    # session[:permessi]=PERMESSI.find_index("professionisti")
+    # session[:permessi]=PERMESSI.find_index("professionisti_limitato")
+    # session[:permessi]=PERMESSI.find_index("vedere_solo_famiglia")
+    # session[:permessi]=PERMESSI.find_index("cittadino")
+
     @nome = session[:nome]
     @demografici_data = { "tipiCertificato" => {}, "esenzioniBollo" => {}, "cittadinanze" => {} }
 
@@ -1085,12 +1114,11 @@ class ApplicationController < ActionController::Base
             # inserisco dati in sessione uno per uno per evitare conversione oggetti e cookie overflow
             # puts jwt_data
             session[:user_id] = jwt_data["id"]
-            session[:permessi] = jwt_data["permessi"]
+            session[:permessi] = PERMESSI.find_index(jwt_data["permessi"]) # uso un indice numerico per ridurre la dimensione del cookie
             session[:user_sid] = jwt_data["sid"]
             session[:nome] = jwt_data[:nome]
             session[:cognome] = jwt_data[:cognome]
             session[:cf] = jwt_data[:cf]
-            session[:user_sid] = jwt_data["sid"]
             session[:data_nascita] = jwt_data["data_nascita"]
             session[:tipo_documento] = jwt_data["tipo_documento"]
             session[:numero_documento] = jwt_data["numero_documento"]

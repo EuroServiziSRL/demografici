@@ -10,9 +10,9 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_06_05_092534) do
+ActiveRecord::Schema.define(version: 2020_06_25_100348) do
 
-  create_table "certificatis", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "certificati", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
     t.string "tenant"
     t.string "codice_fiscale"
     t.decimal "bollo", precision: 4, scale: 2
@@ -39,7 +39,7 @@ ActiveRecord::Schema.define(version: 2020_06_05_092534) do
     t.string "descrizione_errore"
   end
 
-  create_table "comunis", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "comuni", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
     t.date "dataistituzione"
     t.date "datacessazione"
     t.integer "codistat"
@@ -60,7 +60,7 @@ ActiveRecord::Schema.define(version: 2020_06_05_092534) do
     t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
   end
 
-  create_table "demografici_traccia", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "demografici__traccia", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
     t.datetime "obj_created"
     t.datetime "obj_modified"
     t.integer "utente_id"
@@ -72,9 +72,10 @@ ActiveRecord::Schema.define(version: 2020_06_05_092534) do
     t.string "tipologia_richiesta"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "tenant"
   end
 
-  create_table "esenzione_bollos", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "esenzione_bollo", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
     t.string "descrizione"
     t.boolean "esenzione_diritto_di_segreteria"
     t.integer "ordinamento"
@@ -84,7 +85,7 @@ ActiveRecord::Schema.define(version: 2020_06_05_092534) do
     t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
   end
 
-  create_table "relazioni_parentelas", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "relazioni_parentela", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
     t.integer "id_relazione", null: false
     t.string "descrizione"
     t.integer "ordinamento"
@@ -95,7 +96,7 @@ ActiveRecord::Schema.define(version: 2020_06_05_092534) do
     t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
   end
 
-  create_table "stati_esteris", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "stati_esteri", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
     t.string "denominazione"
     t.string "denominazioneistat"
     t.string "denominazioneistat_en"
@@ -117,7 +118,7 @@ ActiveRecord::Schema.define(version: 2020_06_05_092534) do
     t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
   end
 
-  create_table "tipo_certificatos", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "tipo_certificato", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
     t.string "descrizione"
     t.integer "ordinamento"
     t.date "datainiziovalidita"

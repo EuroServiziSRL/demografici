@@ -19,8 +19,8 @@ function ucfirst(str){
     }):"";
 }
 
-function linkAnagraficaFormatter(cell,row) {
-  return  <a href={demograficiData.dominio+"/dettagli_persona?codice_fiscale="+cell}>{cell}</a>;
+function linkAnagraficaFormatter(cell) {
+  return  <span dangerouslySetInnerHTML={ {__html: cell} } />
 } 
 
 function posizioneAnagraficaFormatter(cell) {

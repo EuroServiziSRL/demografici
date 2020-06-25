@@ -186,8 +186,8 @@ class DemograficiList extends React.Component{
     console.log(this.nostyle);
     var listItems = [];
     var html;
-    var classNameLi = 'list-group-item"';
-    var classNameUl = 'list-group"';
+    var classNameLi = 'list-group-item';
+    var classNameUl = 'list-group';
     var separator = <></>;
     if(this.nostyle) {
       classNameLi = 'btn';
@@ -196,7 +196,7 @@ class DemograficiList extends React.Component{
     }
     if(this.list && this.list[0]) {
       if(this.linked) {
-        listItems.push(this.list.map((item, index) => <><a className={classNameLi} key={index.toString()} href={item.url}>{item.preText?<span>{item.preText}</span> :""}{item.text.toLowerCase().indexOf("scarica")>-1?<span><FontAwesomeIcon icon={faDownload}/></span>:item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a>{separator}</> ));
+        listItems.push(this.list.map((item, index) => <><a className={classNameLi} key={item.text+index.toString()} href={item.url}>{item.preText?<span>{item.preText}</span> :""}{item.text.toLowerCase().indexOf("scarica")>-1?<span><FontAwesomeIcon icon={faDownload}/></span>:item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a>{separator}</> ));
       } else {
         listItems.push(this.list.map((item, index) => <li className={classNameLi} key={index.toString()}>{item.preText?<span>{item.preText}</span> :""}<a href={item.url}>{item.text.toLowerCase().indexOf("scarica")>-1?<span><FontAwesomeIcon icon={faDownload}/></span>:item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a></li>  ));
       }
@@ -435,20 +435,23 @@ class DettagliPersona extends React.Component{
       ]);
     }
 
-    result.dati.nascita = [[
-        { name: "cognome", value: datiAnagrafica.cognome },
-        { name: "nome", value: datiAnagrafica.nome },
-        { name: "sesso", value: datiAnagrafica.sesso },
-      ], [
-        { name: "dataNascita", label: "Data nascita", value: datiAnagrafica.dataNascita },
-        { name: "oraNascita", label: "Ora nascita", value: "" }, // non c'è
-        { name: "comuneNascitaDescrizione", label: "Comune di nascita", value: datiAnagrafica.comuneNascitaDescrizione }, 
-      ], [
-        { name: "statoCivile", label: "Stato civile", value: datiAnagrafica.datiStatoCivile?datiAnagrafica.datiStatoCivile.statoCivile:"" },
-        genitori.length?genitori[0]:{ name: "", value: "" },
-        genitori.length?genitori[1]:{ name: "", value: "" },
-      ], 
-    ];
+    result.dati.nascita = []
+    if(datiAnagrafica.dataNascita) {
+      result.dati.nascita = [[
+          { name: "cognome", value: datiAnagrafica.cognome },
+          { name: "nome", value: datiAnagrafica.nome },
+          { name: "sesso", value: datiAnagrafica.sesso },
+        ], [
+          { name: "dataNascita", label: "Data nascita", value: datiAnagrafica.dataNascita },
+          { name: "oraNascita", label: "Ora nascita", value: "" }, // non c'è
+          { name: "comuneNascitaDescrizione", label: "Comune di nascita", value: datiAnagrafica.comuneNascitaDescrizione }, 
+        ], [
+          { name: "statoCivile", label: "Stato civile", value: datiAnagrafica.datiStatoCivile?datiAnagrafica.datiStatoCivile.statoCivile:"" },
+          genitori.length?genitori[0]:{ name: "", value: "" },
+          genitori.length?genitori[1]:{ name: "", value: "" },
+        ], 
+      ];
+    }
 
     result.dati.documenti = [];
 
@@ -529,7 +532,7 @@ class DettagliPersona extends React.Component{
         { name: "nominativoDecesso", label: "Nominativo", value: nominativo },
         { name: "comuneDecesso", label: "Luogo del decesso", value: datiDecesso.comune },
         { name: "dataDecesso", label: "Data del decesso", value: dateFormatter(datiDecesso.data) },
-        { name: "dataDecesso", label: "Ora del decesso", value: datiDecesso.data.replace(/.*T/g,"") },
+        { name: "oraDecesso", label: "Ora del decesso", value: datiDecesso.data.replace(/[^T]*T*(.*)/g,'$1') },
       ]);
     }
     
@@ -551,8 +554,8 @@ class DettagliPersona extends React.Component{
         { name: "sentenzaDivorzio", label: "Tipo sentenza", value: datiDivorzio.tipo },
         { name: "dataDivorzio", label: "Data sentenza", value: dateFormatter(datiDivorzio.dataSentenza) },
       ],[
-        { name: "comuneDivorzio", value: datiDivorzio.comune },
-        { name: "tribunaleDivorzio", value: datiDivorzio.tribunale },
+        { name: "comuneDivorzio", label: "Comune divorzio", value: datiDivorzio.comune },
+        { name: "tribunaleDivorzio", label: "Tribunale divorzio", value: datiDivorzio.tribunale },
         { name: "", value: "" },
       ]);
     }
@@ -572,8 +575,8 @@ class DettagliPersona extends React.Component{
       var datiUnioneCivile = datiAnagrafica.datiStatoCivile.unioneCivile;
       result.dati.unione_civile.push([
         { name: "coniugeUnioneCivile", label: "Unito civilmente", value: (datiUnioneCivile.unitoCivilmente.cognome?datiUnioneCivile.unitoCivilmente.cognome:"")+" "+(datiUnioneCivile.unitoCivilmente.nome?datiUnioneCivile.unitoCivilmente.nome:"") },
-        { name: "comuneUnioneCivile", label: "Comune", value: datiUnioneCivile.comune },
-        { name: "dataUnioneCivile", label: "Data", value: dateFormatter(datiUnioneCivile.data) },
+        { name: "comuneUnioneCivile", label: "Comune unione civile", value: datiUnioneCivile.comune },
+        { name: "dataUnioneCivile", label: "Data unione civile", value: dateFormatter(datiUnioneCivile.data) },
       ]);
     }
 
@@ -582,8 +585,8 @@ class DettagliPersona extends React.Component{
       var datiScioglimento = datiAnagrafica.datiStatoCivile.scioglimentoUnione;
       result.dati.scioglimento_unione_civile.push([
         { name: "coniugeScioglimentoUnione", label: "Unito civilmente", value: (datiUniondatiScioglimentoeCivile.unitoCivilmente.cognome?datiScioglimento.unitoCivilmente.cognome:"")+" "+(datiScioglimento.unitoCivilmente.nome?datiScioglimento.unitoCivilmente.nome:"") },
-        { name: "comuneScioglimentoUnione", label: "Comune", value: datiScioglimento.comune },
-        { name: "dataScioglimentoUnione", label: "Data", value: dateFormatter(datiScioglimento.data) },
+        { name: "comuneScioglimentoUnione", label: "Comune scioglimento", value: datiScioglimento.comune },
+        { name: "dataScioglimentoUnione", label: "Data scioglimento", value: dateFormatter(datiScioglimento.data) },
       ]);
     }
 
