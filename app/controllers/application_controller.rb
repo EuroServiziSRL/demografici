@@ -13,8 +13,8 @@ require 'autocert_date_time'
 begin
   require 'serenity'
 rescue LoadError => exc
-  puts "error loading serenity"
-  puts exc
+  debug_message("error loading serenity", 3)
+  debug_message(exc, 3)
 end
 
 ## auth su api
@@ -34,30 +34,37 @@ class ApplicationController < ActionController::Base
   @@api_resource = "https://api.civilianextdev.it"
   @@api_url = "#{@@api_resource}/Demografici"
   PERMESSI = ["ricercare_anagrafiche", "ricercare_anagrafiche_no_sensibili", "elencare_anagrafiche", "vedere_solo_famiglia", "professionisti", "professionisti_limitato", "cittadino"].freeze
-  before_action :get_dominio_sessione_utente, :get_layout_portale, :carica_variabili_layout
+  @@log_level = 0
+  @@log_to_output = true
+  @@log_to_file = false
+  before_action :get_dominio_sessione_utente, :get_layout_portale, :carica_variabili_layout, :test_variables
   
   #ROOT della main_app
   def index
-    puts "PERMESSI:"
-    puts PERMESSI
+    # debug_message("PERMESSI:", 3)
+    # debug_message(PERMESSI, 3)
     # session[:cf] = 'ZMMRHG87L05Z600V'
     # session[:client_id] = 768
 
     # 
     #carico cf in variabile per usarla sulla view
-    puts "index - session[:cf]: "+session[:cf]
-    puts "index - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s
+    debug_message("index - session[:cf]: "+session[:cf], 3)
+    debug_message("index - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s, 3)
     @cf_utente_loggato = session[:cf]
-    @page_app = "dettagli_persona"
+    if PERMESSI[session[:permessi]] == "cittadino"
+      @page_app = "dettagli_persona"
+    else
+      @page_app = "ricerca_anagrafiche"
+    end
      
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
 
   end
 
   def dettagli_persona
-    # puts "dettagli_persona - session[:cf]: "+session[:cf]
-    # puts "dettagli_persona - params[\"codice_fiscale\"]: "+params["codice_fiscale"]
-    # puts "dettagli_persona - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s
+    # debug_message("dettagli_persona - session[:cf]: "+session[:cf], 3)
+    # debug_message("dettagli_persona - params[\"codice_fiscale\"]: "+params["codice_fiscale"], 3)
+    # debug_message("dettagli_persona - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s, 3)
     @page_app = "dettagli_persona"
 
     if params["codice_fiscale"].nil?
@@ -65,13 +72,13 @@ class ApplicationController < ActionController::Base
       session[:cf_visualizzato] = nil
     elsif params["codice_fiscale"] == session[:cf]
       session[:cf_visualizzato] = nil
-      puts "session[:cf_visualizzato] set to null"
+      debug_message("session[:cf_visualizzato] set to null", 3)
     else
       session[:cf_visualizzato] = params["codice_fiscale"]
-      puts "session[:cf_visualizzato] now is: "+session[:cf_visualizzato].to_s
+      debug_message("session[:cf_visualizzato] now is: "+session[:cf_visualizzato].to_s, 3)
     end
-    puts "session is:"
-    puts session.class.inspect
+    debug_message("session is:", 3)
+    debug_message(session.class.inspect, 3)
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
   end
 
@@ -146,15 +153,21 @@ class ApplicationController < ActionController::Base
   def ricerca_anagrafiche
     @page_app = "ricerca_anagrafiche"
     @nome = session[:nome]
-
-    # session[:cf_visualizzato] = params["codice_fiscale"]
-    render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
+    
+    if PERMESSI[session[:permessi]] == "cittadino"
+      debug_message("redirecting to /", 3)
+      redirect_to "/"
+      return
+    else 
+      # session[:cf_visualizzato] = params["codice_fiscale"]
+      render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
+    end
   end
   
   def authenticate  
-    puts "authenticate - session[:cf]: "+session[:cf]
-    puts "authenticate - params[\"codice_fiscale\"]: "+params["codice_fiscale"].to_s
-    puts "authenticate - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s
+    debug_message("authenticate - session[:cf]: "+session[:cf], 3)
+    debug_message("authenticate - params[\"codice_fiscale\"]: "+params["codice_fiscale"].to_s, 3)
+    debug_message("authenticate - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s, 3)
     requestParams = {
       "resource": "#{@@api_resource.sub("https","http")}", 
       "tenant": "#{session[:api_next_tenant]}",
@@ -163,14 +176,7 @@ class ApplicationController < ActionController::Base
       "grant_type": 'client_credentials'
     }
 
-    # params["tenant"] = '97d6a602-2492-4f4c-9585-d2991eb3bf4c'
-    # params["client_id"] = 'aebe50cd-bbc0-4bf5-94ba-4e70590bcf1a'
-    # params["client_secret"] = 'w9=jyc0bA.sBVLX@aHD:87lPZlS4r=7x'
-    # puts params
-
-    
     oauthURL = "https://login.microsoftonline.com/#{requestParams[:tenant]}/oauth2/token";
-    # puts oauthURL
     result = HTTParty.post(oauthURL, 
       :body => requestParams.to_query,
       :headers => { 'Content-Type' => 'application/x-www-form-urlencoded','Accept' => 'application/json'  } ,
@@ -178,7 +184,7 @@ class ApplicationController < ActionController::Base
     )
 
     if !result["access_token"].nil? && result["access_token"].length > 0
-      puts "setting token into session"
+      debug_message("setting token into session", 3)
       session[:token] = result["access_token"]
       result["csrf"] = form_authenticity_token
     elsif !result["message"].nil? && result["message"].length > 0
@@ -202,8 +208,8 @@ class ApplicationController < ActionController::Base
   end  
 
   def ricerca_anagrafiche_individui
-    puts "ricerca_anagrafiche_individui"
-    puts "PERMESSI[session[:permessi]]: "+PERMESSI[session[:permessi]]
+    debug_message("ricerca_anagrafiche_individui", 3)
+    debug_message("PERMESSI[session[:permessi]]: "+PERMESSI[session[:permessi]], 3)
 
     if !params[:cognomeNome].nil? || !params[:cognomeNome].blank?
       params[:cognomeNome] = "%#{params[:cognomeNome]}%"
@@ -276,7 +282,7 @@ class ApplicationController < ActionController::Base
         "#{chiave}=#{val}"
     }.join('&')
     
-    # puts "query string for sha1 is [#{queryString.strip}]"
+    # debug_message("query string for sha1 is [#{queryString.strip}]", 3)
     # queryString = "importo=#{value["importoResiduo"].gsub(',', '.')}&descrizione=#{value["codiceAvvisoDescrizione"]} - n.#{value["numeroAvviso"]}&codice_applicazione=tributi&url_back=#{request.original_url}&idext=#{value["idAvviso"]}&tipo_elemento=pagamento_tari&nome_versante=#{session[:nome]}&cognome_versante=#{session[:cognome]}&codice_fiscale_versante=#{session[:cf]}&nome_pagatore=#{session[:nome]}&cognome_pagatore=#{session[:cognome]}&codice_fiscale_pagatore=#{session[:cf]}"
     fullquerystring = URI.unescape(queryString)
     # qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
@@ -293,11 +299,11 @@ class ApplicationController < ActionController::Base
   end
 
   def ricerca_individui
-    
-    puts "ricerca_individui - logged user cf: "+session[:cf]
-    puts "ricerca_individui - cf_visualizzato: "+session[:cf_visualizzato].to_s
-    puts "ricerca_individui - \"cf_visualizzato\": "+session["cf_visualizzato"].to_s
-    puts "ricerca_individui - permessi: "+session[:permessi].to_s+" (#{PERMESSI[session[:permessi]]})"
+    @@log_level = 3
+    debug_message("ricerca_individui - logged user cf: "+session[:cf], 3)
+    debug_message("ricerca_individui - cf_visualizzato: "+session[:cf_visualizzato].to_s, 3)
+    debug_message("ricerca_individui - \"cf_visualizzato\": "+session["cf_visualizzato"].to_s, 3)
+    debug_message("ricerca_individui - permessi: "+session[:permessi].to_s+" (#{PERMESSI[session[:permessi]]})", 3)
 
     tipologia_richiesta = ""
         
@@ -324,42 +330,41 @@ class ApplicationController < ActionController::Base
         "messaggio_errore": "Non sei autorizzato a visualizzare questi dati.", 
       }
     else
-      # params = { "codiceFiscale": "ZNNCDD51P20C794V" } # pochi dati
-      # params = { "codiceFiscale": "TLLLRA56E46B153E" } # deceduta, no famiglia
-      # params = { "codiceFiscale": "RGTVRB33C53B153U" }
-      # params = { "codiceFiscale": "GRFJNU74M26Z148Q" }
-      # params = { "codiceFiscale": "DPLKTY68L54Z140P" }
       searchParams = { "CodiceFiscale": cf_ricerca }
 
-      nascondi_sensibili = !is_self && ["ricercare_anagrafiche_no_sensibili","vedere_solo_famiglia"].include?(PERMESSI[session[:permessi]])
+      nascondi_sensibili = !is_self && ["ricercare_anagrafiche_no_sensibili","vedere_solo_famiglia","professionista_limitato"].include?(PERMESSI[session[:permessi]])
       solo_certificati = PERMESSI[session[:permessi]] == "professionisti_limitato"
       solo_famiglia = PERMESSI[session[:permessi]] == "vedere_solo_famiglia"
+      cittadino = PERMESSI[session[:permessi]] == "cittadino"
+      professionista = ["professionisti","professionisti_limitato"].include?(PERMESSI[session[:permessi]])
+      globale = ["ricercare_anagrafiche","ricercare_anagrafiche_no_sensibili","elencare_anagrafiche","vedere_solo_famiglia"].include?(PERMESSI[session[:permessi]])
 
-      puts "session[:permessi]: #{session[:permessi]} - PERMESSI[session[:permessi]]: #{PERMESSI[session[:permessi]]}"
-      puts "is_self? "+is_self.to_s
-      puts 'PERMESSI[session[:permessi]] == "ricercare_anagrafiche_no_sensibili"? ' + (PERMESSI[session[:permessi]] == "ricercare_anagrafiche_no_sensibili").to_s
-      puts 'nascondi_sensibili? '+nascondi_sensibili.to_s
-      puts "solo_certificati? "+solo_certificati.to_s
-      puts "solo_famiglia? "+solo_famiglia.to_s
+      debug_message("session[:permessi]: #{session[:permessi]} - PERMESSI[session[:permessi]]: #{PERMESSI[session[:permessi]]}", 3)
+      debug_message("is_self? "+is_self.to_s, 3)
+      debug_message('PERMESSI[session[:permessi]] == "ricercare_anagrafiche_no_sensibili"? ' + (PERMESSI[session[:permessi]] == "ricercare_anagrafiche_no_sensibili").to_s, 3)
+      debug_message('nascondi_sensibili? '+nascondi_sensibili.to_s, 3)
+      debug_message("solo_certificati? "+solo_certificati.to_s, 3)
+      debug_message("solo_famiglia? "+solo_famiglia.to_s, 3)
+      debug_message("cittadino? "+cittadino.to_s, 3)
+      debug_message("professionista? "+professionista.to_s, 3)
+      debug_message("globale? "+globale.to_s, 3)
 
       searchParams[:MostraIndirizzo] = true
       searchParams[:MostraConiuge] = true
       searchParams[:MostraDatiDecesso] = true
-      searchParams[:MostraDatiCartaIdentita] = true
       searchParams[:MostraDatiTitoloSoggiorno] = true
-      searchParams[:MostraDatiPatenti] = true
-      searchParams[:MostraDatiVeicoli] = true
       searchParams[:MostraDatiStatoCivile] = true
-      if !nascondi_sensibili
-        searchParams[:MostraDatiMaternita] = true
-        searchParams[:MostraDatiPaternita] = true
-        searchParams[:MostraDatiProfessione] = true
-        searchParams[:MostraDatiTitoloStudio] = true
-      end
+      searchParams[:MostraDatiCartaIdentita] = !professionista
+      searchParams[:MostraDatiPatenti] = !professionista
+      searchParams[:MostraDatiVeicoli] = !professionista
+      searchParams[:MostraDatiMaternita] = !nascondi_sensibili
+      searchParams[:MostraDatiPaternita] = !nascondi_sensibili
+      searchParams[:MostraDatiProfessione] = !nascondi_sensibili
+      searchParams[:MostraDatiTitoloStudio] = !nascondi_sensibili
       
 
-      puts "searchParams: "
-      puts searchParams
+      debug_message("searchParams: ", 3)
+      debug_message(searchParams, 3)
 
       result = HTTParty.post(
         "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
@@ -378,13 +383,18 @@ class ApplicationController < ActionController::Base
         famiglia = []
         session[:famiglia] = []
 
-        if solo_certificati || solo_famiglia
-          result = {
-            "nome":result["nome"],
-            "cognome":result["cognome"],
-            "codiceFiscale":result["codiceFiscale"],
-            "codiceFamiglia":result["codiceFamiglia"]
-          }
+        if solo_famiglia || solo_certificati
+          new_result = { }
+          
+          new_result["nome"] = result["nome"]
+          new_result["cognome"] = result["cognome"]
+          new_result["codiceFiscale"] = result["codiceFiscale"]
+          new_result["codiceFamiglia"] = result["codiceFamiglia"]
+
+          result = new_result
+
+          debug_message("result set to", 3)
+          debug_message(result, 3)
         elsif nascondi_sensibili
           result.except!("dataNascita")
           result.except!("codiceIstatComuneNascitaItaliano")
@@ -395,11 +405,16 @@ class ApplicationController < ActionController::Base
           # divorzio, elettorale e documenti nascosti se non è parziale o professionista
           # nominativo familiare visibile solo se globale o professionista
 
-          puts "divorzio set to"
-          puts result["datiStatoCivile"]["divorzio"]
+          debug_message("divorzio set to", 3)
+          debug_message(result["datiStatoCivile"]["divorzio"], 3)
         else
+          if professionista
+            result["datiStatoCivile"].except!("divorzio") unless result["datiStatoCivile"].nil?
+            result["datiStatoCivile"].except!("divorzio") unless result["datiStatoCivile"].nil?
+          end
+
           comune = get_comune(result["codiceIstatComuneNascitaItaliano"], result["dataNascita"])
-          puts "comune: #{comune}"
+          debug_message("comune: #{comune}", 3)
           if !comune.blank? && !comune.nil? && comune
             result["comuneNascitaDescrizione"] = comune
           elsif !result["descrizioneComuneNascitaEstero"].blank?
@@ -409,6 +424,7 @@ class ApplicationController < ActionController::Base
             result["comuneNascitaDescrizione"] = "";
           end
         end
+
 
         result["datiRichiedente"] = {
           "nome": session[:nome], 
@@ -420,10 +436,11 @@ class ApplicationController < ActionController::Base
           "data_documento": session[:data_documento], 
         }
 
-        puts "datiRichiedente set to"
-        puts result["datiRichiedente"]
-
-        if !solo_certificati && !result["codiceFamiglia"].nil? && result["codiceFamiglia"]!="null"
+        debug_message("datiRichiedente set to", 3)
+        debug_message(result["datiRichiedente"], 3)
+        
+        if !result["codiceFamiglia"].blank? && result["codiceFamiglia"]!="null" && ( cittadino || globale || professionista || solo_famiglia  )
+          debug_message("fetching famiglia", 3)
           searchParams = { 
             "codiceAggregazione": result["codiceFamiglia"], 
           }
@@ -436,8 +453,8 @@ class ApplicationController < ActionController::Base
           resultFamiglia = JSON.parse(resultFamiglia.response.body)
           famigliaArray = []
           resultFamiglia.each do |componente|
-            puts "looping through resultFamiglia, componente:"
-            puts componente
+            debug_message("looping through resultFamiglia, componente:", 3)
+            debug_message(componente, 3)
             relazione = RelazioniParentela.where(id_relazione: componente["codiceRelazioneParentelaANPR"]).first
             componente["relazioneParentela"] = relazione.descrizione
             famigliaArray << componente["codiceFiscale"]
@@ -448,7 +465,7 @@ class ApplicationController < ActionController::Base
           result["csrf"] = form_authenticity_token
         end
 
-        if !solo_famiglia
+        if ( cittadino || professionista || solo_certificati ) && !solo_famiglia
 
           result["certificati"] = []
           result["richiesteCertificati"] = []
@@ -470,10 +487,10 @@ class ApplicationController < ActionController::Base
             if richiesta_certificato.stato == "pagato" || richiesta_certificato.stato == "da_pagare"
               url = richiesta_certificato.documento
               scaduto = false
-              puts "data inserimento"
-              puts richiesta_certificato.data_inserimento
-              puts "180.days.ago"
-              puts 180.days.ago
+              debug_message("data inserimento", 3)
+              debug_message(richiesta_certificato.data_inserimento, 3)
+              debug_message("180.days.ago", 3)
+              debug_message(180.days.ago, 3)
 
               if 180.days.ago >= richiesta_certificato.data_inserimento
                 scaduto = true
@@ -481,19 +498,20 @@ class ApplicationController < ActionController::Base
               
               if !scaduto && richiesta_certificato.stato == "da_pagare"
                 statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
-                # TODO sostituire stato_pagamento con verifica_pagamento
+                # TODO **IMPORTANT** sostituire stato_pagamento con verifica_pagamento
+                # TODO **IMPORTANT** aggiungere marca da bollo
                 # verificaPagamento = verifica_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.id)
-                # puts "verifica pagamento response"
-                # puts verificaPagamento
+                # debug_message("verifica pagamento response", 3)
+                # debug_message(verificaPagamento, 3)
                 if(!statoPagamenti.nil? && statoPagamenti["esito"]=="ok" && (statoPagamenti["esito"][0]["stato"]=="Pagato"))
                   # pagato, lascio scaricare il documento
                   url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
                 else                  
                   url = "#{session[:dominio]}/servizi/pagamenti/"
-                  puts statoPagamenti
-                  puts statoPagamenti["esito"]
+                  debug_message(statoPagamenti, 3)
+                  debug_message(statoPagamenti["esito"], 3)
                   if(statoPagamenti.nil? || statoPagamenti["esito"]!="ok")
-                    puts "statoPagamenti NOT OK"
+                    debug_message("statoPagamenti NOT OK", 3)
                     if false
                       url = "/inserisci_pagamento?id=#{richiesta_certificato.id}"
                     else
@@ -524,7 +542,7 @@ class ApplicationController < ActionController::Base
                           "#{chiave}=#{val}"
                       }.join('&')
                       
-                      # puts "query string for sha1 is [#{queryString.strip}]"
+                      # debug_message("query string for sha1 is [#{queryString.strip}]", 3)
                       # queryString = "importo=#{value["importoResiduo"].gsub(',', '.')}&descrizione=#{value["codiceAvvisoDescrizione"]} - n.#{value["numeroAvviso"]}&codice_applicazione=tributi&url_back=#{request.original_url}&idext=#{value["idAvviso"]}&tipo_elemento=pagamento_tari&nome_versante=#{session[:nome]}&cognome_versante=#{session[:cognome]}&codice_fiscale_versante=#{session[:cf]}&nome_pagatore=#{session[:nome]}&cognome_pagatore=#{session[:cognome]}&codice_fiscale_pagatore=#{session[:cf]}"
                       fullquerystring = URI.unescape(queryString)
                       # qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
@@ -533,7 +551,7 @@ class ApplicationController < ActionController::Base
                       url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa.json?#{queryString}&hqs=#{hqs}&id_utente=#{session[:user_id]}&sid=#{session[:user_sid]}"
                     end
                   else
-                    puts "statoPagamenti OK"
+                    debug_message("statoPagamenti OK", 3)
                   end
                 end
               elsif !scaduto && richiesta_certificato.stato == "pagato"
@@ -610,10 +628,10 @@ class ApplicationController < ActionController::Base
 
     end
 
-    # puts "ricerca individui done, tracking request"
+    # debug_message("ricerca individui done, tracking request", 3)
     traccia_operazione(tipologia_richiesta)
-    # puts "request tracked, result is:"
-    # puts result
+    # debug_message("request tracked, result is:", 3)
+    # debug_message(result, 3)
 
     render :json => result
   end
@@ -738,8 +756,8 @@ class ApplicationController < ActionController::Base
       @famiglia = []
       resultFamiglia.each do |componente|
         relazione = RelazioniParentela.where(id_relazione: componente["codiceRelazioneParentelaANPR"]).first
-        puts "TYPEOF "
-        puts relazione.inspect
+        debug_message("TYPEOF ", 3)
+        debug_message(relazione.inspect, 3)
         componente["relazioneParentela"] = relazione.descrizione
         @famiglia << {
           "nome" => componente["nome"],
@@ -756,17 +774,17 @@ class ApplicationController < ActionController::Base
       @persona.data_nascita = AutocertDateTime.parse(@persona.data_nascita).to_date
       @persona.indirizzo_residenza = Indirizzo.new({ "indirizzo" => result["indirizzo"], "comune" => result["comuneResidenzaDescrizione"] })
 
-      # puts "persona is"
-      # puts @persona
-      # puts "data_nascita is"
-      # puts @persona.data_nascita.class.name
-      # puts "indirizzo_residenza is"
-      # puts @persona.indirizzo_residenza
-      # puts @persona.indirizzo_residenza.comune
-      # puts @persona.indirizzo_residenza.indirizzo
-      # puts @persona.indirizzo_residenza.class.name
-      # puts "data_nascita.lformat"
-      # puts @persona.data_nascita.lformat
+      # debug_message("persona is", 3)
+      # debug_message(@persona, 3)
+      # debug_message("data_nascita is", 3)
+      # debug_message(@persona.data_nascita.class.name, 3)
+      # debug_message("indirizzo_residenza is", 3)
+      # debug_message(@persona.indirizzo_residenza, 3)
+      # debug_message(@persona.indirizzo_residenza.comune, 3)
+      # debug_message(@persona.indirizzo_residenza.indirizzo, 3)
+      # debug_message(@persona.indirizzo_residenza.class.name, 3)
+      # debug_message("data_nascita.lformat", 3)
+      # debug_message(@persona.data_nascita.lformat, 3)
 
       json = @famiglia.to_json
       @famiglia = JSON.parse(json, object_class: OpenStruct)
@@ -774,7 +792,7 @@ class ApplicationController < ActionController::Base
         membro.data_nascita = AutocertDateTime.parse(membro.data_nascita).to_date
         @famiglia[index] = membro
       end 
-      puts @famiglia
+      debug_message(@famiglia, 3)
       # @famiglia.each do |indice,membro|
       #   membro.data_nascita = AutocertDateTime.parse(membro.data_nascita).to_date
       #   @famiglia[indice] = membro
@@ -817,7 +835,7 @@ class ApplicationController < ActionController::Base
       FileUtils.mkpath(pathfile)
       filename_out = pathfile+"#{nome}"
 
-      puts "rendering odt #{filename_in} to #{filename_out}"
+      debug_message("rendering odt #{filename_in} to #{filename_out}", 3)
       render_odt(filename_in, "#{filename_out}")
       if end_format == format
         definitive_file = IO.read("#{filename_out}")                    
@@ -862,19 +880,25 @@ class ApplicationController < ActionController::Base
     
   # fa redirect su portale
   def portale
-    redirect_to session['dominio']
+    debug_message("redirecting to "+session[:dominio], 3)
+    redirect_to session[:dominio]
+    return
   end
     
   # fa redirect su propria anagrafica
   def self
+    debug_message("redirecting to "+request.protocol + request.host_with_port + "/dettagli_persona?codice_fiscale=#{session[:cf]}", 3)
     redirect_to request.protocol + request.host_with_port + "/dettagli_persona?codice_fiscale=#{session[:cf]}"
+    return
   end
 
   # va a pulire la sessione e chiama il logout sul portale
   def logout
-    url_logout = File.join(session['dominio'],"autenticazione/logout")
+    url_logout = session['dominio']+"/autenticazione/logout"
+    debug_message("redirecting to "+url_logout, 3)
     reset_session
     redirect_to url_logout
+    return
   end
 
   private
@@ -888,7 +912,7 @@ class ApplicationController < ActionController::Base
       utente_id: session[:user_id],
       ip: request.remote_ip,
       pagina: request.path,
-      parametri: Hash[URI.decode_www_form(request.query_string)].to_json, # TODO questo dev'essere un json non un query string
+      parametri: Hash[URI.decode_www_form(request.query_string)].to_json, 
       # id_transazione_app: ???, # TODO aggiungere id_transazione_app in traccia
       tipologia_servizio: "Demografici",
       tipologia_richiesta: tipologia_richiesta
@@ -899,12 +923,12 @@ class ApplicationController < ActionController::Base
 
   def get_comune(codice, dataEvento)
     comuneString = false
-    puts "codice: #{codice}"
-    puts "dataEvento: #{dataEvento}"
+    debug_message("codice: #{codice}", 3)
+    debug_message("dataEvento: #{dataEvento}", 3)
     dataEvento = Date.parse dataEvento
-    puts "dataEvento: #{dataEvento}"
+    debug_message("dataEvento: #{dataEvento}", 3)
     comune = Comuni.where(codistat: codice).where("dataistituzione <= ? AND datacessazione >= ? ", dataEvento, dataEvento).first
-    puts comune
+    debug_message(comune, 3)
     if !comune.blank? && !comune.nil?
       comuneString = "#{comune.denominazione_it} (#{comune.siglaprovincia})"
     end
@@ -913,12 +937,12 @@ class ApplicationController < ActionController::Base
 
   def get_stato_estero(codice, dataEvento)
     statoString = false
-    puts "codice: #{codice}"
-    puts "dataEvento: #{dataEvento}"
+    debug_message("codice: #{codice}", 3)
+    debug_message("dataEvento: #{dataEvento}", 3)
     dataEvento = Date.parse dataEvento
-    puts "dataEvento: #{dataEvento}"
+    debug_message("dataEvento: #{dataEvento}", 3)
     stato = StatiEsteri.where(codistat: codice).where("datainiziovalidita <= ? AND datafinevalidita >= ? ", dataEvento, dataEvento).first
-    puts stato
+    debug_message(stato, 3)
     if !stato.blank? && !stato.nil?
       statoString = "#{stato.denominazione}"
     end
@@ -929,7 +953,7 @@ class ApplicationController < ActionController::Base
     is_self = false
 
     if session[:cf_visualizzato].nil? || session[:cf_visualizzato].blank?
-      puts "is_self setting session[:cf_visualizzato] to #{session[:cf]}"
+      debug_message("is_self setting session[:cf_visualizzato] to #{session[:cf]}", 3)
       session[:cf_visualizzato] = session[:cf]
     end
     
@@ -944,7 +968,7 @@ class ApplicationController < ActionController::Base
     is_family = false
 
     if session[:cf_visualizzato].nil? || session[:cf_visualizzato].blank?
-      puts "is_family setting session[:cf_visualizzato] to #{session[:cf]}"
+      debug_message("is_family setting session[:cf_visualizzato] to #{session[:cf]}", 3)
       session[:cf_visualizzato] = session[:cf]
     end
     
@@ -954,74 +978,63 @@ class ApplicationController < ActionController::Base
       if session[:famiglia].nil?
         session[:famiglia] = []
         session[:famiglia] << session[:cf]
+      end
+      if session[:famiglia].kind_of?(Array)
         session[:famiglia] = session[:famiglia].to_json
       end
+      debug_message(session[:cf_visualizzato],3)
+      debug_message(session[:famiglia],3)
+      debug_message(JSON.parse(session[:famiglia]),3)
       is_family = session[:cf_visualizzato].in?(JSON.parse(session[:famiglia]))
     end
     return is_family
   end
 
   def can_see_others
-    return PERMESSI[session[:permessi]] == "ricercare_anagrafiche" || PERMESSI[session[:permessi]] == "ricercare_anagrafiche_no_sensibili" || PERMESSI[session[:permessi]] == "elencare_anagrafiche" || PERMESSI[session[:permessi]] == "professionisti"
+    return PERMESSI[session[:permessi]] != "cittadino"
   end
 
   def verifica_permessi(azione)
     autorizzato = false
 
+    globale = can_see_others
+    cittadino = is_self || is_family
+
+    debug_message("requesting authorization for #{azione} - permissions level is #{PERMESSI[session[:permessi]]}", 3)
+    debug_message("globale: #{globale} cittadino: #{cittadino}", 3)
+
     # il comportamento cambia a seconda se sto visualizzando i dettagli o facendo una ricerca
     # non si sovrascrivono
-    # TODO gestire diverse visualizzazioni
     if azione == "visualizza_anagrafica"
       if PERMESSI[session[:permessi]] == "ricercare_anagrafiche" # ricerca completa
-        autorizzato = can_see_others
+        autorizzato = globale
       elsif PERMESSI[session[:permessi]] == "ricercare_anagrafiche_no_sensibili" 
-        autorizzato = can_see_others
+        autorizzato = globale
       elsif PERMESSI[session[:permessi]] == "elencare_anagrafiche" # solo elenco ma non si clicca
-        autorizzato = can_see_others
+        autorizzato = false
       elsif PERMESSI[session[:permessi]] == "professionisti" # ricerca ridotta solo nomecognome e cf
-        autorizzato = can_see_others
-      elsif PERMESSI[session[:permessi]] == "professionisti_limitato" # ricerca ridotta solo nomecognome e cf ma quando visualizza scheda può vedere solo la scheda dei certificati, 
-        # TODO aggiungere professionisti_limitato tra i profili portal
-        autorizzato = can_see_others
+        autorizzato = globale
+      elsif PERMESSI[session[:permessi]] == "professionisti_limitato" # ricerca ridotta solo nomecognome e cf, quando visualizza scheda può vedere solo la scheda dei certificati, 
+        # TODO **IMPORTANT** aggiungere professionisti_limitato tra i profili portal
+        autorizzato = globale
       elsif PERMESSI[session[:permessi]] == "vedere_solo_famiglia"
-        autorizzato = can_see_others # quando entra nella scheda può vedere solo la famiglia e i dati non sensibili
+        autorizzato = globale # quando entra nella scheda può vedere solo la famiglia e i dati non sensibili
       else
-        autorizzato = is_self || is_family # utente cittadino, può vedere solo la sua anagrafica e quelle dei familiari
+        autorizzato = cittadino # utente cittadino, può vedere solo la sua anagrafica e quelle dei familiari
       end
     elsif azione == "ricerca_anagrafiche"
-      autorizzato = is_self || is_family || can_see_others
+      autorizzato = globale
     elsif azione == "scarica_certificato"
-      autorizzato = is_self || is_family || can_see_others
+      autorizzato = cittadino || globale
     end
 
-    return autorizzato || true
+    return autorizzato
   end
 
   def carica_variabili_layout
-    # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche")
-    # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche_no_sensibili")
-    # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche")
-    # session[:permessi]=PERMESSI.find_index("professionisti")
-    # session[:permessi]=PERMESSI.find_index("professionisti_limitato")
-    # session[:permessi]=PERMESSI.find_index("vedere_solo_famiglia")
-    # session[:permessi]=PERMESSI.find_index("cittadino")
 
     @nome = session[:nome]
     @demografici_data = { "tipiCertificato" => {}, "esenzioniBollo" => {}, "cittadinanze" => {} }
-
-    # tipiCertificato = []
-    # TipoCertificato.all.each do |tipoCertificato|
-    #   cert = { "id": tipoCertificato.id, "descrizione": tipoCertificato.descrizione }
-    #   tipiCertificato << cert
-    # end
-    # @tipiCertificato = tipiCertificato.to_json
-
-    # esenzioniBollo = []
-    # EsenzioneBollo.all.each do |esenzioneBollo|
-    #   esenzione = { "id": esenzioneBollo.id, "descrizione": esenzioneBollo.descrizione }
-    #   esenzioniBollo << esenzione
-    # end
-    # @esenzioniBollo = esenzioniBollo.to_json
 
     tipiCertificato = []
     TipoCertificato.all.each do |tipoCertificato|
@@ -1056,7 +1069,7 @@ class ApplicationController < ActionController::Base
 
   def get_dominio_sessione_utente
     begin
-      # puts session.inspect
+      # debug_message(session.inspect, 3)
       # reset_session
       #permetto di usare tutti i parametri e li converto in hash
       hash_params = params.permit!.to_hash
@@ -1064,8 +1077,8 @@ class ApplicationController < ActionController::Base
         reset_session
       end
       if session.blank? || session[:user_id].blank? || false #controllo se ho fatto login
-        puts "received hash params"
-        puts hash_params
+        debug_message("received hash params", 3)
+        debug_message(hash_params, 3)
         #se ho la sessione vuota devo ottenere una sessione dal portale
         #se arriva un client_id (parametro c_id) e id_utente lo uso per richiedere sessione
         if !hash_params['c_id'].blank? && !hash_params['u_id'].blank?
@@ -1076,8 +1089,8 @@ class ApplicationController < ActionController::Base
           result_info_ente = HTTParty.get(url_oauth2_get_info,
             :headers => { 'Content-Type' => 'application/json', 'Accept' => 'application/json' } )
           hash_result_info_ente = result_info_ente.parsed_response
-          puts "hash_result_info_ente"
-          puts hash_result_info_ente
+          debug_message("hash_result_info_ente", 3)
+          debug_message(hash_result_info_ente, 3)
 
           @dominio = hash_result_info_ente['url_ente']
           raise "Dominio non censito su applicazioni Oauth" if @dominio.blank?
@@ -1095,9 +1108,8 @@ class ApplicationController < ActionController::Base
             sid: hash_params['sid'],
             api_next: true
           }
-          puts hash_jwt_app
-          jwt = JsonWebToken.encode(hash_jwt_app)
-          # TODO aggiungere permessi e info documento
+          debug_message(hash_jwt_app, 3)
+          # jwt = JsonWebToken.encode(hash_jwt_app)
           #richiesta in post a get_login_session con authorization bearer
           result = HTTParty.post(@dominio+"/autenticazione/get_login_session.json", 
             :body => hash_params,
@@ -1112,7 +1124,7 @@ class ApplicationController < ActionController::Base
             jwt_data = JsonWebToken.decode(hash_result['token'])
 
             # inserisco dati in sessione uno per uno per evitare conversione oggetti e cookie overflow
-            # puts jwt_data
+            # debug_message(jwt_data, 3)
             session[:user_id] = jwt_data["id"]
             session[:permessi] = PERMESSI.find_index(jwt_data["permessi"]) # uso un indice numerico per ridurre la dimensione del cookie
             session[:user_sid] = jwt_data["sid"]
@@ -1129,30 +1141,17 @@ class ApplicationController < ActionController::Base
             session[:client_id] = hash_params['c_id']
             session[:famiglia] = []
 
-            # puts session.inspect
-
-            # session[:user] = jwt_data #uso questo oggetto per capire se utente connesso!
-            # puts "received user data hash"
-            # puts jwt_data
-            # puts "received cf is "+jwt_data[:cf]
-            # session[:cf] = jwt_data[:cf]
-            # @nome = jwt_data[:nome] 
-            # @cognome = jwt_data[:cognome]
-            # session[:client_id] = hash_params['c_id']
-            # session[:tipo_documento] = jwt_data[:tipo_documento]
-            # session[:numero_documento] = jwt_data[:numero_documento]
-            # session[:data_documento] = jwt_data[:data_documento]
-            # session[:data_nascita] = "" # TODO recuperare da portal
-            # session[:tenant] = jwt_data[:api_next][:tenant]
             # TODO gestire meglio il dominio, aspettiamo setup a db
             solo_dom = @dominio.gsub("/portal","")
             
           else
             #se ho problemi ritorno su portale con parametro di errore
             unless @dominio.blank?
+              debug_message("redirecting to "+@dominio+"/?err", 3)
               redirect_to @dominio+"/?err"
               return
             else
+              debug_message("redirecting to "+sconosciuto, 3)
               redirect_to sconosciuto
               return   
             end
@@ -1162,9 +1161,11 @@ class ApplicationController < ActionController::Base
 
           unless @dominio.blank?
             #mando a fare autenticazione sul portal
+              debug_message("redirecting to "+@dominio+"/autenticazione", 3)
             redirect_to @dominio+"/autenticazione"
             return
           else
+            debug_message("redirecting to "+sconosciuto, 3)
             redirect_to sconosciuto
             return    
           end
@@ -1232,13 +1233,31 @@ class ApplicationController < ActionController::Base
             #parte che include il js della parte react sul layout CHE VA ALLA FINE, ALTRIMENTI REACT NON VA
             html_layout = html_layout.gsub("</body>","<%= javascript_pack_tag @page_app %> </body>")
             path_dir_layout = "#{Rails.root}/app/views/layouts/layout_portali/"
-            File.open(path_dir_layout+nome_file, "w") { |file| file.puts html_layout.force_encoding(Encoding::UTF_8).encode(Encoding::UTF_8) }
+            File.open(path_dir_layout+nome_file, "w") { |file| file.puts(html_layout.force_encoding(Encoding::UTF_8).encode(Encoding::UTF_8)) }
         end
     else
+      debug_message("redirecting to "+session[:dominio]+"/?err=no_hash", 3)
       redirect_to session[:dominio]+"/?err=no_hash"
-    
+      return
     end
   end
 
+  def test_variables
+    session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche")
+    # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche_no_sensibili")
+    # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche")
+    # session[:permessi]=PERMESSI.find_index("professionisti")
+    # session[:permessi]=PERMESSI.find_index("professionisti_limitato")
+    # session[:permessi]=PERMESSI.find_index("vedere_solo_famiglia")
+    # session[:permessi]=PERMESSI.find_index("cittadino")
+  end
+
+  def debug_message(message, level)
+    # puts "debug_message called for message #{message} and level #{level} @@log_level #{@@log_level} @@log_to_file #{@@log_to_file}"
+    if level <= @@log_level
+      logger.debug message unless !@@log_to_file
+      puts message unless !@@log_to_output
+    end
+  end
 
 end

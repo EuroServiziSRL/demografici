@@ -102,6 +102,7 @@ class RicercaAnagrafiche extends React.Component{
     { dataField: "dataNascita", text: "Data di nascita" },
     { dataField: "indirizzo", text: "Indirizzo" },
     { dataField: "posizioneAnagrafica", text: "Status", formatter: posizioneAnagraficaFormatter },
+    // { dataField: "statoCivile", text: "statoCivile" },
   ];
 
   constructor(props){
