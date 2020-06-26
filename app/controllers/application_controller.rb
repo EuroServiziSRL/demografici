@@ -33,7 +33,7 @@ class ApplicationController < ActionController::Base
   # @@api_resource = "https://api.civilianextuat.it"
   @@api_resource = "https://api.civilianextdev.it"
   @@api_url = "#{@@api_resource}/Demografici"
-  PERMESSI = ["ricercare_anagrafiche", "ricercare_anagrafiche_no_sensibili", "elencare_anagrafiche", "vedere_solo_famiglia", "professionisti", "professionisti_limitato", "cittadino"].freeze
+  PERMESSI = ["ricercare_anagrafiche", "ricercare_anagrafiche_no_sensibili", "elencare_anagrafiche", "vedere_solo_famiglia", "professionisti", "elencare_anagrafiche_certificazione", "cittadino"].freeze
   @@log_level = 0
   @@log_to_output = true
   @@log_to_file = false
@@ -333,10 +333,10 @@ class ApplicationController < ActionController::Base
       searchParams = { "CodiceFiscale": cf_ricerca }
 
       nascondi_sensibili = !is_self && ["ricercare_anagrafiche_no_sensibili","vedere_solo_famiglia","professionista_limitato"].include?(PERMESSI[session[:permessi]])
-      solo_certificati = PERMESSI[session[:permessi]] == "professionisti_limitato"
+      solo_certificati = PERMESSI[session[:permessi]] == "elencare_anagrafiche_certificazione"
       solo_famiglia = PERMESSI[session[:permessi]] == "vedere_solo_famiglia"
       cittadino = PERMESSI[session[:permessi]] == "cittadino"
-      professionista = ["professionisti","professionisti_limitato"].include?(PERMESSI[session[:permessi]])
+      professionista = ["professionisti","elencare_anagrafiche_certificazione"].include?(PERMESSI[session[:permessi]])
       globale = ["ricercare_anagrafiche","ricercare_anagrafiche_no_sensibili","elencare_anagrafiche","vedere_solo_famiglia"].include?(PERMESSI[session[:permessi]])
 
       debug_message("session[:permessi]: #{session[:permessi]} - PERMESSI[session[:permessi]]: #{PERMESSI[session[:permessi]]}", 3)
@@ -705,7 +705,7 @@ class ApplicationController < ActionController::Base
         result["comuneNascitaDescrizione"] = "";
       end
 
-      now = Time.now.strftime("%d/%m/%y")
+      now = Time.now.strftime("%d/%m/%Y")
       comune = get_comune(result["codiceIstatComuneResidenzaItaliano"], now)
       if !comune.blank? && !comune.nil? && comune
         result["comuneResidenzaDescrizione"] = comune
@@ -1014,8 +1014,7 @@ class ApplicationController < ActionController::Base
         autorizzato = false
       elsif PERMESSI[session[:permessi]] == "professionisti" # ricerca ridotta solo nomecognome e cf
         autorizzato = globale
-      elsif PERMESSI[session[:permessi]] == "professionisti_limitato" # ricerca ridotta solo nomecognome e cf, quando visualizza scheda può vedere solo la scheda dei certificati, 
-        # TODO **IMPORTANT** aggiungere professionisti_limitato tra i profili portal
+      elsif PERMESSI[session[:permessi]] == "elencare_anagrafiche_certificazione" # ricerca ridotta solo nomecognome e cf, quando visualizza scheda può vedere solo la scheda dei certificati, 
         autorizzato = globale
       elsif PERMESSI[session[:permessi]] == "vedere_solo_famiglia"
         autorizzato = globale # quando entra nella scheda può vedere solo la famiglia e i dati non sensibili
@@ -1247,7 +1246,7 @@ class ApplicationController < ActionController::Base
     # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche_no_sensibili")
     # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche")
     # session[:permessi]=PERMESSI.find_index("professionisti")
-    # session[:permessi]=PERMESSI.find_index("professionisti_limitato")
+    # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche_certificazione")
     # session[:permessi]=PERMESSI.find_index("vedere_solo_famiglia")
     # session[:permessi]=PERMESSI.find_index("cittadino")
   end
