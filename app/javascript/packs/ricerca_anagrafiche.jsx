@@ -253,6 +253,60 @@ class RicercaAnagrafiche extends React.Component{
     // this.setState(state);
   };
 
+  validateForm() {
+    var searchValues = [];
+    var formError = false;
+    var $submit = $("#formRicercaAnagrafiche").find("input[type=submit]");
+    $submit.parent().parent().next().hide();
+    $("#formRicercaAnagrafiche").find("input[type=text],input[type=radio]:checked,select").each(function(){
+      var value = $(this).val()?$(this).val().trim():"";
+      var error = false;
+      $(this).next(".error").hide();
+      if ($(this).attr("required") && value === "") {
+        error = "questo dato è obbligatorio";
+        formError = "";
+        if($(this).next(".error").length < 1) {
+          $('<p class="text-danger error"></p>').insertAfter($(this));
+        }
+        $(this).next(".error").html(error).show();
+        console.log("formError",formError);
+        console.log("error",error);
+      } else if ( value !== "") {
+        searchValues.push(value);
+      }
+      // $(this).parent().toggleClass("has-success", error===false);
+      $(this).parent().toggleClass("has-error", error!==false);
+    });
+    console.log("searchValues",searchValues);
+    if(!searchValues.length) {
+      formError = "è necessario compilare almeno un campo per la ricerca";
+    }
+    console.log("formError",formError);
+    if(formError!==false) {
+      $submit.attr("disabled","disabled");
+      if($submit.parent().parent().next().find(".error").length < 1) {
+        $('<div class="form-group"><div class="col-lg-offset-2 col-lg-4"><p class="text-danger error"></p></div></div>').insertAfter($submit.parent().parent());
+      }
+      if(formError !== "") {
+        $submit.parent().parent().next().find(".error").html(formError); 
+        $submit.parent().parent().next().show();
+      }
+    } else {
+      $submit.removeAttr("disabled");
+    }
+  }  
+
+  clearForm() {
+    $("#formRicercaAnagrafiche").find("input[type=text],input[type=radio]:checked,select").each(function(){
+      if($(this).attr("type")=="radio") {
+        $(this).prop("checked", false);
+      } else {
+        $(this).val(null);
+      }
+    });
+    this.validateForm();
+  }  
+
   render() {
     console.log("rendering");
     var loading = <p className="text-center" id={this.state.dati?"loading":""}><FontAwesomeIcon icon={faCircleNotch} size="2x" spin /><span className="sr-only">caricamento...</span></p>;
@@ -347,8 +401,8 @@ class RicercaAnagrafiche extends React.Component{
               { name: "", value: <input type="hidden" id="page" name="pageNumber" value={this.state.page}/>, html: true }
             ],
             [
-              { name:"cognomeNome", label:"Cognome/Nome", value: <input type="text" className="form-control" name="cognomeNome" id="cognomeNome"/>, html: true },
-              { name:"codiceFiscale", label:"Codice Fiscale", value: <input type="text" className="form-control" name="codiceFiscale" id="codiceFiscale"/>, html: true },
+              { name:"cognomeNome", label:"Cognome/Nome", value: <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="cognomeNome" id="cognomeNome"/>, html: true },
+              { name:"codiceFiscale", label:"Codice Fiscale", value: <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="codiceFiscale" id="codiceFiscale"/>, html: true },
             ],
             [
               // TODO capire che id usa ricerca cittadinanza
@@ -364,10 +418,10 @@ class RicercaAnagrafiche extends React.Component{
               // </select>, html: true },
               { name:"sesso", value: <>
               <label className="radio-inline">
-                    <input type="radio" name="sesso" id="sessoM" defaultValue="M"/> maschio
+                    <input type="radio" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} name="sesso" id="sessoM" defaultValue="M"/> maschio
                   </label>
                   <label className="radio-inline">
-                    <input type="radio" name="sesso" id="sessoF" defaultValue="F"/> femmina
+                    <input type="radio" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} name="sesso" id="sessoF" defaultValue="F"/> femmina
                   </label>
             </>, html: true }
             ]/*,
@@ -397,7 +451,7 @@ class RicercaAnagrafiche extends React.Component{
               { name:"indirizzo", value: <input type="text" className="form-control" name="indirizzo" id="indirizzo"/>, html: true }
             ]*/,
             [
-              { name:"", value: <input type="submit" name="invia" className="btn btn-default" value="Cerca"/>, html: true },
+              { name:"", value: <><input type="submit" name="invia" className="btn btn-primary mr10" disabled value="Cerca" title="Specifica almeno un criterio di ricerca"/><button type="button" className="btn btn-default" onClick={this.clearForm.bind(this)}>Cancella</button></>, html: true },
               { name: "", value: <input type="hidden" name="authenticity_token" value={this.state.csrf}/>, html: true }
             ]
           ]}/>

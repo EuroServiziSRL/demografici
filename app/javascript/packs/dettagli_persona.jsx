@@ -126,10 +126,16 @@ class DemograficiForm extends React.Component{
     console.log("constructor end");
   }
 
+  onFieldChange() {
+    this.props.onChange();
+  }
+
   render() {
     console.log("rendering DemograficiForm");
-    console.log("rows");
-    console.log(this.rows);
+    console.log("this.state", this.state);
+    console.log("this.props", this.props);
+    // console.log("rows");
+    // console.log(this.rows);
     var rowsHtml = []
     
     for(var r in this.rows) {
@@ -180,13 +186,13 @@ class DemograficiList extends React.Component{
   }
 
   render() {
-    console.log("rendering DemograficiList");
-    console.log("list");
-    console.log(this.list);
-    console.log("linked");
-    console.log(this.linked);
-    console.log("nostyle");
-    console.log(this.nostyle);
+    // console.log("rendering DemograficiList");
+    // console.log("list");
+    // console.log(this.list);
+    // console.log("linked");
+    // console.log(this.linked);
+    // console.log("nostyle");
+    // console.log(this.nostyle);
     var listItems = [];
     var html;
     var classNameLi = 'list-group-item';
@@ -240,7 +246,11 @@ class DettagliPersona extends React.Component{
     dati:{},   
     datiCittadino: [],
     isSelf:false, 
-    loading: true
+    loading: true,
+    form: {
+      fields: {},
+      valid: false
+    }
   } 
 
   constructor(props){
@@ -347,6 +357,41 @@ class DettagliPersona extends React.Component{
 
   motivoEsenzione() {
     $("#motivo_esenzione").parent().parent().toggle($("#esenzioneBollo").val()=="99");
+  }
+
+  validateForm() {
+    // var state = this.state;
+    var formValid = true;
+    // state.form.data = $("#form_richiesta_certificato").serialize();
+    $("#form_richiesta_certificato").find("input,select").each(function(){
+      // console.log("parsing field", $(this));
+
+      var key = $(this).attr("name");
+      var value = $(this).val()?$(this).val().trim():"";
+      var error = false;
+      // console.log("key:", key);
+      // console.log("value:", value);
+      $(this).next(".error").hide();
+      if ($(this).attr("required") && value === "") {
+        error = "questo dato è obbligatorio";
+        formValid = false;
+        if($(this).next(".error").length < 1) {
+          $('<p class="text-danger error"></p>').insertAfter($(this));
+        }
+        $(this).next(".error").html(error).show();
+      }
+      $(this).parent().toggleClass("has-success", error===false);
+      $(this).parent().toggleClass("has-error", error!==false);
+      // console.log("error:", error);
+      // state.form.fields[key] = {value: value,  error: error};
+
+    });
+    if(!formValid) {
+      $("#form_richiesta_certificato").find("input[type=submit]").attr("disabled","disabled");
+    } else {
+      $("#form_richiesta_certificato").find("input[type=submit]").removeAttr("disabled");
+    }
+    // this.setState(state);
   }
 
   formatData(datiAnagrafica) {
@@ -634,7 +679,7 @@ class DettagliPersona extends React.Component{
       for(var t in demograficiData.tipiCertificato) {
         selectTipiCertificato.push(<option value={demograficiData.tipiCertificato[t].id}>{demograficiData.tipiCertificato[t].descrizione}</option>)
       }
-      selectTipiCertificato = <select className="form-control" defaultValue="" name="tipoCertificato">{selectTipiCertificato}</select>
+      selectTipiCertificato = <select className="form-control" defaultValue="" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} required name="tipoCertificato">{selectTipiCertificato}</select>
 
       var selectEsenzioni = []
       selectEsenzioni.push(<option value="">nessuna esenzione</option>)
@@ -650,7 +695,6 @@ class DettagliPersona extends React.Component{
       selectTipiDoc.push(<option value={demograficiData.esenzioniBollo[e].id}>{demograficiData.esenzioniBollo[e].descrizione}</option>);
       selectTipiDoc = <select className="form-control" defaultValue="" name="esenzioneBollo" id="esenzioneBollo">{selectEsenzioni}</select>
 
-      // IMPORTANT aggiungere controlli validità dati
       var stringaRichiedente = datiAnagrafica.datiRichiedente.cognome.toUpperCase()+
       " "+datiAnagrafica.datiRichiedente.nome.toUpperCase()+
       " - "+(datiAnagrafica.datiRichiedente.tipo_documento=="CI"?"Carta d'Identità":datiAnagrafica.datiRichiedente.tipo_documento)+
@@ -665,7 +709,7 @@ class DettagliPersona extends React.Component{
       ],[
         { name:"nomeCognomeRichiedente", label: "Il certificato viene richiesto da", labelCols:4, valueSize:5, value: <span>{stringaRichiedente} <a className="btn btn-default ml10" href={urlModifica}>Modifica</a></span> }
       ],[
-        { name:"certificatoTipo", label: "Tipo certificato", labelCols:4, valueSize:5, value: selectTipiCertificato, html: true }
+        { name:"certificatoTipo", label: "Tipo certificato*", labelCols:4, valueSize:5, value: selectTipiCertificato, html: true }
       ],[
         { name:"cartaLiberaBollo", label: "Il certificato dovrà essere rilasciato in Carta Libera o in Bollo?", labelCols:4, valueSize:5, value: <>
           <label className="radio-inline">
@@ -703,7 +747,7 @@ class DettagliPersona extends React.Component{
         ]);
       } else {
         result.dati.certificati.push([
-          { name:"", labelCols:2, valueSize:8, value: <div className="text-center"><input type="submit" name="invia" className="btn btn-primary" value="Invia richiesta"/></div>, html: true },
+          { name:"", labelCols:2, valueSize:8, value: <div className="text-center"><input type="submit" disabled name="invia" className="btn btn-primary" value="Invia richiesta"/></div>, html: true },
           { name: "", labelCols:1, valueSize:1, value: <input type="hidden" name="authenticity_token" value={datiAnagrafica.csrf}/> },
         ]);
       }
@@ -765,7 +809,7 @@ class DettagliPersona extends React.Component{
       if(typeof(this.state.dati[tabName])!="undefined" && this.state.dati[tabName].length) {
         var form = "";
         if(tabName=="certificati") {
-          form = <form className="panel-body form-horizontal" method="POST" action={demograficiData.dominio+"/richiedi_certificato"}>            
+          form = <form className="panel-body form-horizontal" id="form_richiesta_certificato" method="POST" action={demograficiData.dominio+"/richiedi_certificato"}>            
             <DemograficiForm rows={this.state.dati[tabName]} maxLabelCols="1"/>
           </form>
         } else {
@@ -787,6 +831,7 @@ class DettagliPersona extends React.Component{
   }
 
   render() {
+    console.log("state", this.state);
     // console.log(datiAnagrafica);
     var found = this.state.datiCittadino && this.state.datiCittadino!=null && this.state.datiCittadino.length;
     var returnVal = <div className="alert alert-warning">Dati contribuente non presenti nel sistema</div>
