@@ -318,6 +318,8 @@ class ApplicationController < ActionController::Base
     if !verifica_permessi("visualizza_anagrafica")
       tipologia_richiesta = "#{tipologia_richiesta} (non autorizzato)"
 
+      fullResult = {}
+
       result = { 
         "errore": true, 
         "messaggio_errore": "Non sei autorizzato a visualizzare questi dati.", 
@@ -368,8 +370,8 @@ class ApplicationController < ActionController::Base
       )    
       # result = result.response.body
       if result.response.body.length > 0
-        result = JSON.parse(result.response.body)
-        result = result[0]
+        fullResult = JSON.parse(result.response.body)
+        result = fullResult[0]
       else
         result = ""
       end
@@ -1251,7 +1253,7 @@ class ApplicationController < ActionController::Base
       # session[:permessi]=PERMESSI.find_index("professionisti")
       # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche_certificazione")
       # session[:permessi]=PERMESSI.find_index("vedere_solo_famiglia")
-      # session[:permessi]=PERMESSI.find_index("cittadino")
+      session[:permessi]=PERMESSI.find_index("cittadino")
     end
   end
 
