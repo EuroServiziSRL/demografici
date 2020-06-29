@@ -27,6 +27,7 @@ function posizioneAnagraficaFormatter(cell) {
   return demograficiData.descrizioniStatus[cell]
 }
 
+// TODO creare componente
 class DemograficiForm extends React.Component{
   cols = 12
   maxLabelCols = 2
@@ -411,7 +412,7 @@ class RicercaAnagrafiche extends React.Component{
             <div className="back">
               <a className="btn" href="/portale">Torna al portale</a>              
             </div>
-            <a className="btn btn-default ml10" href="/self">Torna alla tua anagrafica</a>
+            {/* <a className="btn btn-default ml10" href="/self">Torna alla tua anagrafica</a> */}
           </div>
         </div>
       </div>

@@ -4,12 +4,6 @@ require "base64"
 require 'openssl'
 require 'zlib'
 require 'autocert_date_time'
-# begin
-#   require 'serenity' if ['odt', 'pdf'].include?(Spider.config.get('demografici.formato_autocertificazioni'))
-#   # require 'pdfkit'
-# rescue LoadError => exc
-# end
-
 begin
   require 'serenity'
 rescue LoadError => exc
@@ -27,14 +21,13 @@ end
 
 class ApplicationController < ActionController::Base
   include ApplicationHelper
-  # include Serenity::Generator if ['odt', 'pdf'].include?(Spider.config.get('demografici.formato_autocertificazioni'))
   include Serenity::Generator
   # TODO aggiungere anche resource in config?
   # @@api_resource = "https://api.civilianextuat.it"
   @@api_resource = "https://api.civilianextdev.it"
   @@api_url = "#{@@api_resource}/Demografici"
   PERMESSI = ["ricercare_anagrafiche", "ricercare_anagrafiche_no_sensibili", "elencare_anagrafiche", "vedere_solo_famiglia", "professionisti", "elencare_anagrafiche_certificazione", "cittadino"].freeze
-  @@log_level = 0
+  @@log_level = 1
   @@log_to_output = true
   @@log_to_file = false
   before_action :get_dominio_sessione_utente, :get_layout_portale, :carica_variabili_layout, :test_variables
@@ -48,7 +41,7 @@ class ApplicationController < ActionController::Base
 
     # 
     #carico cf in variabile per usarla sulla view
-    debug_message("index - session[:cf]: "+session[:cf], 3)
+    debug_message("index - session[:cf]: "+session[:cf].to_s, 3)
     debug_message("index - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s, 3)
     @cf_utente_loggato = session[:cf]
     if PERMESSI[session[:permessi]] == "cittadino"
@@ -104,14 +97,14 @@ class ApplicationController < ActionController::Base
 
     cartaLibera = !params[:certificatoBollo].nil? && !params[:certificatoBollo].blank? &&  params[:certificatoBollo] != "true"
     esenzioneBollo = !params[:esenzioneBollo].nil? && !params[:esenzioneBollo].blank? &&  params[:esenzioneBollo] != "0"
-    # TODO -WAIT- implementare recupero diritti segreteria da api quando sarà disponibile
+    # WAIT implementare recupero diritti segreteria da api quando sarà disponibile
     if cartaLibera || esenzioneBollo
       importo_bollo = 0 # importo bollo è 0 su carta libera o se è specificata esenzione
     else
       importo_bollo = 16 # altrimenti è 16 (importo fisso)
     end
     
-    # TODO -WAIT- recuperare diritti segreteria da api quando sarà disponibile
+    # WAIT recuperare diritti segreteria da api quando sarà disponibile
     # i diritti di segreteria sono solitamente 0.26 per carta libera e 0.52 per bollo, se vengono applicati
     importo_segreteria = ( rand(2)>0 ? 0 : 0.52 )
     if cartaLibera
@@ -125,7 +118,7 @@ class ApplicationController < ActionController::Base
       bollo: importo_bollo,
       bollo_esenzione: params[:esenzioneBollo],
       nome_certificato: nome_certificato,
-      # TODO -WAIT- aggiungere importo quando l'api lo fornirà
+      # WAIT aggiungere importo quando l'api lo fornirà
       # diritti_importo: importo_segreteria,
       diritti_importo: 0, # per ora sempre a 0 perchè non cè l'api
       uso: params[:motivoEsenzione],
@@ -180,7 +173,7 @@ class ApplicationController < ActionController::Base
     result = HTTParty.post(oauthURL, 
       :body => requestParams.to_query,
       :headers => { 'Content-Type' => 'application/x-www-form-urlencoded','Accept' => 'application/json'  } ,
-      :debug_output => $stdout
+      :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
     )
 
     if !result["access_token"].nil? && result["access_token"].length > 0
@@ -230,7 +223,7 @@ class ApplicationController < ActionController::Base
         "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
         :body => params.to_json,
         :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
-        :debug_output => $stdout
+        :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
       )   
       result = JSON.parse(result.response.body)
       if PERMESSI[session[:permessi]]!="elencare_anagrafiche"
@@ -265,7 +258,7 @@ class ApplicationController < ActionController::Base
     parametri = {
       importo: "#{importo}",
       descrizione: "Certificato #{richiesta_certificato.nome_certificato} per #{richiesta_certificato.codice_fiscale} - n.#{richiesta_certificato.id}",
-      codice_applicazione: "demografici", # TODO va bene questo codice applicazione?
+      codice_applicazione: "demografici", # CHECK va bene questo codice applicazione?
       url_back: request.protocol + request.host_with_port,
       idext: richiesta_certificato.id,
       tipo_elemento: "certificazione_td",
@@ -292,7 +285,7 @@ class ApplicationController < ActionController::Base
     result = HTTParty.post(
       url, 
       :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json' } ,
-      :debug_output => $stdout
+      :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
     )   
     result = JSON.parse(result.response.body)
     render :json => result
@@ -330,6 +323,7 @@ class ApplicationController < ActionController::Base
         "messaggio_errore": "Non sei autorizzato a visualizzare questi dati.", 
       }
     else
+      params["codice_fiscale"] = cf_ricerca
       searchParams = { "CodiceFiscale": cf_ricerca }
 
       nascondi_sensibili = !is_self && ["ricercare_anagrafiche_no_sensibili","vedere_solo_famiglia","professionista_limitato"].include?(PERMESSI[session[:permessi]])
@@ -370,7 +364,7 @@ class ApplicationController < ActionController::Base
         "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
         :body => searchParams.to_json,
         :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
-        :debug_output => $stdout
+        :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
       )    
       # result = result.response.body
       if result.response.body.length > 0
@@ -448,7 +442,7 @@ class ApplicationController < ActionController::Base
             "#{@@api_url}/Anagrafe/RicercaComponentiFamiglia?v=1.0", 
             :body => searchParams.to_json,
             :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
-            :debug_output => $stdout
+            :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
           )    
           resultFamiglia = JSON.parse(resultFamiglia.response.body)
           famigliaArray = []
@@ -498,20 +492,20 @@ class ApplicationController < ActionController::Base
               
               if !scaduto && richiesta_certificato.stato == "da_pagare"
                 statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
-                # TODO **IMPORTANT** sostituire stato_pagamento con verifica_pagamento
-                # TODO **IMPORTANT** aggiungere marca da bollo
-                # verificaPagamento = verifica_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.id)
-                # debug_message("verifica pagamento response", 3)
-                # debug_message(verificaPagamento, 3)
-                if(!statoPagamenti.nil? && statoPagamenti["esito"]=="ok" && (statoPagamenti["esito"][0]["stato"]=="Pagato"))
+                # IMPORTANT sostituire stato_pagamento con verifica_pagamento
+                # IMPORTANT aggiungere marca da bollo
+                verificaPagamento = verifica_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.id)
+                debug_message("verifica pagamento response", 1)
+                debug_message(verificaPagamento, 1)
+                if(!verificaPagamento.nil? && verificaPagamento["esito"]=="ok" && (verificaPagamento["stato"]=="Pagato"))
                   # pagato, lascio scaricare il documento
                   url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
                 else                  
                   url = "#{session[:dominio]}/servizi/pagamenti/"
-                  debug_message(statoPagamenti, 3)
-                  debug_message(statoPagamenti["esito"], 3)
-                  if(statoPagamenti.nil? || statoPagamenti["esito"]!="ok")
-                    debug_message("statoPagamenti NOT OK", 3)
+                  debug_message("stato pagamenti response", 1)
+                  debug_message(statoPagamenti, 1)
+                  if(verificaPagamento.nil? || verificaPagamento["esito"]!="ok")
+                    debug_message("verificaPagamento NOT OK", 3)
                     if false
                       url = "/inserisci_pagamento?id=#{richiesta_certificato.id}"
                     else
@@ -525,7 +519,7 @@ class ApplicationController < ActionController::Base
                       parametri = {
                         importo: "#{importo}",
                         descrizione: "Certificato #{richiesta_certificato.nome_certificato} per #{richiesta_certificato.codice_fiscale} - n.#{richiesta_certificato.id}",
-                        codice_applicazione: "demografici", # TODO va bene questo codice applicazione?
+                        codice_applicazione: "demografici", # CHECK va bene questo codice applicazione?
                         url_back: request.protocol + request.host_with_port,
                         idext: richiesta_certificato.id,
                         tipo_elemento: "certificazione_td",
@@ -551,7 +545,7 @@ class ApplicationController < ActionController::Base
                       url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa.json?#{queryString}&hqs=#{hqs}&id_utente=#{session[:user_id]}&sid=#{session[:user_sid]}"
                     end
                   else
-                    debug_message("statoPagamenti OK", 3)
+                    debug_message("verificaPagamento OK", 3)
                   end
                 end
               elsif !scaduto && richiesta_certificato.stato == "pagato"
@@ -689,7 +683,7 @@ class ApplicationController < ActionController::Base
       "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
       :body => searchParams.to_json,
       :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
-      :debug_output => $stdout
+      :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
     )    
     result = JSON.parse(result.response.body)
     result = result[0]
@@ -750,7 +744,7 @@ class ApplicationController < ActionController::Base
         "#{@@api_url}/Anagrafe/RicercaComponentiFamiglia?v=1.0", 
         :body => searchParams.to_json,
         :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
-        :debug_output => $stdout
+        :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
       )    
       resultFamiglia = JSON.parse(resultFamiglia.response.body)
       @famiglia = []
@@ -887,9 +881,13 @@ class ApplicationController < ActionController::Base
     
   # fa redirect su propria anagrafica
   def self
-    debug_message("redirecting to "+request.protocol + request.host_with_port + "/dettagli_persona?codice_fiscale=#{session[:cf]}", 3)
-    redirect_to request.protocol + request.host_with_port + "/dettagli_persona?codice_fiscale=#{session[:cf]}"
-    return
+    if(!session[:cf].nil?) 
+      debug_message("redirecting to "+request.protocol + request.host_with_port + "/dettagli_persona?codice_fiscale=#{session[:cf]}", 3)
+      redirect_to request.protocol + request.host_with_port + "/dettagli_persona?codice_fiscale=#{session[:cf]}"
+      return
+    else 
+      sconosciuto
+    end    
   end
 
   # va a pulire la sessione e chiama il logout sul portale
@@ -1061,6 +1059,8 @@ class ApplicationController < ActionController::Base
     else
       @demografici_data["test"] = false
     end
+
+    @demografici_data["cittadino"] = PERMESSI[session[:permessi]] == "cittadino"
     
     @demografici_data = @demografici_data.to_json
     @demografici_data = @demografici_data.html_safe
@@ -1108,12 +1108,12 @@ class ApplicationController < ActionController::Base
             api_next: true
           }
           debug_message(hash_jwt_app, 3)
-          # jwt = JsonWebToken.encode(hash_jwt_app)
+          jwt = JsonWebToken.encode(hash_jwt_app)
           #richiesta in post a get_login_session con authorization bearer
           result = HTTParty.post(@dominio+"/autenticazione/get_login_session.json", 
             :body => hash_params,
             :headers => { 'Authorization' => 'Bearer '+jwt },
-            :debug_output => $stdout 
+            :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
           )
           hash_result = result.parsed_response
 
@@ -1140,7 +1140,7 @@ class ApplicationController < ActionController::Base
             session[:client_id] = hash_params['c_id']
             session[:famiglia] = []
 
-            # TODO gestire meglio il dominio, aspettiamo setup a db
+            # WAIT gestire meglio il dominio, aspettiamo setup a db
             solo_dom = @dominio.gsub("/portal","")
             
           else
@@ -1242,13 +1242,16 @@ class ApplicationController < ActionController::Base
   end
 
   def test_variables
-    session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche")
-    # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche_no_sensibili")
-    # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche")
-    # session[:permessi]=PERMESSI.find_index("professionisti")
-    # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche_certificazione")
-    # session[:permessi]=PERMESSI.find_index("vedere_solo_famiglia")
-    # session[:permessi]=PERMESSI.find_index("cittadino")
+    # TEST disabilitare prima di testare per prod
+    if Rails.env.development?
+      # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche")
+      # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche_no_sensibili")
+      # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche")
+      # session[:permessi]=PERMESSI.find_index("professionisti")
+      # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche_certificazione")
+      # session[:permessi]=PERMESSI.find_index("vedere_solo_famiglia")
+      # session[:permessi]=PERMESSI.find_index("cittadino")
+    end
   end
 
   def debug_message(message, level)

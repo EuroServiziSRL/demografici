@@ -56,5 +56,47 @@ module ApplicationHelper
     return JSON.parse(response.body)
   end
   
+  def verifica_pagamento(urlPagamenti,idAvviso)
+    uri = URI(urlPagamenti)
+    http = Net::HTTP.new(uri.host, uri.port)
+    
+
+    requestParams = { 
+      'applicazione' => "pagamenti",
+      'tipo_dovuto' => "certificazione_td",
+      'id_univoco_dovuto' => idAvviso,
+      'mbd' => 1
+    }
+
+    response = HTTParty.post(urlPagamenti,
+    :body => requestParams,
+    :headers => { 'Content-Type' => 'application/x-www-form-urlencoded', 'Authorization' => 'Bearer '+get_jwt_token_authhub },
+    # :debug_output => $stdout ,
+    :follow_redirects => false,
+    :timeout => 500 )
+                     
+    return JSON.parse(response.body)
+  end
+
+
+  def get_jwt_token_authhub
+
+    hash_params = { 'username' => 'civilia_test@jwt.it',
+                    'password' => 'PswCivilia1',
+                    'grant_type'=> 'password'
+                  }
+    response = HTTParty.post("https://start.soluzionipa.it/auth_hub/oauth/token",
+            :body => hash_params,
+            :headers => { 'Content-Type' => 'application/x-www-form-urlencoded' },
+            :follow_redirects => false,
+            :timeout => 500 )
+    unless response.empty?
+      puts "access token: #{response.to_hash['access_token']}"
+      return response.to_hash['access_token']
+    else
+      raise "Errore in get token"
+    end
+  end
+  
   
 end

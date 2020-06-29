@@ -110,6 +110,7 @@ function ucfirst(str){
     }):"";
 }
 
+// TODO sostituire con componente
 class DemograficiForm extends React.Component{
   cols = 12
   maxLabelCols = 2
@@ -161,6 +162,8 @@ class DemograficiForm extends React.Component{
     return rowsHtml;
   }
 }
+
+// TODO creare componente
 class DemograficiList extends React.Component{
   list = []
   linked = false
@@ -195,6 +198,7 @@ class DemograficiList extends React.Component{
       separator = <br/>;
     }
     if(this.list && this.list[0]) {
+      // FIXME creare id univoci su <li>
       if(this.linked) {
         listItems.push(this.list.map((item, index) => <><a className={classNameLi} key={item.text+index.toString()} href={item.url}>{item.preText?<span>{item.preText}</span> :""}{typeof(item.text.toLowerCase)=="function"&&item.text.toLowerCase().indexOf("scarica")>-1?<span><FontAwesomeIcon icon={faDownload}/></span>:item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a>{separator}</> ));
       } else {
@@ -646,7 +650,7 @@ class DettagliPersona extends React.Component{
       selectTipiDoc.push(<option value={demograficiData.esenzioniBollo[e].id}>{demograficiData.esenzioniBollo[e].descrizione}</option>);
       selectTipiDoc = <select className="form-control" defaultValue="" name="esenzioneBollo" id="esenzioneBollo">{selectEsenzioni}</select>
 
-      // TODO **IMPORTANT** aggiungere controlli validità dati
+      // IMPORTANT aggiungere controlli validità dati
       var stringaRichiedente = datiAnagrafica.datiRichiedente.cognome.toUpperCase()+
       " "+datiAnagrafica.datiRichiedente.nome.toUpperCase()+
       " - "+(datiAnagrafica.datiRichiedente.tipo_documento=="CI"?"Carta d'Identità":datiAnagrafica.datiRichiedente.tipo_documento)+
@@ -795,7 +799,6 @@ class DettagliPersona extends React.Component{
     else if(this.state.error) {
       returnVal = <div className="alert alert-danger">{this.state.error_message}</div>
     } else if(found) {
-      
       returnVal =       <div itemID="app_tributi">
         <h3>Dettagli persona</h3>
         <div className="form-horizontal"><DemograficiForm rows={this.state.datiCittadino}/></div>
@@ -814,11 +817,11 @@ class DettagliPersona extends React.Component{
           <div className="row">
             <div className="col-lg-6 col-md-6 col-sm-12 col-xs-12">
               <div className="back">
-                {this.state.backToSearch?<a className="btn" href="/ricerca_anagrafiche">Torna alla ricerca</a>:<a className="btn" href="/portale">Torna al portale</a>}
+                {this.state.backToSearch&&!demograficiData.cittadino?<a className="btn" href="/ricerca_anagrafiche">Torna alla ricerca</a>:<a className="btn" href="/portale">Torna al portale</a>}
                 
               </div>
-              {this.state.isSelf?"":<a className="btn btn-default ml10" href="/self">Torna alla tua anagrafica</a>}
-              <a className="btn btn-default ml10" href="/ricerca_anagrafiche">Ricerca anagrafiche</a>
+              {!this.state.isSelf&&demograficiData.cittadino?<a className="btn btn-default ml10" href="/self">Torna alla tua anagrafica</a>:""}
+              {demograficiData.cittadino?"":<a className="btn btn-default ml10" href="/ricerca_anagrafiche">Ricerca anagrafiche</a>}              
             </div>
           </div>
         </div>
