@@ -910,7 +910,8 @@ class ApplicationController < ActionController::Base
       utente_id: session[:user_id],
       ip: request.remote_ip,
       pagina: request.path,
-      parametri: Hash[URI.decode_www_form(request.query_string)].to_json, 
+      # parametri: Hash[URI.decode_www_form(request.query_string)].to_json, 
+      parametri: params.to_json, 
       # id_transazione_app: ???, # TODO aggiungere id_transazione_app in traccia
       tipologia_servizio: "Demografici",
       tipologia_richiesta: tipologia_richiesta

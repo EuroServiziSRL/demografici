@@ -351,7 +351,7 @@ class RicercaAnagrafiche extends React.Component{
               { name:"codiceFiscale", label:"Codice Fiscale", value: <input type="text" className="form-control" name="codiceFiscale" id="codiceFiscale"/>, html: true },
             ],
             [
-              // TODO capire che id usa
+              // TODO capire che id usa ricerca cittadinanza
               // { name:"cittadinanza", value:selectCittadinanze, html: true },
               // { name:"cittadinanza", value: <select name="idCittadinanza" className="form-control">
               //   <option></option>
@@ -371,6 +371,7 @@ class RicercaAnagrafiche extends React.Component{
                   </label>
             </>, html: true }
             ]/*,
+            // FIXME far funzionare sto maledetto datepicker
             [
               { name:"dataNascitaDal", label:"Data di nascita dal", value: <>
               <DatePicker
