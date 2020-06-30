@@ -9,7 +9,7 @@ import ReactDOM from 'react-dom';
 import Select from 'react-select';
 import BootstrapTable from 'react-bootstrap-table-next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCircleNotch, faShoppingCart, faPrint, faCheck, faExclamation, faDownload } from '@fortawesome/free-solid-svg-icons'
+import { faCircleNotch, faShoppingCart, faPrint, faCheck, faExclamation, faDownload, faFileArchive, faFilePdf } from '@fortawesome/free-solid-svg-icons'
 
 demograficiData.descrizioniStatus = {"D":"DECEDUTO", "R":"RESIDENTE", "A":"RESIDENTE AIRE", "I":"IRREPERIBILE", "E":"EMIGRATO"}
 
@@ -23,7 +23,15 @@ function buttonFormatter(cell,row) {
     <a className="btn hidden error-icon text-danger" href="#" title="Errore durante l'aggiunta del pagamento"><FontAwesomeIcon icon={faExclamation} /></a>
   </span> }
   else if(cell.indexOf("servizi/pagamenti")>-1) { button = <span><a className="btn done-icon text-success" title="Pagamento aggiunto al carrello"><FontAwesomeIcon icon={faCheck} /></a></span> }
-  else if(cell.indexOf("scarica_certificato")>-1) { button = <span><a className="btn" href={cell} title="Stampa"><FontAwesomeIcon icon={faPrint} /></a></span> }
+  else if(cell.indexOf("scarica_certificato")>-1) { 
+    var icon = <FontAwesomeIcon icon={faFilePdf} />
+    var title = "Scarica certificato pdf"
+    if(cell.indexOf(".zip")>-1) {
+      icon = <FontAwesomeIcon icon={faFileArchive} />
+      title = "Scarica certificato e marca da bollo digitale"
+    }
+    button = <span><a className="btn" href={cell} title={title}>{icon}</a></span> 
+  }
   // return  <a href={cell} target="_blank" className="btn btn-default">{label} {icon}</a>;
   return button;
 } 

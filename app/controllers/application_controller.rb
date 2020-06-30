@@ -493,19 +493,51 @@ class ApplicationController < ActionController::Base
               end
               
               if !scaduto && richiesta_certificato.stato == "da_pagare"
-                statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
-                # IMPORTANT sostituire stato_pagamento con verifica_pagamento
-                # IMPORTANT aggiungere marca da bollo
+                # statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
                 verificaPagamento = verifica_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.id)
                 debug_message("verifica pagamento response", 1)
                 debug_message(verificaPagamento, 1)
-                if(!verificaPagamento.nil? && verificaPagamento["esito"]=="ok" && (verificaPagamento["stato"]=="Pagato"))
+                debug_message("richiesta_certificato.documento is #{richiesta_certificato.documento}",1)
+                if(!verificaPagamento.nil? && verificaPagamento["esito"]=="ok" && (verificaPagamento["pagato"]==1) && !richiesta_certificato.documento.nil? && !richiesta_certificato.documento.blank?)
+                  debug_message("pagato!", 1)
                   # pagato, lascio scaricare il documento
-                  url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
+                  richiesta_certificato.stato = "pagato"
+                  pdf_name = File.basename(richiesta_certificato.documento)
+                  
+                  if !verificaPagamento["mbd"].nil? && !verificaPagamento["mbd"].blank?
+                    debug_message("mbd present, saving zip", 1)
+                    folder = File.dirname(richiesta_certificato.documento)
+                    mdb_name = pdf_name.sub('.pdf','.xml')
+                    zip_name = pdf_name.sub('.pdf','.zip')
+                    mdb_path = File.join(folder, mdb_name)
+                    File.open(mdb_path, "wb") { |f| f.write(Base64.decode64(verificaPagamento["mbd"])) }
+                    debug_message("zip_name: #{zip_name}, mdb_name: #{mdb_name}, pdf_name: #{pdf_name}", 1)
+
+                    input_filenames =  [pdf_name, mdb_name]
+
+                    zip_path = File.join(folder, zip_name)
+                    debug_message("zip_path: #{zip_path}", 1)
+                    # elimino e ricreo
+                    File.delete(zip_path) if File.exist?(zip_path)
+
+                    Zip::File.open(zip_path, Zip::File::CREATE) do |zipfile|
+                      input_filenames.each do |filename|
+                        zipfile.add(filename, File.join(folder, filename))
+                      end
+                    end
+                    richiesta_certificato.documento = zip_path
+
+                    url = "/scarica_certificato?file=#{zip_path.sub('./','')}"
+                  else
+                    url = "/scarica_certificato?file=#{richiesta_certificato.documento.sub('./','')}"
+                  end
+
+                  richiesta_certificato.save
+
                 else                  
                   url = "#{session[:dominio]}/servizi/pagamenti/"
                   debug_message("stato pagamenti response", 1)
-                  debug_message(statoPagamenti, 1)
+                  # debug_message(statoPagamenti, 1)
                   if(verificaPagamento.nil? || verificaPagamento["esito"]!="ok")
                     debug_message("verificaPagamento NOT OK", 3)
                     if false
@@ -636,7 +668,11 @@ class ApplicationController < ActionController::Base
     tipologia_richiesta = "download certificato #{params["file"]}"
     if verifica_permessi("scarica_certificato")
       traccia_operazione(tipologia_richiesta)
-      send_file "#{Rails.root}/#{params["file"]}", type: "application/pdf", x_sendfile: true
+      if(File.exist?("#{Rails.root}/#{params["file"]}"))
+        send_file "#{Rails.root}/#{params["file"]}", type: "application/pdf", x_sendfile: true
+      else
+        sconosciuto
+      end
     else
       tipologia_richiesta = "#{tipologia_richiesta} (non autorizzato)"
       traccia_operazione(tipologia_richiesta)
