@@ -395,9 +395,9 @@ class DettagliPersona extends React.Component{
 
     });
     if(!formValid) {
-      $("#form_richiesta_certificato").find("input[type=submit]").attr("disabled","disabled");
+      $("#form_richiesta_certificato").find("input[type=submit]").attr("disabled","disabled").attr("title","Compila prima i campi obbligatori");
     } else {
-      $("#form_richiesta_certificato").find("input[type=submit]").removeAttr("disabled");
+      $("#form_richiesta_certificato").find("input[type=submit]").removeAttr("disabled").removeAttr("title");
     }
     // this.setState(state);
   }
@@ -755,7 +755,7 @@ class DettagliPersona extends React.Component{
         ]);
       } else {
         result.dati.certificati.push([
-          { name:"", labelCols:2, valueSize:8, value: <div className="text-center"><input type="submit" disabled name="invia" className="btn btn-primary" value="Invia richiesta"/></div>, html: true },
+          { name:"", labelCols:2, valueSize:8, value: <div className="text-center"><input type="submit" disabled name="invia" className="btn btn-primary" value="Invia richiesta" title="Compila prima i campi obbligatori"/></div>, html: true },
           { name: "", labelCols:1, valueSize:1, value: <input type="hidden" name="authenticity_token" value={datiAnagrafica.csrf}/> },
         ]);
       }
