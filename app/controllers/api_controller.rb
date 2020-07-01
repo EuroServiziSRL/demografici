@@ -285,7 +285,15 @@ class ApiController < ActionController::Base
           richiesta_certificato.stato = ( importo>0 ? "da_pagare" : "pagato" )
           richiesta_certificato.data_inserimento = Time.now
           richiesta_certificato.save
-          # IMPORTANT inviare mail a utente
+
+          nome_richiedente = richiesta_certificato.richiedente_nome ? richiesta_certificato.richiedente_nome : richiesta_certificato.nome
+
+          if importo>0
+            ApplicationMailer.cert_received_pay(richiesta_certificato.mail, nome_richiedente).deliver
+          else
+            ApplicationMailer.cert_received_download(richiesta_certificato.mail, nome_richiedente).deliver
+          end
+          
           array_json << {
             "codice_esito": "000-Certificato inserito"
           }

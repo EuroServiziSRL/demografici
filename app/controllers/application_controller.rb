@@ -39,8 +39,7 @@ class ApplicationController < ActionController::Base
     # session[:cf] = 'ZMMRHG87L05Z600V'
     # session[:client_id] = 768
 
-    # 
-    #carico cf in variabile per usarla sulla view
+    # carico cf in variabile per usarla sulla view
     debug_message("index - session[:cf]: "+session[:cf].to_s, 3)
     debug_message("index - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s, 3)
     @cf_utente_loggato = session[:cf]
@@ -76,6 +75,7 @@ class ApplicationController < ActionController::Base
   end
 
   def richiedi_certificato
+
     # ricevo dal portale del cittadino una richiesta di certificato
     # il portale deve inviarmi il tenant
     # inserisco in certificati la richiesta ricevuta con stato appropriato 
@@ -138,6 +138,7 @@ class ApplicationController < ActionController::Base
     }
 
     Certificati.create(certificato)    
+    ApplicationMailer.cert_req_sent(session[:email], session[:nome]).deliver
 
     # session[:cf_visualizzato] = params["codice_fiscale"]
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
@@ -1162,12 +1163,13 @@ class ApplicationController < ActionController::Base
             jwt_data = JsonWebToken.decode(hash_result['token'])
 
             # inserisco dati in sessione uno per uno per evitare conversione oggetti e cookie overflow
-            # debug_message(jwt_data, 3)
+            debug_message(jwt_data, 1)
             session[:user_id] = jwt_data["id"]
             session[:permessi] = PERMESSI.find_index(jwt_data["permessi"]) # uso un indice numerico per ridurre la dimensione del cookie
             session[:user_sid] = jwt_data["sid"]
             session[:nome] = jwt_data[:nome]
             session[:cognome] = jwt_data[:cognome]
+            session[:email] = jwt_data[:email]
             session[:cf] = jwt_data[:cf]
             session[:data_nascita] = jwt_data["data_nascita"]
             session[:tipo_documento] = jwt_data["tipo_documento"]
@@ -1178,6 +1180,7 @@ class ApplicationController < ActionController::Base
             session[:api_next_secret] = jwt_data["api_next"]["secret"]
             session[:client_id] = hash_params['c_id']
             session[:famiglia] = []
+            
 
             # WAIT gestire meglio il dominio, aspettiamo setup a db
             solo_dom = @dominio.gsub("/portal","")
@@ -1289,7 +1292,7 @@ class ApplicationController < ActionController::Base
       # session[:permessi]=PERMESSI.find_index("professionisti")
       # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche_certificazione")
       # session[:permessi]=PERMESSI.find_index("vedere_solo_famiglia")
-      session[:permessi]=PERMESSI.find_index("cittadino")
+      # session[:permessi]=PERMESSI.find_index("cittadino")
     end
   end
 
