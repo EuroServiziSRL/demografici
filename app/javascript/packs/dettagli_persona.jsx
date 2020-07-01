@@ -17,17 +17,17 @@ function buttonFormatter(cell,row) {
   var button = ""
 
   if (cell.indexOf("aggiungi_pagamento_pagopa")>-1 || cell.indexOf("inserisci_pagamento")>-1) { button = <span>
-    <a className="btn btn-async" href={cell} title="Aggiungi al carrello"><FontAwesomeIcon icon={faShoppingCart} /></a>
-    <a className="btn hidden wait-icon" title="Attendi..."><FontAwesomeIcon icon={faCircleNotch} spin /></a>
-    <a className="btn hidden done-icon text-success" title="Pagamento aggiunto al carrello"><FontAwesomeIcon icon={faCheck} /></a>
-    <a className="btn hidden error-icon text-danger" href="#" title="Errore durante l'aggiunta del pagamento"><FontAwesomeIcon icon={faExclamation} /></a>
+    <a className="btn btn-async" href={cell} title="Aggiungi al carrello"><FontAwesomeIcon icon={faShoppingCart} size='2x'/></a>
+    <a className="btn hidden wait-icon" title="Attendi..."><FontAwesomeIcon icon={faCircleNotch} size='2x' spin /></a>
+    <a className="btn hidden done-icon text-success" title="Pagamento aggiunto al carrello"><FontAwesomeIcon icon={faCheck} size='2x' /></a>
+    <a className="btn hidden error-icon text-danger" href="#" title="Errore durante l'aggiunta del pagamento"><FontAwesomeIcon icon={faExclamation} size='2x' /></a>
   </span> }
-  else if(cell.indexOf("servizi/pagamenti")>-1) { button = <span><a className="btn done-icon text-success" title="Pagamento aggiunto al carrello"><FontAwesomeIcon icon={faCheck} /></a></span> }
+  else if(cell.indexOf("servizi/pagamenti")>-1) { button = <span><a className="btn done-icon text-success" title="Pagamento aggiunto al carrello"><FontAwesomeIcon icon={faCheck} size='2x' /></a></span> }
   else if(cell.indexOf("scarica_certificato")>-1) { 
-    var icon = <FontAwesomeIcon icon={faFilePdf} />
+    var icon = <FontAwesomeIcon icon={faFilePdf} size='2x' />
     var title = "Scarica certificato pdf"
     if(cell.indexOf(".zip")>-1) {
-      icon = <FontAwesomeIcon icon={faFileArchive} />
+      icon = <FontAwesomeIcon icon={faFileArchive} size='2x' />
       title = "Scarica certificato e marca da bollo digitale"
     }
     button = <span><a className="btn" href={cell} title={title}>{icon}</a></span> 
@@ -364,7 +364,14 @@ class DettagliPersona extends React.Component{
   }
 
   motivoEsenzione() {
-    $("#motivo_esenzione").parent().parent().toggle($("#esenzioneBollo").val()=="99");
+    var show = $("#esenzioneBollo").val()=="99";
+    $("#motivo_esenzione").parent().parent().toggle(show);
+    if(show) {
+      $("#motivo_esenzione").attr("disabled");
+    } else {
+      $("#motivo_esenzione").removeAttr("disabled");
+    }
+    this.validateForm();
   }
 
   validateForm() {
@@ -380,7 +387,7 @@ class DettagliPersona extends React.Component{
       // console.log("key:", key);
       // console.log("value:", value);
       $(this).next(".error").hide();
-      if ($(this).attr("required") && value === "") {
+      if ($(this).attr("required") && $(this).is(":visible") && value === "") {
         error = "questo dato è obbligatorio";
         formValid = false;
         if($(this).next(".error").length < 1) {
@@ -694,7 +701,7 @@ class DettagliPersona extends React.Component{
       for(var e in demograficiData.esenzioniBollo) {
         selectEsenzioni.push(<option value={demograficiData.esenzioniBollo[e].id}>{demograficiData.esenzioniBollo[e].descrizione}</option>)
       }
-      selectEsenzioni = <select className="form-control" defaultValue="" name="esenzioneBollo" onChange={this.motivoEsenzione} id="esenzioneBollo">{selectEsenzioni}</select>
+      selectEsenzioni = <select className="form-control" defaultValue="" name="esenzioneBollo" onChange={this.motivoEsenzione.bind(this)} id="esenzioneBollo">{selectEsenzioni}</select>
 
       var urlModifica = $("#dominio_portale").text()+"/dettagli_utente?modifica";
       var urlCarrello = $("#dominio_portale").text()+"/servizi/pagamenti/";
@@ -731,7 +738,7 @@ class DettagliPersona extends React.Component{
       ],[
         { name:"certificatoEsenzione", label: "Esenzione", labelCols:4, valueSize:5, value: selectEsenzioni, html: true }
       ],[
-        { name:"altroMotivoEsenzione", label: "Specificare il motivo dell'esenzione", labelCols:4, valueSize:5, value: <input className="form-control" type="text"  id="motivo_esenzione" name="motivoEsenzione" />, html: true }
+        { name:"altroMotivoEsenzione", label: "Specificare il motivo dell'esenzione", labelCols:4, valueSize:5, value: <input className="form-control" type="text"  id="motivo_esenzione" name="motivoEsenzione" required  onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} />, html: true }
       ]);
 
       /*[
@@ -891,11 +898,6 @@ class DettagliPersona extends React.Component{
 
 if(document.getElementById('app_demografici_container') !== null){
   ReactDOM.render(<DettagliPersona />, document.getElementById('app_demografici_container') );
-  var $links = $("#topbar").find(".row");
-  $links.find("div").last().remove();
-  $links.find("div").first().removeClass("col-lg-offset-3").removeClass("col-md-offset-3");
-  $links.append('<div class="col-lg-2 col-md-2 text-center"><a href="/portale" title="Sezione Privata">CIAO<br>'+$("#nome_utente").text()+'</a></div>');
-  $links.append('<div class="col-lg-1 col-md-1 logout_link"><a href="logout" title="Logout"><span class="glyphicon glyphicon-log-out" aria-hidden="true"></span></a></div>');
 
   $('#portal_container').on('click', '.nav-tabs a', function(e){
     e.preventDefault();

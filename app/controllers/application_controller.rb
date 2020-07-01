@@ -112,7 +112,7 @@ class ApplicationController < ActionController::Base
     end
 
     certificato = {
-      tenant: session[:api_next_tenant], elenco
+      tenant: session[:api_next_tenant],
       codice_fiscale: cf_certificato,
       codici_certificato: [params[:tipoCertificato].to_i],
       bollo: importo_bollo,
