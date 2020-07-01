@@ -370,6 +370,7 @@ class DettagliPersona extends React.Component{
       $("#motivo_esenzione").attr("disabled");
     } else {
       $("#motivo_esenzione").removeAttr("disabled");
+      $("#motivo_esenzione").val(null);
     }
     this.validateForm();
   }

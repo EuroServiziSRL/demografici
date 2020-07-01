@@ -68,6 +68,10 @@ a.done-icon.text-success:hover {
   z-index: 1000;
 }
 
+.fa-2x {
+  font-size: 20px;
+}
+
 /* TODO trovare modo di importarlo da modulo */
 /* preso da node_modules/react-datepicker/dist/react-datepicker.css perchè era impossibile caricarlo */
 .react-datepicker-popper[data-placement^="bottom"] .react-datepicker__triangle, .react-datepicker-popper[data-placement^="top"] .react-datepicker__triangle, .react-datepicker__year-read-view--down-arrow,
