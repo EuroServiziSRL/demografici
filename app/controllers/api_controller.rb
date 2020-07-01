@@ -177,6 +177,8 @@ class ApiController < ActionController::Base
           richiesta_certificato.data_inserimento = Time.now
           richiesta_certificato.descrizione_errore = params[:errore_descrizione]
           richiesta_certificato.save
+          nome_richiedente = richiesta_certificato.richiedente_nome ? richiesta_certificato.richiedente_nome : richiesta_certificato.nome
+          ApplicationMailer.cert_failed(richiesta_certificato.mail, nome_richiedente, richiesta_certificato.nome_certificato).deliver
           array_json << {
             "codice_esito": "002-Richiesta aggiornata"
           }
@@ -202,6 +204,8 @@ class ApiController < ActionController::Base
           richiesta_certificato.descrizione_errore = params[:errore_descrizione]
           richiesta_certificato.data_inserimento = Time.now
           richiesta_certificato.save
+          nome_richiedente = richiesta_certificato.richiedente_nome ? richiesta_certificato.richiedente_nome : richiesta_certificato.nome
+          ApplicationMailer.cert_failed(richiesta_certificato.mail, nome_richiedente, richiesta_certificato.nome_certificato).deliver
           array_json << {
             "codice_esito": "002-Richiesta aggiornata"
           }
@@ -224,7 +228,8 @@ class ApiController < ActionController::Base
           # richiesta_certificato.save
           richiesta_certificato.stato = "nuovo"
           richiesta_certificato.save
-
+          nome_richiedente = richiesta_certificato.richiedente_nome ? richiesta_certificato.richiedente_nome : richiesta_certificato.nome
+          ApplicationMailer.cert_failed(richiesta_certificato.mail, nome_richiedente, richiesta_certificato.nome_certificato).deliver
           array_json << {
             "codice_esito": "003-Errore generico",
             "errore_descrizione": "il certificato non può essere vuoto"
@@ -289,9 +294,9 @@ class ApiController < ActionController::Base
           nome_richiedente = richiesta_certificato.richiedente_nome ? richiesta_certificato.richiedente_nome : richiesta_certificato.nome
 
           if importo>0
-            ApplicationMailer.cert_received_pay(richiesta_certificato.mail, nome_richiedente).deliver
+            ApplicationMailer.cert_received_pay(richiesta_certificato.mail, nome_richiedente, richiesta_certificato.nome_certificato).deliver
           else
-            ApplicationMailer.cert_received_download(richiesta_certificato.mail, nome_richiedente).deliver
+            ApplicationMailer.cert_received_download(richiesta_certificato.mail, nome_richiedente, richiesta_certificato.nome_certificato).deliver
           end
           
           array_json << {
