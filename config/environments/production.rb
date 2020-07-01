@@ -99,8 +99,8 @@ Rails.application.configure do
     address:              'smtp.gmail.com',
     port:                 587,
     domain:               'soluzionipa.it',
-    user_name:            'sviluppo@soluzionipa.it',
-    password:             'sviluppopa',
+    user_name:            Rails.application.credentials.mail_user,
+    password:             Rails.application.credentials.mail_password,
     authentication:       'plain',
     enable_starttls_auto: true }
 

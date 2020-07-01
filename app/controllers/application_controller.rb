@@ -583,7 +583,7 @@ class ApplicationController < ActionController::Base
                     debug_message("verificaPagamento OK", 3)
                   end
                 end
-              elsif !scaduto && richiesta_certificato.stato == "pagato"
+              elsif !scaduto && richiesta_certificato.stato == "pagato" && !richiesta_certificato.documento.blank?
                 url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
               else
                 url = ""
