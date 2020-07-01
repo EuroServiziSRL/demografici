@@ -4,17 +4,29 @@ class ApplicationMailer < ActionMailer::Base
 
   def cert_req_sent(email, nome)
     @nome = nome
-    mail(to: email, subject: 'Invio richiesta certificato')
+    if !email.blank?
+      mail(to: email, subject: 'Invio richiesta certificato')
+    else
+      logger.error "can't send email to blank email address"
+    end
   end
 
   def cert_received_pay(email, nome)
     @nome = nome
-    mail(to: email, subject: 'Il tuo certificato è pronto')
+    if !email.blank?
+      mail(to: email, subject: 'Il tuo certificato è pronto')
+    else
+      logger.error "can't send email to blank email address"
+    end
   end
 
   def cert_received_download(email, nome)
     @nome = nome
-    mail(to: email, subject: 'Il tuo certificato è pronto')
+    if !email.blank?
+      mail(to: email, subject: 'Il tuo certificato è pronto')
+    else
+      logger.error "can't send email to blank email address"
+    end
   end
 
 end
