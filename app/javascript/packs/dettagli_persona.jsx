@@ -367,47 +367,48 @@ class DettagliPersona extends React.Component{
     var show = $("#esenzioneBollo").val()=="99";
     $("#motivo_esenzione").parent().parent().toggle(show);
     if(show) {
-      $("#motivo_esenzione").attr("disabled");
-    } else {
       $("#motivo_esenzione").removeAttr("disabled");
-      $("#motivo_esenzione").val(null);
+    } else {
+      $("#motivo_esenzione").attr("disabled","disabled");
     }
     this.validateForm();
   }
 
   validateForm() {
-    // var state = this.state;
-    var formValid = true;
-    // state.form.data = $("#form_richiesta_certificato").serialize();
-    $("#form_richiesta_certificato").find("input,select").each(function(){
-      // console.log("parsing field", $(this));
-
-      var key = $(this).attr("name");
-      var value = $(this).val()?$(this).val().trim():"";
-      var error = false;
-      // console.log("key:", key);
-      // console.log("value:", value);
-      $(this).next(".error").hide();
-      if ($(this).attr("required") && $(this).is(":visible") && value === "") {
-        error = "questo dato è obbligatorio";
-        formValid = false;
-        if($(this).next(".error").length < 1) {
-          $('<p class="text-danger error"></p>').insertAfter($(this));
+    if($("#certificati").is(":visible")){
+      // var state = this.state;
+      var formValid = true;
+      // state.form.data = $("#form_richiesta_certificato").serialize();
+      $("#form_richiesta_certificato").find("input,select").each(function(){
+        // console.log("parsing field", $(this));
+  
+        var key = $(this).attr("name");
+        var value = $(this).val()?$(this).val().trim():"";
+        var error = false;
+        // console.log("key:", key);
+        // console.log("value:", value);
+        $(this).next(".error").hide();
+        if ($(this).attr("required") && !$(this).is(':disabled') && value === "") {
+          error = "questo dato è obbligatorio";
+          formValid = false;
+          if($(this).next(".error").length < 1) {
+            $('<p class="text-danger error"></p>').insertAfter($(this));
+          }
+          $(this).next(".error").html(error).show();
         }
-        $(this).next(".error").html(error).show();
+        $(this).parent().toggleClass("has-success", error===false);
+        $(this).parent().toggleClass("has-error", error!==false);
+        // console.log("error:", error);
+        // state.form.fields[key] = {value: value,  error: error};
+  
+      });
+      if(!formValid) {
+        $("#form_richiesta_certificato").find("input[type=submit]").attr("disabled","disabled").attr("title","Compila prima i campi obbligatori");
+      } else {
+        $("#form_richiesta_certificato").find("input[type=submit]").removeAttr("disabled").removeAttr("title");
       }
-      $(this).parent().toggleClass("has-success", error===false);
-      $(this).parent().toggleClass("has-error", error!==false);
-      // console.log("error:", error);
-      // state.form.fields[key] = {value: value,  error: error};
-
-    });
-    if(!formValid) {
-      $("#form_richiesta_certificato").find("input[type=submit]").attr("disabled","disabled").attr("title","Compila prima i campi obbligatori");
-    } else {
-      $("#form_richiesta_certificato").find("input[type=submit]").removeAttr("disabled").removeAttr("title");
+      // this.setState(state);
     }
-    // this.setState(state);
   }
 
   formatData(datiAnagrafica) {
@@ -739,7 +740,7 @@ class DettagliPersona extends React.Component{
       ],[
         { name:"certificatoEsenzione", label: "Esenzione", labelCols:4, valueSize:5, value: selectEsenzioni, html: true }
       ],[
-        { name:"altroMotivoEsenzione", label: "Specificare il motivo dell'esenzione", labelCols:4, valueSize:5, value: <input className="form-control" type="text"  id="motivo_esenzione" name="motivoEsenzione" required  onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} />, html: true }
+        { name:"altroMotivoEsenzione", label: "Specificare il motivo dell'esenzione*", labelCols:4, valueSize:5, value: <input className="form-control" type="text"  id="motivo_esenzione" name="motivoEsenzione" required disabled onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} />, html: true }
       ]);
 
       /*[
