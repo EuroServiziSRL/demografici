@@ -112,7 +112,7 @@ class ApplicationController < ActionController::Base
     end
 
     certificato = {
-      tenant: session[:api_next_tenant], 
+      tenant: session[:api_next_tenant], elenco
       codice_fiscale: cf_certificato,
       codici_certificato: [params[:tipoCertificato].to_i],
       bollo: importo_bollo,
@@ -329,7 +329,7 @@ class ApplicationController < ActionController::Base
       params["codice_fiscale"] = cf_ricerca
       searchParams = { "CodiceFiscale": cf_ricerca }
 
-      nascondi_sensibili = !is_self && ["ricercare_anagrafiche_no_sensibili","vedere_solo_famiglia","professionista_limitato"].include?(PERMESSI[session[:permessi]])
+      nascondi_sensibili = !is_self && ["ricercare_anagrafiche_no_sensibili","vedere_solo_famiglia","elencare_anagrafiche_certificazione"].include?(PERMESSI[session[:permessi]])
       solo_certificati = PERMESSI[session[:permessi]] == "elencare_anagrafiche_certificazione"
       solo_famiglia = PERMESSI[session[:permessi]] == "vedere_solo_famiglia"
       cittadino = PERMESSI[session[:permessi]] == "cittadino"
