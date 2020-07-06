@@ -10,222 +10,20 @@ import Select from 'react-select';
 import BootstrapTable from 'react-bootstrap-table-next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCircleNotch, faShoppingCart, faPrint, faCheck, faExclamation, faDownload, faFileArchive, faFilePdf } from '@fortawesome/free-solid-svg-icons'
-
-demograficiData.descrizioniStatus = {"D":"DECEDUTO", "R":"RESIDENTE", "A":"RESIDENTE AIRE", "I":"IRREPERIBILE", "E":"EMIGRATO"}
-
-function buttonFormatter(cell,row) {
-  var button = ""
-
-  if (cell.indexOf("aggiungi_pagamento_pagopa")>-1 || cell.indexOf("inserisci_pagamento")>-1) { button = <span>
-    <a className="btn btn-async" href={cell} title="Aggiungi al carrello"><FontAwesomeIcon icon={faShoppingCart} size='2x'/></a>
-    <a className="btn hidden wait-icon" title="Attendi..."><FontAwesomeIcon icon={faCircleNotch} size='2x' spin /></a>
-    <a className="btn hidden done-icon text-success" title="Pagamento aggiunto al carrello"><FontAwesomeIcon icon={faCheck} size='2x' /></a>
-    <a className="btn hidden error-icon text-danger" href="#" title="Errore durante l'aggiunta del pagamento"><FontAwesomeIcon icon={faExclamation} size='2x' /></a>
-  </span> }
-  else if(cell.indexOf("servizi/pagamenti")>-1) { button = <span><a className="btn done-icon text-success" title="Pagamento aggiunto al carrello"><FontAwesomeIcon icon={faCheck} size='2x' /></a></span> }
-  else if(cell.indexOf("scarica_certificato")>-1) { 
-    var icon = <FontAwesomeIcon icon={faFilePdf} size='2x' />
-    var title = "Scarica certificato pdf"
-    if(cell.indexOf(".zip")>-1) {
-      icon = <FontAwesomeIcon icon={faFileArchive} size='2x' />
-      title = "Scarica certificato e marca da bollo digitale"
-    }
-    button = <span><a className="btn" href={cell} title={title}>{icon}</a></span> 
-  }
-  // return  <a href={cell} target="_blank" className="btn btn-default">{label} {icon}</a>;
-  return button;
-} 
-
-function statiFormatter(stato) {
-  var type = "muted";
-
-  if(stato == "da_pagare" ){
-    type = "info";
-  } else if(stato == "scaricato" ){
-    type = "success";
-  } else if(stato == "pagato" ){
-    type = "success";
-  } else if(stato=="errore"){
-    type = "danger";
-  } else if(stato=="non_emettibile"){
-    stato = "certificato_non_emettibile";
-    type = "danger";
-  } else if(stato=="annullato"){
-    stato=="annullata";
-    type = "danger";
-  } else if(stato=="in_attesa"){
-    stato = "in_elaborazione";
-    type = "warning";
-  } else if(stato=="nuovo"){
-    stato = "inviata";
-  }
-  
-  return  <span className={"text-"+type}>{ucfirst(stato.replace(/_/g," "))}</span>;
-} 
-
-function moneyFormatter(number) {
-  number = parseFloat(number)  
-  if (typeof number.toFixed !== "function") {
-    return  <span>-</span>;
-  } else if(number>0) {
-    return  <span>&euro; {number.toFixed(2).replace(/\./g,",")}</span>;
-  } else {
-    return  <span className="text-success">gratuito</span>;
-  }
-} 
-
-function esenzioneFormatter(idEsenzione) {  
-  if(idEsenzione) {
-    var esenzioneFound = false
-    for(var e in demograficiData.esenzioniBollo) {
-      if (demograficiData.esenzioniBollo[e].id == idEsenzione) { esenzioneFound = demograficiData.esenzioniBollo[e].descrizione; break; }
-    }
-    if(esenzioneFound) {
-      return esenzioneFound;
-    } else {
-      return "";
-    }
-  } else {
-    return "";
-  }
-} 
-
-function dateFormatter(dateTimeString) {
-  var formatted = "";
-  if(dateTimeString) {
-    var dateString = dateTimeString.replace(/-/g,"/").replace(/T.*/g," ").replace(/\.\d{3}Z/g,"");
-    var date = new Date(dateString);
-    formatted = date.toLocaleDateString("IT");
-  }
-  return formatted;
-}
-
-function tipoCertFormatter(cell,row) {
-  return "Certificato "+cell;
-}
+import { DemograficiForm } from './demografici_form'
+import { DemograficiList } from './demografici_list'
+// import { demograficiData } from './demografici'
+import { buttonFormatter } from './demografici'
+import { statiFormatter } from './demografici'
+import { moneyFormatter } from './demografici'
+import { dateFormatter } from './demografici'
+import { tipoCertFormatter } from './demografici'
+import { ucfirst } from './demografici'
 
 function todo(message, type) {
   if(typeof(type)=="undefined") { type="warning"; }
   if(demograficiData.test) {
     return <span className={"ml10 alert alert-"+type}>({message})</span>
-  }
-}
-
-function ucfirst(str){
-  return str?str.replace(/(\b)([a-zA-Z])/,
-    function(firstLetter){
-      return   firstLetter.toUpperCase();
-    }):"";
-}
-
-// TODO sostituire con componente
-class DemograficiForm extends React.Component{
-  cols = 12
-  maxLabelCols = 2
-  rows = []
-
-  constructor(props){
-    super(props);
-    console.log("DemograficiForm received props");
-    console.log(props);
-    if( typeof(props.cols) != "undefined" ) { this.cols = props.cols; }
-    if( typeof(props.maxLabelCols) != "undefined" ) { this.maxLabelCols = props.maxLabelCols; }
-    this.rows = props.rows
-    console.log("constructor end");
-  }
-
-  onFieldChange() {
-    this.props.onChange();
-  }
-
-  render() {
-    console.log("rendering DemograficiForm");
-    console.log("this.state", this.state);
-    console.log("this.props", this.props);
-    // console.log("rows");
-    // console.log(this.rows);
-    var rowsHtml = []
-    
-    for(var r in this.rows) {
-      var fieldsHtml = [];
-      var fields = this.rows[r];
-      var fieldCols = this.cols/fields.length;
-      var labelCols = Math.floor(fieldCols/3);
-      if(labelCols>this.maxLabelCols) { labelCols = this.maxLabelCols; } // senò è enorme dai
-      var valueSize = fieldCols-labelCols;
-      for(var f in fields) {
-        if( typeof(fields[f].labelCols) == "undefined" ) { fields[f].labelCols = labelCols; }
-        if( typeof(fields[f].valueSize) == "undefined" ) { fields[f].valueSize = valueSize; }
-        if(fields[f].name!=null) {
-          var labelClass = "col-lg-"+fields[f].labelCols+" control-label";
-          if( typeof(fields[f].label) == "undefined" ) { fields[f].label = ucfirst(fields[f].name); }
-          fieldsHtml.push(<label key={"label"+f.toString()} htmlFor={fields[f].name} className={labelClass}>{fields[f].label}</label>)
-        } else {
-          fields[f].valueSize = fieldCols;
-        }
-        var valueClass = "col-lg-"+fields[f].valueSize;
-        if(fields[f].html) {
-          fieldsHtml.push(<div key={"div"+f.toString()} className={valueClass} id={fields[f].name}>{fields[f].value}</div>)
-        } else {
-          fieldsHtml.push(<div key={"div"+f.toString()} className={valueClass}><p id={fields[f].name} className="form-control-static">{fields[f].value}</p></div>)
-        }
-                
-      }
-      rowsHtml.push(<div key={"row"+r.toString()} className="form-group"> {fieldsHtml} </div>)
-    }
-    return rowsHtml;
-  }
-}
-
-// TODO creare componente
-class DemograficiList extends React.Component{
-  list = []
-  linked = false
-
-  constructor(props){
-    super(props);
-    console.log("DemograficiList received props");
-    console.log(props);
-    this.list = props.list;
-    this.linked = props.linked;
-    this.nostyle = props.nostyle;
-    if(!this.nostyle){this.nostyle=false;}
-    console.log("constructor end");
-  }
-
-  render() {
-    // console.log("rendering DemograficiList");
-    // console.log("list");
-    // console.log(this.list);
-    // console.log("linked");
-    // console.log(this.linked);
-    // console.log("nostyle");
-    // console.log(this.nostyle);
-    var listItems = [];
-    var html;
-    var classNameLi = 'list-group-item';
-    var classNameUl = 'list-group';
-    var separator = <></>;
-    if(this.nostyle) {
-      classNameLi = 'btn';
-      classNameUl = '';
-      separator = <br/>;
-    }
-    if(this.list && this.list[0]) {
-      // FIXME creare id univoci su <li>
-      if(this.linked) {
-        listItems.push(this.list.map((item, index) => <><a className={classNameLi} key={item.text+index.toString()} href={item.url}>{item.preText?<span>{item.preText}</span> :""}{typeof(item.text.toLowerCase)=="function"&&item.text.toLowerCase().indexOf("scarica")>-1?<span><FontAwesomeIcon icon={faDownload}/></span>:item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a>{separator}</> ));
-      } else {
-        listItems.push(this.list.map((item, index) => <li className={classNameLi} key={index.toString()}>{item.preText?<span>{item.preText}</span> :""}<a href={item.url}>{typeof(item.text.toLowerCase)=="function"&&item.text.toLowerCase().indexOf("scarica")>-1?<span><FontAwesomeIcon icon={faDownload}/></span>:item.text}{item.postText? <span className="badge">{item.postText}</span>:""}</a></li>  ));
-      }
-    }
-    if(this.linked) {
-      html = <div className={classNameUl}>{listItems}</div>
-    } else {
-      html = <ul className={classNameUl}>{listItems}</ul>
-    }
-    console.log(html);
-    return(html);
   }
 }
 
@@ -418,25 +216,26 @@ class DettagliPersona extends React.Component{
         { name: "nominativo", value: nominativo },
         { name: "indirizzo", value: datiAnagrafica.indirizzo },
       ], [
-        // TODO chiedere elenco stati a giambanco
         { name: "status", value: demograficiData.descrizioniStatus[datiAnagrafica.posizioneAnagrafica] },
         { name: "codiceCittadino", label: "Numero individuale", value: datiAnagrafica.codiceCittadino },
       ]
     ];
-    result.dati.scheda_anagrafica = [[
-        { name: "cognome", value: datiAnagrafica.cognome },
-        { name: "nome", value: datiAnagrafica.nome },
-        { name: "sesso", value: datiAnagrafica.sesso },
-      ], [
-        { name: "codiceFiscale", label: "Codice Fiscale", value: datiAnagrafica.codiceFiscale },
-        { name: "dataNascita", label: "Data di nascita", value: datiAnagrafica.dataNascita },
-        { name: "comuneNascitaDescrizione", label: "Comune di nascita", value: datiAnagrafica.comuneNascitaDescrizione }, 
-      ], [
-        { name: "indirizzo", label: "Via di residenza", value: datiAnagrafica.indirizzo },
-        { name: "descrizioneCittadinanza", label: "Cittadinanza", value: datiAnagrafica.descrizioneCittadinanza },
-        { name: "statoCivile", label: "Stato civile", value: datiAnagrafica.datiStatoCivile?datiAnagrafica.datiStatoCivile.statoCivile:"" },
-      ], 
-    ];
+    if(!datiAnagrafica.nascondiAnagrafica) {
+      result.dati.scheda_anagrafica = [[
+          { name: "cognome", value: datiAnagrafica.cognome },
+          { name: "nome", value: datiAnagrafica.nome },
+          { name: "sesso", value: datiAnagrafica.sesso },
+        ], [
+          { name: "codiceFiscale", label: "Codice Fiscale", value: datiAnagrafica.codiceFiscale },
+          { name: "dataNascita", label: "Data di nascita", value: datiAnagrafica.dataNascita },
+          { name: "comuneNascitaDescrizione", label: "Comune di nascita", value: datiAnagrafica.comuneNascitaDescrizione }, 
+        ], [
+          { name: "indirizzo", label: "Via di residenza", value: datiAnagrafica.indirizzo },
+          { name: "descrizioneCittadinanza", label: "Cittadinanza", value: datiAnagrafica.descrizioneCittadinanza },
+          { name: "statoCivile", label: "Stato civile", value: datiAnagrafica.datiStatoCivile?datiAnagrafica.datiStatoCivile.statoCivile:"" },
+        ], 
+      ];
+    }
 
     // così aggiungo una riga
     var genitori = [];
@@ -450,19 +249,21 @@ class DettagliPersona extends React.Component{
         { name: "padre", value: datiAnagrafica.datiPaternita.cognome+" "+datiAnagrafica.datiPaternita.nome },
       );
     }
-    if(genitori.length) {
+    if(genitori.length && !datiAnagrafica.nascondiAnagrafica) {
       genitori.push({ name: "", value: "" }); 
       if(genitori.length==2){genitori.push({ name: "", value: "" });}
       result.dati.scheda_anagrafica.push(genitori);
     }
 
-    result.dati.scheda_anagrafica.push([
-      { name: "titoloStudio", label: "Titolo studio", value: datiAnagrafica.datiTitoloStudio!=null?datiAnagrafica.datiTitoloStudio.descrizione:"" },
-      { name: "professione", label: "Professione", value: datiAnagrafica.datiProfessione!=null?datiAnagrafica.datiProfessione.descrizione:"" },
-      { name: "", value: "" },
-    ]);
+    if(!datiAnagrafica.nascondiAnagrafica) {
+      result.dati.scheda_anagrafica.push([
+        { name: "titoloStudio", label: "Titolo studio", value: datiAnagrafica.datiTitoloStudio!=null?datiAnagrafica.datiTitoloStudio.descrizione:"" },
+        { name: "professione", label: "Professione", value: datiAnagrafica.datiProfessione!=null?datiAnagrafica.datiProfessione.descrizione:"" },
+        { name: "", value: "" },
+      ]);
+    }
 
-    if(datiAnagrafica.datiIscrizione!=null) {
+    if(datiAnagrafica.datiIscrizione!=null && !datiAnagrafica.nascondiAnagrafica) {
       var iscrizione = datiAnagrafica.datiIscrizione;
       var rilascio = []
       result.dati.scheda_anagrafica.push([
@@ -474,7 +275,7 @@ class DettagliPersona extends React.Component{
       ]);
     }
 
-    if(datiAnagrafica.datiCancellazione!=null) {
+    if(datiAnagrafica.datiCancellazione!=null && !datiAnagrafica.nascondiAnagrafica) {
       var cancellazione = datiAnagrafica.datiCancellazione;
       var rilascio = []
       result.dati.scheda_anagrafica.push([
@@ -486,7 +287,7 @@ class DettagliPersona extends React.Component{
       ]);
     }
 
-    if(datiAnagrafica.datiTitoloSoggiorno!=null) {
+    if(datiAnagrafica.datiTitoloSoggiorno!=null && !datiAnagrafica.nascondiAnagrafica) {
       var documento = datiAnagrafica.datiTitoloSoggiorno;
       var rilascio = []
       if(documento.comuneRilascio) { rilascio.push("Comune di "+documento.comuneRilascio); }

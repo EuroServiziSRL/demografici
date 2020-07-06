@@ -7,78 +7,11 @@ import Select from 'react-select';
 import BootstrapTable from 'react-bootstrap-table-next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCircleNotch } from '@fortawesome/free-solid-svg-icons'
+import { DemograficiForm } from './demografici_form'
+import { linkAnagraficaFormatter } from './demografici'
+import { posizioneAnagraficaFormatter } from './demografici'
 // import DatePicker from 'react-datepicker';
 // import it from 'date-fns/locale/it';
-demograficiData.descrizioniStatus = {"D":"DECEDUTO", "R":"RESIDENTE", "A":"RESIDENTE AIRE", "I":"IRREPERIBILE", "E":"EMIGRATO"}
-
-
-function ucfirst(str){
-  return str?str.replace(/(\b)([a-zA-Z])/,
-    function(firstLetter){
-      return   firstLetter.toUpperCase();
-    }):"";
-}
-
-function linkAnagraficaFormatter(cell) {
-  return  <span dangerouslySetInnerHTML={ {__html: cell} } />
-} 
-
-function posizioneAnagraficaFormatter(cell) {
-  return demograficiData.descrizioniStatus[cell]
-}
-
-// TODO creare componente
-class DemograficiForm extends React.Component{
-  cols = 12
-  maxLabelCols = 2
-  rows = []
-
-  constructor(props){
-    super(props);
-    console.log("DemograficiForm received props");
-    console.log(props);
-    if( typeof(props.cols) != "undefined" ) { this.cols = props.cols; }
-    if( typeof(props.maxLabelCols) != "undefined" ) { this.maxLabelCols = props.maxLabelCols; }
-    this.rows = props.rows
-    console.log("constructor end");
-  }
-
-  render() {
-    console.log("rendering DemograficiForm");
-    console.log("rows");
-    console.log(this.rows);
-    var rowsHtml = []
-    
-    for(var r in this.rows) {
-      var fieldsHtml = [];
-      var fields = this.rows[r];
-      var fieldCols = this.cols/fields.length;
-      var labelCols = Math.floor(fieldCols/3);
-      if(labelCols>this.maxLabelCols) { labelCols = this.maxLabelCols; } // senò è enorme dai
-      var valueSize = fieldCols-labelCols;
-      for(var f in fields) {
-        if( typeof(fields[f].labelCols) == "undefined" ) { fields[f].labelCols = labelCols; }
-        if( typeof(fields[f].valueSize) == "undefined" ) { fields[f].valueSize = valueSize; }
-        if(fields[f].name!=null) {
-          var labelClass = "col-lg-"+fields[f].labelCols+" control-label";
-          if( typeof(fields[f].label) == "undefined" ) { fields[f].label = ucfirst(fields[f].name); }
-          fieldsHtml.push(<label key={"label"+f.toString()} htmlFor={fields[f].name} className={labelClass}>{fields[f].label}</label>)
-        } else {
-          fields[f].valueSize = fieldCols;
-        }
-        var valueClass = "col-lg-"+fields[f].valueSize;
-        if(fields[f].html) {
-          fieldsHtml.push(<div key={"div"+f.toString()} className={valueClass} id={fields[f].name}>{fields[f].value}</div>)
-        } else {
-          fieldsHtml.push(<div key={"div"+f.toString()} className={valueClass}><p id={fields[f].name} className="form-control-static">{fields[f].value}</p></div>)
-        }
-                
-      }
-      rowsHtml.push(<div key={"row"+r.toString()} className="form-group"> {fieldsHtml} </div>)
-    }
-    return rowsHtml;
-  }
-}
 
 class RicercaAnagrafiche extends React.Component{
 
@@ -386,12 +319,12 @@ class RicercaAnagrafiche extends React.Component{
     var endDate = this.state.dataNascitaAl
     console.log(endDate);
 
-    // var selectCittadinanze = []
-    // selectCittadinanze.push(<option value=""></option>)
-    // for(var e in demograficiData.cittadinanze) {
-    //   selectCittadinanze.push(<option value={demograficiData.esenzioniBollo[e].id}>{demograficiData.esenzioniBollo[e].descrizione}</option>)
-    // }
-    // selectCittadinanze = <select className="form-control" defaultValue="" name="idCittadinanza">{selectCittadinanze}</select>
+    var selectCittadinanze = []
+    selectCittadinanze.push(<option value=""></option>)
+    for(var e in demograficiData.cittadinanze) {
+      selectCittadinanze.push(<option value={demograficiData.cittadinanze[e].id}>{demograficiData.cittadinanze[e].cittadinanza}</option>)
+    }
+    selectCittadinanze = <select className="form-control" defaultValue="" name="idCittadinanza">{selectCittadinanze}</select>
 
     var content = <div>
       {this.state.csrf=="" ? <div className="row"><div className="col-lg-12"><p className="alert alert-info">Caricamento...</p></div></div> : <div className="row form-ricerca form-horizontal"><form method="post" action="" className="col-lg-12 col-md-12 col-sm-12 col-xs-12" onSubmit={this.ricercaAnagrafiche.bind(this)} id="formRicercaAnagrafiche"><h3>Ricerca anagrafiche</h3>
@@ -405,8 +338,7 @@ class RicercaAnagrafiche extends React.Component{
               { name:"codiceFiscale", label:"Codice Fiscale", value: <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="codiceFiscale" id="codiceFiscale"/>, html: true },
             ],
             [
-              // TODO capire che id usa ricerca cittadinanza
-              // { name:"cittadinanza", value:selectCittadinanze, html: true },
+              { name:"cittadinanza", value:selectCittadinanze, html: true },
               // { name:"cittadinanza", value: <select name="idCittadinanza" className="form-control">
               //   <option></option>
               //   <option value="1">Italiana</option>

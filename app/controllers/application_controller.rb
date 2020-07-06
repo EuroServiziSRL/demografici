@@ -24,6 +24,7 @@ class ApplicationController < ActionController::Base
   include Serenity::Generator
   # TODO aggiungere anche resource in config?
   # @@api_resource = "https://api.civilianextuat.it"
+  # MEMO variabili globali
   @@api_resource = "https://api.civilianextdev.it"
   @@api_url = "#{@@api_resource}/Demografici"
   PERMESSI = ["ricercare_anagrafiche", "ricercare_anagrafiche_no_sensibili", "elencare_anagrafiche", "vedere_solo_famiglia", "professionisti", "elencare_anagrafiche_certificazione", "cittadino"].freeze
@@ -154,6 +155,23 @@ class ApplicationController < ActionController::Base
       return
     else 
       # session[:cf_visualizzato] = params["codice_fiscale"]
+      webapi_localita = @@api_url.sub("Demografici","Localita")
+      # TODO capire che parametri passare alla ricerca
+      @demografici_data = JSON.parse(@demografici_data)
+      result = HTTParty.post(
+        "#{webapi_localita}/RicercaNazione?v=1.0", 
+        :body => {"model" => ""}.to_json,
+        :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
+        :debug_output => @@log_to_output && @@log_level>0 ? $stdout : nil
+      )   
+      result = JSON.parse(result.response.body)
+      debug_message("Localita/Localita_RicercaNazione result:",3)
+      debug_message(result,3)
+      @demografici_data["cittadinanze"] =  result["result"]
+
+      @demografici_data = @demografici_data.to_json
+      @demografici_data = @demografici_data.html_safe
+
       render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
     end
   end
@@ -293,7 +311,6 @@ class ApplicationController < ActionController::Base
   end
 
   def ricerca_individui
-    @@log_level = 3
     debug_message("ricerca_individui - logged user cf: "+session[:cf], 3)
     debug_message("ricerca_individui - cf_visualizzato: "+session[:cf_visualizzato].to_s, 3)
     debug_message("ricerca_individui - \"cf_visualizzato\": "+session["cf_visualizzato"].to_s, 3)
@@ -329,22 +346,25 @@ class ApplicationController < ActionController::Base
       params["codice_fiscale"] = cf_ricerca
       searchParams = { "CodiceFiscale": cf_ricerca }
 
-      nascondi_sensibili = !is_self && ["ricercare_anagrafiche_no_sensibili","vedere_solo_famiglia","elencare_anagrafiche_certificazione"].include?(PERMESSI[session[:permessi]])
+      permessi_no_sensibili = ["ricercare_anagrafiche_no_sensibili","vedere_solo_famiglia","elencare_anagrafiche_certificazione"]
+      nascondi_sensibili = !is_self && permessi_no_sensibili.include?(PERMESSI[session[:permessi]])
       solo_certificati = PERMESSI[session[:permessi]] == "elencare_anagrafiche_certificazione"
       solo_famiglia = PERMESSI[session[:permessi]] == "vedere_solo_famiglia"
       cittadino = PERMESSI[session[:permessi]] == "cittadino"
       professionista = ["professionisti","elencare_anagrafiche_certificazione"].include?(PERMESSI[session[:permessi]])
       globale = ["ricercare_anagrafiche","ricercare_anagrafiche_no_sensibili","elencare_anagrafiche","vedere_solo_famiglia"].include?(PERMESSI[session[:permessi]])
 
-      debug_message("session[:permessi]: #{session[:permessi]} - PERMESSI[session[:permessi]]: #{PERMESSI[session[:permessi]]}", 3)
-      debug_message("is_self? "+is_self.to_s, 3)
+      debug_message("session[:permessi]: #{session[:permessi]} - PERMESSI[session[:permessi]]: #{PERMESSI[session[:permessi]]}",3)
+      debug_message("is_self? "+is_self.to_s,3)
       debug_message('PERMESSI[session[:permessi]] == "ricercare_anagrafiche_no_sensibili"? ' + (PERMESSI[session[:permessi]] == "ricercare_anagrafiche_no_sensibili").to_s, 3)
-      debug_message('nascondi_sensibili? '+nascondi_sensibili.to_s, 3)
-      debug_message("solo_certificati? "+solo_certificati.to_s, 3)
-      debug_message("solo_famiglia? "+solo_famiglia.to_s, 3)
-      debug_message("cittadino? "+cittadino.to_s, 3)
-      debug_message("professionista? "+professionista.to_s, 3)
-      debug_message("globale? "+globale.to_s, 3)
+      debug_message('nascondi_sensibili? '+nascondi_sensibili.to_s,3)
+      debug_message("solo_certificati? "+solo_certificati.to_s,3)
+      debug_message("solo_famiglia? "+solo_famiglia.to_s,3)
+      debug_message("cittadino? "+cittadino.to_s,3)
+      debug_message("professionista? "+professionista.to_s,3)
+      debug_message("globale? "+globale.to_s,3)
+      debug_message("PERMESSI[session[:permessi]].inspect "+PERMESSI[session[:permessi]].inspect,3)
+      debug_message("permessi_no_sensibili[0].inspect "+permessi_no_sensibili[0].inspect,3)
 
       searchParams[:MostraIndirizzo] = true
       searchParams[:MostraConiuge] = true
@@ -357,8 +377,7 @@ class ApplicationController < ActionController::Base
       searchParams[:MostraDatiMaternita] = !nascondi_sensibili
       searchParams[:MostraDatiPaternita] = !nascondi_sensibili
       searchParams[:MostraDatiProfessione] = !nascondi_sensibili
-      searchParams[:MostraDatiTitoloStudio] = !nascondi_sensibili
-      
+      searchParams[:MostraDatiTitoloStudio] = !nascondi_sensibili      
 
       debug_message("searchParams: ", 3)
       debug_message(searchParams, 3)
@@ -381,17 +400,27 @@ class ApplicationController < ActionController::Base
         session[:famiglia] = []
 
         if solo_famiglia || solo_certificati
+          debug_message("result",3)
+          debug_message(result,3)
+
           new_result = { }
           
           new_result["nome"] = result["nome"]
           new_result["cognome"] = result["cognome"]
           new_result["codiceFiscale"] = result["codiceFiscale"]
           new_result["codiceFamiglia"] = result["codiceFamiglia"]
+          new_result["posizioneAnagrafica"] = result["posizioneAnagrafica"]
+          new_result["indirizzo"] = result["indirizzo"]
+          new_result["codiceCittadino"] = result["codiceCittadino"]
 
           result = new_result
 
           debug_message("result set to", 3)
           debug_message(result, 3)
+
+          if solo_certificati || solo_famiglia
+            result["nascondiAnagrafica"] = true
+          end
         elsif nascondi_sensibili
           result.except!("dataNascita")
           result.except!("codiceIstatComuneNascitaItaliano")
@@ -436,7 +465,7 @@ class ApplicationController < ActionController::Base
         debug_message("datiRichiedente set to", 3)
         debug_message(result["datiRichiedente"], 3)
         
-        if !result["codiceFamiglia"].blank? && result["codiceFamiglia"]!="null" && ( cittadino || globale || professionista || solo_famiglia  )
+        if !result["codiceFamiglia"].blank? && result["codiceFamiglia"]!="null" && !solo_certificati && ( cittadino || globale || professionista || solo_famiglia  )
           debug_message("fetching famiglia", 3)
           searchParams = { 
             "codiceAggregazione": result["codiceFamiglia"], 
@@ -454,6 +483,13 @@ class ApplicationController < ActionController::Base
             debug_message(componente, 3)
             relazione = RelazioniParentela.where(id_relazione: componente["codiceRelazioneParentelaANPR"]).first
             componente["relazioneParentela"] = relazione.descrizione
+            if !cittadino && !globale && !professionista
+              debug_message("removing codiceFiscale from:",1)
+              debug_message(componente,1)
+              componente = componente.except("codiceFiscale")
+              debug_message("componente now is:",1)
+              debug_message(componente,1)
+            end
             famigliaArray << componente["codiceFiscale"]
             famiglia << componente
           end
@@ -462,7 +498,7 @@ class ApplicationController < ActionController::Base
           result["csrf"] = form_authenticity_token
         end
 
-        if ( cittadino || professionista || solo_certificati ) && !solo_famiglia
+        if ( cittadino || professionista || solo_certificati ) && !solo_famiglia && session[:certificazione]
 
           result["certificati"] = []
           result["richiesteCertificati"] = []
@@ -496,11 +532,11 @@ class ApplicationController < ActionController::Base
               if !scaduto && richiesta_certificato.stato == "da_pagare"
                 # statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
                 verificaPagamento = verifica_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.id)
-                debug_message("verifica pagamento response", 1)
-                debug_message(verificaPagamento, 1)
+                debug_message("verifica pagamento response",3)
+                debug_message(verificaPagamento,3)
                 debug_message("richiesta_certificato.documento is #{richiesta_certificato.documento}",1)
                 if(!verificaPagamento.nil? && verificaPagamento["esito"]=="ok" && (verificaPagamento["pagato"]==1) && !richiesta_certificato.documento.nil? && !richiesta_certificato.documento.blank?)
-                  debug_message("pagato!", 1)
+                  debug_message("pagato!",3)
                   # pagato, lascio scaricare il documento
                   richiesta_certificato.stato = "pagato"
                   pdf_name = File.basename(richiesta_certificato.documento)
@@ -517,7 +553,7 @@ class ApplicationController < ActionController::Base
                     input_filenames =  [pdf_name, mdb_name]
 
                     zip_path = File.join(folder, zip_name)
-                    debug_message("zip_path: #{zip_path}", 1)
+                    debug_message("zip_path: #{zip_path}",3)
                     # elimino e ricreo
                     File.delete(zip_path) if File.exist?(zip_path)
 
@@ -537,8 +573,8 @@ class ApplicationController < ActionController::Base
 
                 else                  
                   url = "#{session[:dominio]}/servizi/pagamenti/"
-                  debug_message("stato pagamenti response", 1)
-                  # debug_message(statoPagamenti, 1)
+                  debug_message("stato pagamenti response",3)
+                  # debug_message(statoPagamenti,3)
                   if(verificaPagamento.nil? || verificaPagamento["esito"]!="ok")
                     debug_message("verificaPagamento NOT OK", 3)
                     if false
@@ -792,12 +828,13 @@ class ApplicationController < ActionController::Base
         debug_message("TYPEOF ", 3)
         debug_message(relazione.inspect, 3)
         componente["relazioneParentela"] = relazione.descrizione
+
         @famiglia << {
           "nome" => componente["nome"],
           "cognome" => componente["cognome"],
           "relazione_parentela" => componente["relazioneParentela"],
           "data_nascita" => componente["dataNascita"],
-          "comune_nascita" => "", # non c'è!
+          "comune_nascita" => "#{componente["comuneNascita"]} (#{componente["provinciaNascita"]}), #{componente["statoNascita"]}"
         }
       end
 
@@ -905,6 +942,7 @@ class ApplicationController < ActionController::Base
   
   def sconosciuto
     render html: '<DOCTYPE html><html><head><title>Pagina non trovata</title></head><body>Pagina non trovata</body></html>'.html_safe
+    return
   end
   
   #da fare
@@ -1089,7 +1127,7 @@ class ApplicationController < ActionController::Base
 
     # cittadinanze = []
     # StatiEsteri.all.each do |stato|
-    #   cittadinanza = { "id": stato.id, "descrizione": stato.denominazione }
+    #   cittadinanza = { "id": stato.id, "cittadinanza": stato.denominazione }
     #   cittadinanze << cittadinanza
     # end
     # @demografici_data["cittadinanze"] = cittadinanze
@@ -1101,7 +1139,7 @@ class ApplicationController < ActionController::Base
     end
 
     @demografici_data["cittadino"] = PERMESSI[session[:permessi]] == "cittadino"
-    
+  
     @demografici_data = @demografici_data.to_json
     @demografici_data = @demografici_data.html_safe
   end
@@ -1162,8 +1200,10 @@ class ApplicationController < ActionController::Base
           if !hash_result.blank? && !hash_result["stato"].nil? && hash_result["stato"] == 'ok'
             jwt_data = JsonWebToken.decode(hash_result['token'])
 
+            # MEMO impostazione dati in sessione
             # inserisco dati in sessione uno per uno per evitare conversione oggetti e cookie overflow
-            debug_message(jwt_data, 1)
+            debug_message(jwt_data,3)
+            debug_message("Received permessi: "+jwt_data["permessi"],1)
             session[:user_id] = jwt_data["id"]
             session[:permessi] = PERMESSI.find_index(jwt_data["permessi"]) # uso un indice numerico per ridurre la dimensione del cookie
             session[:user_sid] = jwt_data["sid"]
@@ -1171,6 +1211,7 @@ class ApplicationController < ActionController::Base
             session[:cognome] = jwt_data[:cognome]
             session[:email] = jwt_data[:email]
             session[:cf] = jwt_data[:cf]
+            session[:certificazione] = jwt_data[:certificazione]
             session[:data_nascita] = jwt_data["data_nascita"]
             session[:tipo_documento] = jwt_data["tipo_documento"]
             session[:numero_documento] = jwt_data["numero_documento"]
@@ -1193,7 +1234,7 @@ class ApplicationController < ActionController::Base
               return
             else
               debug_message("redirecting to "+sconosciuto, 3)
-              redirect_to sconosciuto
+              sconosciuto
               return   
             end
             
@@ -1207,7 +1248,7 @@ class ApplicationController < ActionController::Base
             return
           else
             debug_message("redirecting to "+sconosciuto, 3)
-            redirect_to sconosciuto
+            sconosciuto
             return    
           end
 
@@ -1270,7 +1311,8 @@ class ApplicationController < ActionController::Base
             html_layout = html_layout.gsub("</body>","<script type='text/javascript'>var demograficiData = <%=@demografici_data%>;</script></body>")
             html_layout = html_layout.gsub("</body>","<span class='hidden' id='nome_utente'><%=@nome%></span></body>")
             #codice js comune a tutte le pagine
-            html_layout = html_layout.gsub("</body>","<%= javascript_pack_tag 'demografici' %> </body>")
+            # non serve qui, lo includiamo da react
+            # html_layout = html_layout.gsub("</body>","<%= javascript_pack_tag 'demografici' %> </body>")
             #parte che include il js della parte react sul layout CHE VA ALLA FINE, ALTRIMENTI REACT NON VA
             html_layout = html_layout.gsub("</body>","<%= javascript_pack_tag @page_app %> </body>")
             path_dir_layout = "#{Rails.root}/app/views/layouts/layout_portali/"
