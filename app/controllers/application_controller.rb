@@ -945,6 +945,11 @@ class ApplicationController < ActionController::Base
     return
   end
   
+  def servizio_non_disponibile
+    render html: '<DOCTYPE html><html><head><title>Servizio non disponibile</title></head><body>Il servizio demografici non è disponibile per questo ente.</body></html>'.html_safe
+    return
+  end
+
   #da fare
   def error_dati
   end
@@ -1170,7 +1175,11 @@ class ApplicationController < ActionController::Base
           debug_message(hash_result_info_ente, 3)
 
           @dominio = hash_result_info_ente['url_ente']
-          raise "Dominio non censito su applicazioni Oauth" if @dominio.blank?
+          if @dominio.blank?
+            logger.error "Dominio non censito su applicazioni Oauth" 
+            servizio_non_disponibile
+            return
+          end
           #@dominio = "https://civilianext.soluzionipa.it/portal" #per test
           session[:dominio] = @dominio
           #creo jwt per avere sessione utente
@@ -1328,7 +1337,7 @@ class ApplicationController < ActionController::Base
   def test_variables
     # TEST disabilitare prima di testare per prod
     if Rails.env.development?
-      # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche")
+      session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche")
       # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche_no_sensibili")
       # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche")
       # session[:permessi]=PERMESSI.find_index("professionisti")
