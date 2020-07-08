@@ -339,7 +339,6 @@ class ApplicationController < ActionController::Base
     }.join('&')
     
     # debug_message("query string for sha1 is [#{queryString.strip}]", 3)
-    # queryString = "importo=#{value["importoResiduo"].gsub(',', '.')}&descrizione=#{value["codiceAvvisoDescrizione"]} - n.#{value["numeroAvviso"]}&codice_applicazione=tributi&url_back=#{request.original_url}&idext=#{value["idAvviso"]}&tipo_elemento=pagamento_tari&nome_versante=#{session[:nome]}&cognome_versante=#{session[:cognome]}&codice_fiscale_versante=#{session[:cf]}&nome_pagatore=#{session[:nome]}&cognome_pagatore=#{session[:cognome]}&codice_fiscale_pagatore=#{session[:cf]}"
     fullquerystring = URI.unescape(queryString)
     # qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
     qs = queryString+"3ur0s3rv1z1"
@@ -655,7 +654,7 @@ class ApplicationController < ActionController::Base
                       }.join('&')
                       
                       # debug_message("query string for sha1 is [#{queryString.strip}]", 3)
-                      # queryString = "importo=#{value["importoResiduo"].gsub(',', '.')}&descrizione=#{value["codiceAvvisoDescrizione"]} - n.#{value["numeroAvviso"]}&codice_applicazione=tributi&url_back=#{request.original_url}&idext=#{value["idAvviso"]}&tipo_elemento=pagamento_tari&nome_versante=#{session[:nome]}&cognome_versante=#{session[:cognome]}&codice_fiscale_versante=#{session[:cf]}&nome_pagatore=#{session[:nome]}&cognome_pagatore=#{session[:cognome]}&codice_fiscale_pagatore=#{session[:cf]}"
+
                       fullquerystring = URI.unescape(queryString)
                       # qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
                       qs = queryString+"3ur0s3rv1z1"
@@ -1197,7 +1196,7 @@ class ApplicationController < ActionController::Base
   end
 
   def get_dominio_sessione_utente
-    begin
+    begin      
       # debug_message(session.inspect, 3)
       # reset_session
       #permetto di usare tutti i parametri e li converto in hash

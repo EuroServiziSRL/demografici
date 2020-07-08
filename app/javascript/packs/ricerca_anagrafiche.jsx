@@ -44,7 +44,7 @@ class RicercaAnagrafiche extends React.Component{
    
   componentDidUpdate(prevProps, prevState, snapshot) {
     
-    console.log("AppTributi did update");
+    console.log("AppDemografici did update");
     var canBeResponsive = true;
     if($('li.table-header').length==0) {
       $('<li class="table-header">').appendTo("body");

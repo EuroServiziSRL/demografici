@@ -61,7 +61,7 @@ class DettagliPersona extends React.Component{
    
   componentDidUpdate(prevProps, prevState, snapshot) {
     
-    console.log("AppTributi did update");
+    console.log("AppDemografici did update");
     var canBeResponsive = true;
     if($('li.table-header').length==0) {
       $('<li class="table-header">').appendTo("body");
@@ -656,7 +656,7 @@ class DettagliPersona extends React.Component{
     else if(this.state.error) {
       returnVal = <div className="alert alert-danger">{this.state.error_message}</div>
     } else if(found) {
-      returnVal =       <div itemID="app_tributi">
+      returnVal =       <div itemID="app_demografici">
         <h3>Dettagli persona</h3>
         <div className="form-horizontal"><DemograficiForm rows={this.state.datiCittadino}/></div>
         
