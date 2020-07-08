@@ -170,28 +170,35 @@ class ApplicationController < ActionController::Base
         :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
         :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
       )   
-      result = JSON.parse(result.response.body)
-      debug_message("Localita/Localita_RicercaNazione result:",3)
-      debug_message(result,3)
-      @demografici_data["cittadinanze"] = result["result"]
-      @demografici_data["ricercaEstesa"] = ["ricercare_anagrafiche","ricercare_anagrafiche_no_sensibili","elencare_anagrafiche_certificazione","vedere_solo_famiglia"].include?(PERMESSI[session[:permessi]])
-      @demografici_data["searchParams"] = {
-        "cognomeNome" => session[:searchCognomeNome],
-        "codiceFiscale" => session[:searchCF],
-        "dataNascitaDal" => session[:searchDataDal],
-        "dataNascitaAl" => session[:searchDataAl],
-        "sesso" => session[:searchSesso],
-        "cittadinanza" => session[:searchCit],
-      } 
-      debug_message('@demografici_data["searchParams"] set to',1)
-      debug_message(@demografici_data["searchParams"],1)
-      
-      @demografici_data = @demografici_data.to_json
-      @demografici_data = @demografici_data.html_safe
+      if(!result.blank? && !result.response.blank? && !result.response.body.blank?)
+        result = JSON.parse(result.response.body)
+        debug_message("Localita/Localita_RicercaNazione result:",3)
+        debug_message(result,3)
+        @demografici_data["cittadinanze"] = result["result"]
+        @demografici_data["ricercaEstesa"] = ["ricercare_anagrafiche","ricercare_anagrafiche_no_sensibili","elencare_anagrafiche_certificazione","vedere_solo_famiglia"].include?(PERMESSI[session[:permessi]])
+        @demografici_data["searchParams"] = {
+          "cognomeNome" => session[:searchCognomeNome],
+          "codiceFiscale" => session[:searchCF],
+          "dataNascitaDal" => session[:searchDataDal],
+          "dataNascitaAl" => session[:searchDataAl],
+          "sesso" => session[:searchSesso],
+          "cittadinanza" => session[:searchCit],
+        } 
+        debug_message('@demografici_data["searchParams"] set to',1)
+        debug_message(@demografici_data["searchParams"],1)
+        
+        @demografici_data = @demografici_data.to_json
+        @demografici_data = @demografici_data.html_safe
 
-      debug_message('@demografici_data set to',1)
-      debug_message(@demografici_data,1)
+        debug_message('@demografici_data set to',1)
+        debug_message(@demografici_data,1)
 
+      else
+        result = { 
+          "errore": true, 
+          "messaggio_errore": "Si è verificato un problema di connessione al servizio.", 
+        }
+      end
       render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
     end
   end
@@ -244,6 +251,7 @@ class ApplicationController < ActionController::Base
   def ricerca_anagrafiche_individui
     debug_message("ricerca_anagrafiche_individui", 3)
     debug_message("PERMESSI[session[:permessi]]: "+PERMESSI[session[:permessi]], 3)
+    debug_message("params[:sesso] is #{params[:sesso]}", 1)
 
     session[:searchCognomeNome] = params[:cognomeNome]
     session[:searchCF] = params[:codiceFiscale]
@@ -252,18 +260,23 @@ class ApplicationController < ActionController::Base
     session[:searchSesso] = params[:sesso]
     session[:searchCit] = params[:cittadinanza]
 
-    debug_message("session[:searchDataDal] set to #{session[:searchDataDal]}", 1)
-    debug_message("session[:searchDataAl] set to #{session[:searchDataAl]}", 1)
-    
+    debug_message("session[:searchSesso] set to #{session[:searchSesso]}", 1)
 
     if !params[:cognomeNome].nil? || !params[:cognomeNome].blank?
       params[:cognomeNome] = "%#{params[:cognomeNome]}%"
     end
+    if !params[:codiceFiscale].nil? || !params[:codiceFiscale].blank?
+      params[:codiceFiscale] = "%#{params[:codiceFiscale]}%"
+    end
     if !params[:dataNascitaDal].nil? || !params[:dataNascitaDal].blank?
       params[:dataNascitaDal] = params[:dataNascitaDal]+"T00:00:00.000Z"
+    elsif !params[:dataNascitaAl].nil? || !params[:dataNascitaAl].blank?
+      params[:dataNascitaDal] = params[:dataNascitaAl]+"T00:00:00.000Z"
     end
     if !params[:dataNascitaAl].nil? || !params[:dataNascitaAl].blank?
       params[:dataNascitaAl] = params[:dataNascitaAl]+"T23:59:59.999Z"
+    elsif !params[:dataNascitaDal].nil? || !params[:dataNascitaDal].blank?
+      params[:dataNascitaAl] = params[:dataNascitaDal]+"T23:59:59.999Z"
     end
     
     params[:MostraIndirizzo] = true
@@ -282,15 +295,23 @@ class ApplicationController < ActionController::Base
         "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
         :body => params.to_json,
         :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
-        :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
+        :debug_output => @@log_to_output && @@log_level>0 ? $stdout : nil
       )   
+      puts result
       result = JSON.parse(result.response.body)
       if PERMESSI[session[:permessi]]!="elencare_anagrafiche"
         base_url = '/dettagli_persona?codice_fiscale='
+
         result.each_with_index do |anagrafica,index|
-          cf = anagrafica["codiceFiscale"]
-          anagrafica["codiceFiscale"] = "<a href='#{base_url}#{cf}'>#{cf}</a>".html_safe
-          result[index] = anagrafica
+          if !anagrafica.empty?
+            puts "test"
+            puts anagrafica
+            cf = anagrafica["codiceFiscale"]
+            anagrafica["codiceFiscale"] = "<a href='#{base_url}#{cf}'>#{cf}</a>".html_safe
+            result[index] = anagrafica
+          else
+            result = []
+          end
         end 
       end
 
@@ -763,6 +784,7 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  # BOOKMARK scarica_autocertificazione
   def scarica_autocertificazione
     content_type = {:rtf => "text/rtf", :pdf => "application/pdf", :odt => "application/vnd.oasis.opendocument.text"}
     cf = params['codice_fiscale']
@@ -1385,7 +1407,7 @@ class ApplicationController < ActionController::Base
   def test_variables
     # TEST disabilitare prima di testare per prod
     if Rails.env.development?
-      session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche")
+      # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche")
       # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche_no_sensibili")
       # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche")
       # session[:permessi]=PERMESSI.find_index("professionisti")

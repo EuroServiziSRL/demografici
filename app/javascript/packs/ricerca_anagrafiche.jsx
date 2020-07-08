@@ -77,7 +77,9 @@ class RicercaAnagrafiche extends React.Component{
         console.log("setting csrf");
         state.csrf = response.csrf;
         self.setState(state);
-        if(typeof(demograficiData.searchParams)!="undefined" && demograficiData.searchParams.length) {
+        if(typeof(demograficiData.searchParams)!="undefined" && Object.entries(demograficiData.searchParams).filter(([k,v],i)=>!!v).length>0) {
+          $("#sessoM").prop("checked", demograficiData.searchParams.sesso=="M");
+          $("#sessoF").prop("checked", demograficiData.searchParams.sesso=="F");
           self.ricercaAnagrafiche();
         }
       }
@@ -93,7 +95,7 @@ class RicercaAnagrafiche extends React.Component{
   } 
 
   disableForm(disable, force) {
-    $('#formRicercaAnagrafiche input, #formRicercaAnagrafiche select, #formRicercaAnagrafiche radio').each(function(){
+    $('#formRicercaAnagrafiche input, #formRicercaAnagrafiche button, #formRicercaAnagrafiche select, #formRicercaAnagrafiche radio').each(function(){
       if(($(this).val()=="" && disable)||force) {
         $(this).attr("disabled","true")
       } else {
@@ -120,16 +122,18 @@ class RicercaAnagrafiche extends React.Component{
       if(response.hasError) {
         console.log("response error");
       } else {
+        console.log("response ok");
         state = self.state;
         state.dati = undefined;
         state.error = false;
         state.debug = response;
         self.setState(state);
         if(!response.errore) {
-          console.log(response);
+          console.log("response doesn't have errore: ",response);
           state.dati = response.data;
           state.debug = response;
         } else {
+          console.log("response has errore: ",response);
           state.error = true;
           state.error_message = response.messaggio_errore;
         }
@@ -176,7 +180,9 @@ class RicercaAnagrafiche extends React.Component{
     $submit.parent().parent().next().hide();
     $("#formRicercaAnagrafiche").find("input[type=text],input[type=date],input[type=radio]:checked,select").each(function(){
       var value = $(this).val()?$(this).val().trim():"";
+      var name = $(this).attr("name");
       var error = false;
+      demograficiData.searchParams[name] = value;
       $(this).next(".error").hide();
       if ($(this).attr("required") && value === "") {
         error = "questo dato è obbligatorio";
@@ -208,18 +214,24 @@ class RicercaAnagrafiche extends React.Component{
         $submit.parent().parent().next().show();
       }
     } else {
+      $("#buttonClear").removeAttr("disabled");
       $submit.removeAttr("disabled");
     }
   }  
 
   clearForm() {
-    $("#formRicercaAnagrafiche").find("input[type=text],input[type=radio]:checked,select").each(function(){
+    $("#formRicercaAnagrafiche").find("input[type=text],input[type=date],input[type=radio]:checked,select").each(function(){
       if($(this).attr("type")=="radio") {
         $(this).prop("checked", false);
       } else {
         $(this).val(null);
       }
     });
+    var state = this.state;
+    state.dati = undefined;
+    state.loading = undefined;
+    this.setState(state);
+    $("#buttonClear").attr("disabled","disabled");
     this.validateForm();
   }
 
@@ -298,6 +310,7 @@ class RicercaAnagrafiche extends React.Component{
       console.log("loading undefined?");
       table = <div className="row"><div className="col-lg-12"><p className="alert alert-danger">Si è verificato un errore generico durante la ricerca. Si prega di riprovare.</p></div></div>
     }
+    console.log("this.state:",this.state);
     console.log("startDate is ");
     var startDate = this.state.dataNascitaDal
     console.log(startDate);
@@ -312,39 +325,42 @@ class RicercaAnagrafiche extends React.Component{
     }
     selectCittadinanze = <select className="form-control" defaultValue="" name="idCittadinanza">{selectCittadinanze}</select>
 
+    var formRows = [];
+    formRows.push([
+      { name: "", value: <input type="hidden" id="page" name="pageNumber" value={this.state.page} defaultValue={demograficiData.searchParams.page}/>, html: true }
+    ]);
+    formRows.push([
+      { name:"cognomeNome", label:"Cognome/Nome", value: <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="cognomeNome" id="cognomeNome" defaultValue={demograficiData.searchParams.cognomeNome}/>, html: true },
+      { name:"codiceFiscale", label:"Codice Fiscale", value: <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="codiceFiscale" id="codiceFiscale" defaultValue={demograficiData.searchParams.codiceFiscale}/>, html: true },
+    ]);
+    if(demograficiData.ricercaEstesa) {
+      formRows.push([
+        { name:"cittadinanza", value:selectCittadinanze, html: true },
+        { name:"sesso", value: <>
+        <label className="radio-inline">
+              <input type="radio" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} name="sesso" id="sessoM" defaultValue="M"/> maschio
+            </label>
+            <label className="radio-inline">
+              <input type="radio" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} name="sesso" id="sessoF" defaultValue="F"/> femmina
+            </label>
+      </>, html: true }
+      ]);
+      formRows.push([
+        { name:"dataNascitaDal", label:"Data di nascita", value: <input type="date" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control form-control-datetime" name="dataNascitaDal" id="dataNascitaDal" defaultValue={demograficiData.searchParams.dataNascitaDal}/>, html: true },
+        { name:"dataNascitaAl", label:"al", value: <input type="date" className="form-control form-control-datetime" name="dataNascitaAl" id="dataNascitaAl" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} defaultValue={demograficiData.searchParams.dataNascitaAl}/>, html: true },
+      ]);
+    }
+    formRows.push([
+      { name:"", value: <><input type="submit" name="invia" className="btn btn-primary mr10" disabled={this.state.loading} value="Cerca" title="Specifica almeno un criterio di ricerca"/><button type="button" className="btn btn-default" id="buttonClear" onClick={this.clearForm.bind(this)}>Cancella</button></>, html: true },
+      { name: "", value: <input type="hidden" name="authenticity_token" value={this.state.csrf}/>, html: true }
+    ]);
+
     var content = <div>
       {this.state.csrf=="" ? <div className="row"><div className="col-lg-12"><p className="alert alert-info">Caricamento...</p></div></div> : <><form method="post" action="" className="row form-ricerca form-horizontal" onSubmit={this.ricercaAnagrafiche.bind(this)} id="formRicercaAnagrafiche">
         <div className="col-lg-12 col-md-12 col-sm-12 col-xs-12">
           <h3>Ricerca anagrafiche</h3>
           <div className="panel panel-default">
-            <DemograficiForm rows={[
-              [
-                { name: "", value: <input type="hidden" id="page" name="pageNumber" value={this.state.page} defaultValue={demograficiData.searchParams.page}/>, html: true }
-              ],
-              [
-                { name:"cognomeNome", label:"Cognome/Nome", value: <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="cognomeNome" id="cognomeNome" defaultValue={demograficiData.searchParams.cognomeNome}/>, html: true },
-                { name:"codiceFiscale", label:"Codice Fiscale", value: <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="codiceFiscale" id="codiceFiscale" defaultValue={demograficiData.searchParams.codiceFiscale}/>, html: true },
-              ],
-              [
-                { name:"cittadinanza", value:selectCittadinanze, html: true },
-                { name:"sesso", value: <>
-                <label className="radio-inline">
-                      <input type="radio" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} name="sesso" id="sessoM" defaultValue="M"/> maschio
-                    </label>
-                    <label className="radio-inline">
-                      <input type="radio" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} name="sesso" id="sessoF" defaultValue="F"/> femmina
-                    </label>
-              </>, html: true }
-              ],
-              [
-                { name:"dataNascitaDal", label:"Data di nascita", value: <input type="date" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control form-control-datetime" name="dataNascitaDal" id="dataNascitaDal" defaultValue={demograficiData.searchParams.dataNascitaDal}/>, html: true },
-                { name:"dataNascitaAl", label:"al", value: <input type="date" className="form-control form-control-datetime" name="dataNascitaAl" id="dataNascitaAl" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} defaultValue={demograficiData.searchParams.dataNascitaAl}/>, html: true },
-              ],
-              [
-                { name:"", value: <><input type="submit" name="invia" className="btn btn-primary mr10" disabled value="Cerca" title="Specifica almeno un criterio di ricerca"/><button type="button" className="btn btn-default" onClick={this.clearForm.bind(this)}>Cancella</button></>, html: true },
-                { name: "", value: <input type="hidden" name="authenticity_token" value={this.state.csrf}/>, html: true }
-              ]
-            ]}/>
+            <DemograficiForm rows={formRows}/>
           </div>
         </div>
       </form></>}
@@ -365,6 +381,7 @@ class RicercaAnagrafiche extends React.Component{
       {demograficiData.test?<pre style={{"whiteSpace": "break-spaces"}}><code>{this.state.debug?JSON.stringify(this.state.debug, null, 2):""}</code></pre>:""}
 
     </div>
+    this.validateForm
     return content;
   }
 }
