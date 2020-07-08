@@ -1,15 +1,9 @@
 window.appType = "external";
 
-import React, { useState } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom';
-// import $ from 'jquery';
-// window.jQuery = $;
-// window.$ = $;
 
-import Select from 'react-select';
 import BootstrapTable from 'react-bootstrap-table-next';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCircleNotch, faShoppingCart, faPrint, faCheck, faExclamation, faDownload, faFileArchive, faFilePdf } from '@fortawesome/free-solid-svg-icons'
 import { DemograficiForm } from './demografici_form'
 import { DemograficiList } from './demografici_list'
 // import { demograficiData } from './demografici'
@@ -36,7 +30,7 @@ class DettagliPersona extends React.Component{
     "divorzio":[],
     "vedovanza":[],
     "unione_civile":[],
-    "scioglimento_unione_civile":[], // TODO aggiungere dentro divorzio?
+    "scioglimento_unione_civile":[], // CHECK aggiungere dentro divorzio?
     // "elettorale":[],
     "documenti":[],
     "famiglia":[],

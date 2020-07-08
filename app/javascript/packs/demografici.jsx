@@ -8,6 +8,9 @@ demograficiData.dominio = window.location.protocol+"//"+window.location.hostname
 // TODO chiedere elenco stati a giambanco
 demograficiData.descrizioniStatus = {"D":"DECEDUTO", "R":"RESIDENTE", "A":"RESIDENTE AIRE", "I":"IRREPERIBILE", "E":"EMIGRATO"};
 // export {demograficiData};
+if(typeof(demograficiData.searchParams)=="undefined") {
+  demograficiData.searchParams = {}
+}
 
 function buttonFormatter(cell,row) {
   var button = ""

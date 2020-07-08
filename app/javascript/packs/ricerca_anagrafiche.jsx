@@ -1,17 +1,14 @@
 window.appType = "external";
 
-import React, { useState } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom';
 
-import Select from 'react-select';
 import BootstrapTable from 'react-bootstrap-table-next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCircleNotch } from '@fortawesome/free-solid-svg-icons'
 import { DemograficiForm } from './demografici_form'
 import { linkAnagraficaFormatter } from './demografici'
 import { posizioneAnagraficaFormatter } from './demografici'
-// import DatePicker from 'react-datepicker';
-// import it from 'date-fns/locale/it';
 
 class RicercaAnagrafiche extends React.Component{
 
@@ -80,7 +77,9 @@ class RicercaAnagrafiche extends React.Component{
         console.log("setting csrf");
         state.csrf = response.csrf;
         self.setState(state);
-        // self.ricercaAnagrafiche();
+        if(typeof(demograficiData.searchParams)!="undefined" && demograficiData.searchParams.length) {
+          self.ricercaAnagrafiche();
+        }
       }
     }).fail(function(response) {
       console.log("authentication fail!");
@@ -170,28 +169,12 @@ class RicercaAnagrafiche extends React.Component{
     this.goToPage(this.state.page+1)
   }
 
-  setStartDate = date =>  {
-    console.log("start date changed!");
-    console.log(date);
-    var state = this.state;
-    state.dataNascitaDal = date;
-    this.setState(state);
-  };
-
-  setEndDate() {
-    console.log("end date changed!");
-    // console.log(date);
-    // var state = this.state;
-    // state.dataNascitaAl = date;
-    // this.setState(state);
-  };
-
   validateForm() {
     var searchValues = [];
     var formError = false;
     var $submit = $("#formRicercaAnagrafiche").find("input[type=submit]");
     $submit.parent().parent().next().hide();
-    $("#formRicercaAnagrafiche").find("input[type=text],input[type=radio]:checked,select").each(function(){
+    $("#formRicercaAnagrafiche").find("input[type=text],input[type=date],input[type=radio]:checked,select").each(function(){
       var value = $(this).val()?$(this).val().trim():"";
       var error = false;
       $(this).next(".error").hide();
@@ -238,7 +221,7 @@ class RicercaAnagrafiche extends React.Component{
       }
     });
     this.validateForm();
-  }  
+  }
 
   render() {
     console.log("rendering");
@@ -265,7 +248,7 @@ class RicercaAnagrafiche extends React.Component{
       for(var p = startPaginator; p < this.state.page; p++) {
         paginatorLinks.push(<button className="btn btn-default" type="button" title={"pagina "+p} onClick={this.goToPage.bind(this,p)}>{p}</button>);
       }
-      paginatorLinks.push(<span className="btn btn-primary disabled" type="button" title={"pagina "+p}>{this.state.page}</span>);
+      paginatorLinks.push(<button key="thisPage" className="btn btn-primary disabled" type="button" title={"pagina "+p}>{this.state.page}</button>);
       for(var p = this.state.page+1; p < endPaginator; p++) {
         paginatorLinks.push(<button className="btn btn-default" type="button" title={"pagina "+p} onClick={this.goToPage.bind(this,p)}>{p}</button>);
       }
@@ -305,12 +288,15 @@ class RicercaAnagrafiche extends React.Component{
     } else if (this.state.loading==true) {
       console.log("loading & not dati");
       table = <div className="row"><div className="col-lg-12">{loading}</div></div>
-    } else if (this.state.loading==false && this.state.dati.length < 1) {
+    } else if (this.state.loading==false && this.state.dati && this.state.dati.length < 1) {
       console.log("not loading & not dati");
       table = <div className="row"><div className="col-lg-12"><p className="text-center">Nessun risultato</p></div></div>
     } else if (this.state.loading==undefined && this.state.csrf!="") {
       console.log("loading undefined?");
       table = <div className="row"><div className="col-lg-12"><p className="alert alert-info">Effettua una ricerca per visualizzare le anagrafiche.</p></div></div>
+    } else if (this.state.loading!==undefined && this.state.dati==undefined) {
+      console.log("loading undefined?");
+      table = <div className="row"><div className="col-lg-12"><p className="alert alert-danger">Si è verificato un errore generico durante la ricerca. Si prega di riprovare.</p></div></div>
     }
     console.log("startDate is ");
     var startDate = this.state.dataNascitaDal
@@ -320,78 +306,50 @@ class RicercaAnagrafiche extends React.Component{
     console.log(endDate);
 
     var selectCittadinanze = []
-    selectCittadinanze.push(<option value=""></option>)
+    selectCittadinanze.push(<option key="none" value=""></option>)
     for(var e in demograficiData.cittadinanze) {
-      selectCittadinanze.push(<option value={demograficiData.cittadinanze[e].id}>{demograficiData.cittadinanze[e].cittadinanza}</option>)
+      selectCittadinanze.push(<option key={demograficiData.cittadinanze[e].id} value={demograficiData.cittadinanze[e].id}>{demograficiData.cittadinanze[e].cittadinanza}</option>)
     }
     selectCittadinanze = <select className="form-control" defaultValue="" name="idCittadinanza">{selectCittadinanze}</select>
 
     var content = <div>
-      {this.state.csrf=="" ? <div className="row"><div className="col-lg-12"><p className="alert alert-info">Caricamento...</p></div></div> : <div className="row form-ricerca form-horizontal"><form method="post" action="" className="col-lg-12 col-md-12 col-sm-12 col-xs-12" onSubmit={this.ricercaAnagrafiche.bind(this)} id="formRicercaAnagrafiche"><h3>Ricerca anagrafiche</h3>
-        <div className="panel panel-default">
-          <DemograficiForm rows={[
-            [
-              { name: "", value: <input type="hidden" id="page" name="pageNumber" value={this.state.page}/>, html: true }
-            ],
-            [
-              { name:"cognomeNome", label:"Cognome/Nome", value: <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="cognomeNome" id="cognomeNome"/>, html: true },
-              { name:"codiceFiscale", label:"Codice Fiscale", value: <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="codiceFiscale" id="codiceFiscale"/>, html: true },
-            ],
-            [
-              { name:"cittadinanza", value:selectCittadinanze, html: true },
-              // { name:"cittadinanza", value: <select name="idCittadinanza" className="form-control">
-              //   <option></option>
-              //   <option value="1">Italiana</option>
-              //   <option value="2">Straniera</option>
-              //   <option value="3">Straniera paesi U.E.</option>
-              //   <option value="4">Straniera paesi dello Spazio Economico Europeo e paesi con accordi di associazione</option>
-              //   <option value="5">Straniera paesi non U.E.</option>
-              //   <option value="6">Tutte</option>
-              // </select>, html: true },
-              { name:"sesso", value: <>
-              <label className="radio-inline">
-                    <input type="radio" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} name="sesso" id="sessoM" defaultValue="M"/> maschio
-                  </label>
-                  <label className="radio-inline">
-                    <input type="radio" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} name="sesso" id="sessoF" defaultValue="F"/> femmina
-                  </label>
-            </>, html: true }
-            ]/*,
-            // FIXME far funzionare sto maledetto datepicker
-            [
-              { name:"dataNascitaDal", label:"Data di nascita dal", value: <>
-              <DatePicker
-                selected={startDate}
-                onSelect={this.setStartDate}
-                onChange={this.setStartDate}
-                selectsStart
-                startDate={startDate}
-                endDate={endDate}
-                locale = "it"
-              />
-              <DatePicker
-                selected={endDate}
-                onChange={() => this.setEndDate().bind(this)}
-                selectsEnd
-                startDate={startDate}
-                endDate={endDate}
-                minDate={startDate}
-                locale = "it"
-              />
-              </>, html: true },
-              { name:"dataNascitaAl", label:"al", value: <input type="text" className="form-control" name="dataNascitaAl" id="dataNascitaAl"/>, html: true },
-              { name:"indirizzo", value: <input type="text" className="form-control" name="indirizzo" id="indirizzo"/>, html: true }
-            ]*/,
-            [
-              { name:"", value: <><input type="submit" name="invia" className="btn btn-primary mr10" disabled value="Cerca" title="Specifica almeno un criterio di ricerca"/><button type="button" className="btn btn-default" onClick={this.clearForm.bind(this)}>Cancella</button></>, html: true },
-              { name: "", value: <input type="hidden" name="authenticity_token" value={this.state.csrf}/>, html: true }
-            ]
-          ]}/>
+      {this.state.csrf=="" ? <div className="row"><div className="col-lg-12"><p className="alert alert-info">Caricamento...</p></div></div> : <><form method="post" action="" className="row form-ricerca form-horizontal" onSubmit={this.ricercaAnagrafiche.bind(this)} id="formRicercaAnagrafiche">
+        <div className="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+          <h3>Ricerca anagrafiche</h3>
+          <div className="panel panel-default">
+            <DemograficiForm rows={[
+              [
+                { name: "", value: <input type="hidden" id="page" name="pageNumber" value={this.state.page} defaultValue={demograficiData.searchParams.page}/>, html: true }
+              ],
+              [
+                { name:"cognomeNome", label:"Cognome/Nome", value: <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="cognomeNome" id="cognomeNome" defaultValue={demograficiData.searchParams.cognomeNome}/>, html: true },
+                { name:"codiceFiscale", label:"Codice Fiscale", value: <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="codiceFiscale" id="codiceFiscale" defaultValue={demograficiData.searchParams.codiceFiscale}/>, html: true },
+              ],
+              [
+                { name:"cittadinanza", value:selectCittadinanze, html: true },
+                { name:"sesso", value: <>
+                <label className="radio-inline">
+                      <input type="radio" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} name="sesso" id="sessoM" defaultValue="M"/> maschio
+                    </label>
+                    <label className="radio-inline">
+                      <input type="radio" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} name="sesso" id="sessoF" defaultValue="F"/> femmina
+                    </label>
+              </>, html: true }
+              ],
+              [
+                { name:"dataNascitaDal", label:"Data di nascita", value: <input type="date" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control form-control-datetime" name="dataNascitaDal" id="dataNascitaDal" defaultValue={demograficiData.searchParams.dataNascitaDal}/>, html: true },
+                { name:"dataNascitaAl", label:"al", value: <input type="date" className="form-control form-control-datetime" name="dataNascitaAl" id="dataNascitaAl" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} defaultValue={demograficiData.searchParams.dataNascitaAl}/>, html: true },
+              ],
+              [
+                { name:"", value: <><input type="submit" name="invia" className="btn btn-primary mr10" disabled value="Cerca" title="Specifica almeno un criterio di ricerca"/><button type="button" className="btn btn-default" onClick={this.clearForm.bind(this)}>Cancella</button></>, html: true },
+                { name: "", value: <input type="hidden" name="authenticity_token" value={this.state.csrf}/>, html: true }
+              ]
+            ]}/>
+          </div>
         </div>
-      </form></div>}
+      </form></>}
 
-      
-      {table}
+      {table}   
 
       <div className="bottoni_pagina mb20">
         <div className="row">

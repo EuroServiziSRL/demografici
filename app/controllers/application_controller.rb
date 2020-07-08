@@ -24,7 +24,7 @@ class ApplicationController < ActionController::Base
   include Serenity::Generator
   # TODO aggiungere anche resource in config?
   # @@api_resource = "https://api.civilianextuat.it"
-  # MEMO variabili globali
+  # BOOKMARK variabili globali
   @@api_resource = "https://api.civilianextdev.it"
   @@api_url = "#{@@api_resource}/Demografici"
   PERMESSI = ["ricercare_anagrafiche", "ricercare_anagrafiche_no_sensibili", "elencare_anagrafiche", "vedere_solo_famiglia", "professionisti", "elencare_anagrafiche_certificazione", "cittadino"].freeze
@@ -54,11 +54,14 @@ class ApplicationController < ActionController::Base
 
   end
 
+  # BOOKMARK dettagli_persona
   def dettagli_persona
     # debug_message("dettagli_persona - session[:cf]: "+session[:cf], 3)
     # debug_message("dettagli_persona - params[\"codice_fiscale\"]: "+params["codice_fiscale"], 3)
     # debug_message("dettagli_persona - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s, 3)
     @page_app = "dettagli_persona"
+    debug_message("session[:searchDataDal] is #{session[:searchDataDal]}", 1)
+    debug_message("session[:searchDataAl] is #{session[:searchDataAl]}", 1)
 
     if params["codice_fiscale"].nil?
       params["codice_fiscale"] = session[:cf]
@@ -145,9 +148,12 @@ class ApplicationController < ActionController::Base
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
   end
 
+  # BOOKMARK ricerca_anagrafiche
   def ricerca_anagrafiche
     @page_app = "ricerca_anagrafiche"
     @nome = session[:nome]
+    debug_message("session[:searchDataDal] is #{session[:searchDataDal]}", 1)
+    debug_message("session[:searchDataAl] is #{session[:searchDataAl]}", 1)
     
     if PERMESSI[session[:permessi]] == "cittadino"
       debug_message("redirecting to /", 3)
@@ -162,20 +168,35 @@ class ApplicationController < ActionController::Base
         "#{webapi_localita}/RicercaNazione?v=1.0", 
         :body => {"model" => ""}.to_json,
         :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
-        :debug_output => @@log_to_output && @@log_level>0 ? $stdout : nil
+        :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
       )   
       result = JSON.parse(result.response.body)
       debug_message("Localita/Localita_RicercaNazione result:",3)
       debug_message(result,3)
-      @demografici_data["cittadinanze"] =  result["result"]
-
+      @demografici_data["cittadinanze"] = result["result"]
+      @demografici_data["ricercaEstesa"] = ["ricercare_anagrafiche","ricercare_anagrafiche_no_sensibili","elencare_anagrafiche_certificazione","vedere_solo_famiglia"].include?(PERMESSI[session[:permessi]])
+      @demografici_data["searchParams"] = {
+        "cognomeNome" => session[:searchCognomeNome],
+        "codiceFiscale" => session[:searchCF],
+        "dataNascitaDal" => session[:searchDataDal],
+        "dataNascitaAl" => session[:searchDataAl],
+        "sesso" => session[:searchSesso],
+        "cittadinanza" => session[:searchCit],
+      } 
+      debug_message('@demografici_data["searchParams"] set to',1)
+      debug_message(@demografici_data["searchParams"],1)
+      
       @demografici_data = @demografici_data.to_json
       @demografici_data = @demografici_data.html_safe
+
+      debug_message('@demografici_data set to',1)
+      debug_message(@demografici_data,1)
 
       render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
     end
   end
   
+  # BOOKMARK authenticate
   def authenticate  
     debug_message("authenticate - session[:cf]: "+session[:cf], 3)
     debug_message("authenticate - params[\"codice_fiscale\"]: "+params["codice_fiscale"].to_s, 3)
@@ -219,13 +240,32 @@ class ApplicationController < ActionController::Base
     render :json => result
   end  
 
+  # BOOKMARK ricerca_anagrafiche_individui
   def ricerca_anagrafiche_individui
     debug_message("ricerca_anagrafiche_individui", 3)
     debug_message("PERMESSI[session[:permessi]]: "+PERMESSI[session[:permessi]], 3)
 
+    session[:searchCognomeNome] = params[:cognomeNome]
+    session[:searchCF] = params[:codiceFiscale]
+    session[:searchDataDal] = params[:dataNascitaDal]
+    session[:searchDataAl] = params[:dataNascitaAl]
+    session[:searchSesso] = params[:sesso]
+    session[:searchCit] = params[:cittadinanza]
+
+    debug_message("session[:searchDataDal] set to #{session[:searchDataDal]}", 1)
+    debug_message("session[:searchDataAl] set to #{session[:searchDataAl]}", 1)
+    
+
     if !params[:cognomeNome].nil? || !params[:cognomeNome].blank?
       params[:cognomeNome] = "%#{params[:cognomeNome]}%"
     end
+    if !params[:dataNascitaDal].nil? || !params[:dataNascitaDal].blank?
+      params[:dataNascitaDal] = params[:dataNascitaDal]+"T00:00:00.000Z"
+    end
+    if !params[:dataNascitaAl].nil? || !params[:dataNascitaAl].blank?
+      params[:dataNascitaAl] = params[:dataNascitaAl]+"T23:59:59.999Z"
+    end
+    
     params[:MostraIndirizzo] = true
 
     tipologia_richiesta = "ricerca anagrafiche"
@@ -253,6 +293,10 @@ class ApplicationController < ActionController::Base
           result[index] = anagrafica
         end 
       end
+
+      debug_message("session[:searchDataDal] is #{session[:searchDataDal]}", 1)
+      debug_message("session[:searchDataAl] is #{session[:searchDataAl]}", 1)
+
       result = { "data": result }
     end
 
@@ -310,11 +354,14 @@ class ApplicationController < ActionController::Base
     render :json => result
   end
 
+  # BOOKMARK ricerca_individui
   def ricerca_individui
     debug_message("ricerca_individui - logged user cf: "+session[:cf], 3)
     debug_message("ricerca_individui - cf_visualizzato: "+session[:cf_visualizzato].to_s, 3)
     debug_message("ricerca_individui - \"cf_visualizzato\": "+session["cf_visualizzato"].to_s, 3)
     debug_message("ricerca_individui - permessi: "+session[:permessi].to_s+" (#{PERMESSI[session[:permessi]]})", 3)
+    debug_message("session[:searchDataDal] is #{session[:searchDataDal]}", 1)
+    debug_message("session[:searchDataAl] is #{session[:searchDataAl]}", 1)
 
     tipologia_richiesta = ""
         
@@ -1169,10 +1216,12 @@ class ApplicationController < ActionController::Base
           url_oauth2_get_info = "https://login.soluzionipa.it/oauth/application/get_info_cid/"+hash_params['c_id']
           #url_oauth2_get_info = "http://localhost:3001/oauth/application/get_info_cid/"+hash_params['c_id'] #PER TEST
           result_info_ente = HTTParty.get(url_oauth2_get_info,
-            :headers => { 'Content-Type' => 'application/json', 'Accept' => 'application/json' } )
+            :headers => { 'Content-Type' => 'application/json', 'Accept' => 'application/json' } ,
+            :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
+          )
           hash_result_info_ente = result_info_ente.parsed_response
-          debug_message("hash_result_info_ente", 3)
-          debug_message(hash_result_info_ente, 3)
+          debug_message("hash_result_info_ente", 1)
+          debug_message(hash_result_info_ente, 1)
 
           @dominio = hash_result_info_ente['url_ente']
           if @dominio.blank?
@@ -1209,7 +1258,7 @@ class ApplicationController < ActionController::Base
           if !hash_result.blank? && !hash_result["stato"].nil? && hash_result["stato"] == 'ok'
             jwt_data = JsonWebToken.decode(hash_result['token'])
 
-            # MEMO impostazione dati in sessione
+            # BOOKMARK impostazione dati in sessione
             # inserisco dati in sessione uno per uno per evitare conversione oggetti e cookie overflow
             debug_message(jwt_data,3)
             debug_message("Received permessi: "+jwt_data["permessi"],1)

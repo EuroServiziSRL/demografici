@@ -2,6 +2,7 @@ import React from 'react';
 import { ucfirst } from './demografici'
 
 class DemograficiForm extends React.Component{
+  
   cols = 12
   maxLabelCols = 2
   rows = []
