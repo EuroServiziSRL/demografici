@@ -265,9 +265,9 @@ class ApplicationController < ActionController::Base
     if !params[:cognomeNome].nil? || !params[:cognomeNome].blank?
       params[:cognomeNome] = "%#{params[:cognomeNome]}%"
     end
-    if !params[:codiceFiscale].nil? || !params[:codiceFiscale].blank?
-      params[:codiceFiscale] = "%#{params[:codiceFiscale]}%"
-    end
+    # if !params[:codiceFiscale].nil? || !params[:codiceFiscale].blank?
+    #   params[:codiceFiscale] = "%#{params[:codiceFiscale]}%"
+    # end
     if !params[:dataNascitaDal].nil? || !params[:dataNascitaDal].blank?
       params[:dataNascitaDal] = params[:dataNascitaDal]+"T00:00:00.000Z"
     elsif !params[:dataNascitaAl].nil? || !params[:dataNascitaAl].blank?
@@ -439,8 +439,8 @@ class ApplicationController < ActionController::Base
       searchParams[:MostraDatiTitoloSoggiorno] = true
       searchParams[:MostraDatiStatoCivile] = true
       searchParams[:MostraDatiCartaIdentita] = !professionista
-      searchParams[:MostraDatiPatenti] = !professionista
-      searchParams[:MostraDatiVeicoli] = !professionista
+      # searchParams[:MostraDatiPatenti] = !professionista
+      # searchParams[:MostraDatiVeicoli] = !professionista
       searchParams[:MostraDatiMaternita] = !nascondi_sensibili
       searchParams[:MostraDatiPaternita] = !nascondi_sensibili
       searchParams[:MostraDatiProfessione] = !nascondi_sensibili
@@ -687,7 +687,7 @@ class ApplicationController < ActionController::Base
                   end
                 end
               elsif !scaduto && richiesta_certificato.stato == "pagato" && !richiesta_certificato.documento.blank?
-                url = "/scarica_certificato?file=#{richiesta_certificato.documento.gsub('./','')}"
+                url = "/scarica_certificato?id=#{richiesta_certificato.id}"
               else
                 url = ""
               end
@@ -768,18 +768,25 @@ class ApplicationController < ActionController::Base
     render :json => result
   end
 
+  # BOOKMARK scarica_certificato
   def scarica_certificato
-    tipologia_richiesta = "download certificato #{params["file"]}"
+    tipologia_richiesta = "download certificato richiesta id #{params["id"]}"
     if verifica_permessi("scarica_certificato")
-      traccia_operazione(tipologia_richiesta)
-      if(File.exist?("#{Rails.root}/#{params["file"]}"))
-        send_file "#{Rails.root}/#{params["file"]}", type: "application/pdf", x_sendfile: true
+      richiesta_certificato = Certificati.find_by_id(params["id"])
+      if richiesta_certificato.blank? || richiesta_certificato.nil?
+        traccia_operazione("#{tipologia_richiesta} (richiesta non trovata)")
+        sconosciuto
+      elsif(File.exist?("#{Rails.root}/#{richiesta_certificato.documento}"))
+        traccia_operazione(tipologia_richiesta)
+        richiesta_certificato.stato = "scaricato"
+        richiesta_certificato.save
+        send_file "#{Rails.root}/#{richiesta_certificato.documento}", type: "application/pdf", x_sendfile: true
       else
+        traccia_operazione("#{tipologia_richiesta} (file non trovato)")
         sconosciuto
       end
     else
-      tipologia_richiesta = "#{tipologia_richiesta} (non autorizzato)"
-      traccia_operazione(tipologia_richiesta)
+      traccia_operazione("#{tipologia_richiesta} (non autorizzato)")
       render html: '<DOCTYPE html><html><head><title>Non autorizzato</title></head><body>Non sei autorizzato a visualizzare questo file.</body></html>'.html_safe
     end
   end
@@ -1282,7 +1289,10 @@ class ApplicationController < ActionController::Base
             # BOOKMARK impostazione dati in sessione
             # inserisco dati in sessione uno per uno per evitare conversione oggetti e cookie overflow
             debug_message(jwt_data,3)
-            debug_message("Received permessi: "+jwt_data["permessi"],1)
+            debug_message("Received permessi: "+jwt_data["permessi"].to_s,1)
+            if jwt_data["permessi"].nil?
+              jwt_data["permessi"] = "cittadino"
+            end
             session[:user_id] = jwt_data["id"]
             session[:permessi] = PERMESSI.find_index(jwt_data["permessi"]) # uso un indice numerico per ridurre la dimensione del cookie
             session[:user_sid] = jwt_data["sid"]
