@@ -1313,7 +1313,7 @@ class ApplicationController < ActionController::Base
             
 
             # WAIT gestire meglio il dominio, aspettiamo setup a db
-            solo_dom = @dominio.gsub("/portal","")
+            solo_dom = @dominio.gsub("/portal$","")
             
           else
             #se ho problemi ritorno su portale con parametro di errore
