@@ -25,7 +25,7 @@ class ApplicationController < ActionController::Base
   # TODO aggiungere anche resource in config?
   # @@api_resource = "https://api.civilianextuat.it"
   # BOOKMARK variabili globali
-  @@api_resource = "https://api.civilianextdev.it"
+  @@api_resource = Rails.env.development? ? "https://api.civilianextdev.it" : "https://api.civilianext.it"
   @@api_url = "#{@@api_resource}/Demografici"
   PERMESSI = ["ricercare_anagrafiche", "ricercare_anagrafiche_no_sensibili", "elencare_anagrafiche", "vedere_solo_famiglia", "professionisti", "elencare_anagrafiche_certificazione", "cittadino"].freeze
   @@log_level = 1
