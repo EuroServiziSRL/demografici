@@ -456,6 +456,7 @@ class ApplicationController < ActionController::Base
         :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
       )    
       # result = result.response.body
+      responseCode = result.code
       if result.response.body.length > 0
         fullResult = JSON.parse(result.response.body)
         result = fullResult[0]
@@ -736,6 +737,11 @@ class ApplicationController < ActionController::Base
         end
 
         result["isSelf"] = is_self
+      elsif responseCode == 401
+        result = { 
+          "errore": true, 
+          "messaggio_errore": "Ente non abilitato all'utilizzo di questo servizio.", 
+        }
       elsif !result.nil? && result.length == 0
         result = { 
           "errore": true, 
@@ -1218,7 +1224,11 @@ class ApplicationController < ActionController::Base
       @demografici_data["test"] = false
     end
 
-    @demografici_data["cittadino"] = PERMESSI[session[:permessi]] == "cittadino"
+    if session[:permessi].nil?
+      @demografici_data["cittadino"] = true
+    elsif
+      @demografici_data["cittadino"] = PERMESSI[session[:permessi]] == "cittadino"
+    end
   
     @demografici_data = @demografici_data.to_json
     @demografici_data = @demografici_data.html_safe
@@ -1295,6 +1305,9 @@ class ApplicationController < ActionController::Base
             end
             session[:user_id] = jwt_data["id"]
             session[:permessi] = PERMESSI.find_index(jwt_data["permessi"]) # uso un indice numerico per ridurre la dimensione del cookie
+            if session[:permessi].nil?
+              session[:permessi] = PERMESSI.find_index("cittadino")
+            end
             session[:user_sid] = jwt_data["sid"]
             session[:nome] = jwt_data[:nome]
             session[:cognome] = jwt_data[:cognome]
