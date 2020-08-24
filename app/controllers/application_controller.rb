@@ -65,14 +65,14 @@ class ApplicationController < ActionController::Base
     debug_message("session[:searchDataAl] is #{session[:searchDataAl]}", 1)
 
     if params["codice_fiscale"].nil?
-      params["codice_fiscale"] = session[:cf]
-      session[:cf_visualizzato] = nil
+      # se non lo ricevo, tengo quello che ho in sessione
+      debug_message("dettagli_persona - session[:cf_visualizzato] unchanged "+session[:cf_visualizzato].to_s, 3)
     elsif params["codice_fiscale"] == session[:cf]
       session[:cf_visualizzato] = nil
-      debug_message("session[:cf_visualizzato] set to null", 3)
+      debug_message("dettagli_persona - session[:cf_visualizzato] set to null", 3)
     else
       session[:cf_visualizzato] = params["codice_fiscale"]
-      debug_message("session[:cf_visualizzato] now is: "+session[:cf_visualizzato].to_s, 3)
+      debug_message("dettagli_persona - session[:cf_visualizzato] now is: "+session[:cf_visualizzato].to_s, 3)
     end
     debug_message("session is:", 3)
     debug_message(session.class.inspect, 3)
@@ -379,7 +379,6 @@ class ApplicationController < ActionController::Base
   def ricerca_individui
     debug_message("ricerca_individui - logged user cf: "+session[:cf], 3)
     debug_message("ricerca_individui - cf_visualizzato: "+session[:cf_visualizzato].to_s, 3)
-    debug_message("ricerca_individui - \"cf_visualizzato\": "+session["cf_visualizzato"].to_s, 3)
     debug_message("ricerca_individui - permessi: "+session[:permessi].to_s+" (#{PERMESSI[session[:permessi]]})", 3)
     debug_message("session[:searchDataDal] is #{session[:searchDataDal]}", 1)
     debug_message("session[:searchDataAl] is #{session[:searchDataAl]}", 1)
@@ -530,6 +529,7 @@ class ApplicationController < ActionController::Base
           "numero_documento": session[:numero_documento], 
           "data_documento": session[:data_documento], 
         }
+        result["csrf"] = form_authenticity_token
 
         debug_message("datiRichiedente set to", 3)
         debug_message(result["datiRichiedente"], 3)
@@ -564,7 +564,6 @@ class ApplicationController < ActionController::Base
           end
           session[:famiglia] = famigliaArray.to_json
           result["famiglia"] = famiglia
-          result["csrf"] = form_authenticity_token
         end
 
         if ( cittadino || professionista || solo_certificati ) && !solo_famiglia && session[:certificazione]
@@ -1116,7 +1115,7 @@ class ApplicationController < ActionController::Base
     is_self = false
 
     if session[:cf_visualizzato].nil? || session[:cf_visualizzato].blank?
-      debug_message("is_self setting session[:cf_visualizzato] to #{session[:cf]}", 3)
+      debug_message("is_self - setting session[:cf_visualizzato] to #{session[:cf]}", 3)
       session[:cf_visualizzato] = session[:cf]
     end
     
@@ -1131,7 +1130,7 @@ class ApplicationController < ActionController::Base
     is_family = false
 
     if session[:cf_visualizzato].nil? || session[:cf_visualizzato].blank?
-      debug_message("is_family setting session[:cf_visualizzato] to #{session[:cf]}", 3)
+      debug_message("is_family - setting session[:cf_visualizzato] to #{session[:cf]}", 3)
       session[:cf_visualizzato] = session[:cf]
     end
     
@@ -1145,7 +1144,7 @@ class ApplicationController < ActionController::Base
       if session[:famiglia].kind_of?(Array)
         session[:famiglia] = session[:famiglia].to_json
       end
-      debug_message(session[:cf_visualizzato],3)
+      debug_message("session[:cf_visualizzato] "+session[:cf_visualizzato].to_s,3)
       debug_message(session[:famiglia],3)
       debug_message(JSON.parse(session[:famiglia]),3)
       is_family = session[:cf_visualizzato].in?(JSON.parse(session[:famiglia]))
