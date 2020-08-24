@@ -1336,7 +1336,7 @@ class ApplicationController < ActionController::Base
               redirect_to @dominio+"/?err"
               return
             else
-              debug_message("redirecting to "+sconosciuto, 3)
+              debug_message("redirecting to sconosciuto", 3)
               sconosciuto
               return   
             end
@@ -1350,7 +1350,7 @@ class ApplicationController < ActionController::Base
             redirect_to @dominio+"/autenticazione"
             return
           else
-            debug_message("redirecting to "+sconosciuto, 3)
+            debug_message("redirecting to sconosciuto", 3)
             sconosciuto
             return    
           end
