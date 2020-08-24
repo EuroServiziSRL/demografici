@@ -25,7 +25,8 @@ class ApplicationController < ActionController::Base
   # TODO aggiungere anche resource in config?
   # @@api_resource = "https://api.civilianextuat.it"
   # BOOKMARK variabili globali
-  @@api_resource = Rails.env.development? ? "https://api.civilianextdev.it" : "https://api.civilianext.it"
+  # @@api_resource = Rails.env.development? ? "https://api.civilianextdev.it" : "https://api.civilianext.it"
+  @@api_resource = "https://api.civilianext.it"
   @@api_url = "#{@@api_resource}/Demografici"
   PERMESSI = ["ricercare_anagrafiche", "ricercare_anagrafiche_no_sensibili", "elencare_anagrafiche", "vedere_solo_famiglia", "professionisti", "elencare_anagrafiche_certificazione", "cittadino"].freeze
   @@log_level = 1
@@ -742,7 +743,7 @@ class ApplicationController < ActionController::Base
           "errore": true, 
           "messaggio_errore": "Ente non abilitato all'utilizzo di questo servizio.", 
         }
-      elsif !result.nil? && result.length == 0
+      elsif (!result.nil? && result.length == 0) || (responseCode==201 && result.nil? && cittadino)
         result = { 
           "errore": true, 
           "messaggio_errore": "Impossibile trovare l'anagrafica richiesta.", 
