@@ -176,7 +176,6 @@ class ApplicationController < ActionController::Base
         debug_message("Localita/Localita_RicercaNazione result:",3)
         debug_message(result,3)
         @demografici_data["cittadinanze"] = result["result"]
-        @demografici_data["ricercaEstesa"] = ["ricercare_anagrafiche","ricercare_anagrafiche_no_sensibili","elencare_anagrafiche_certificazione","vedere_solo_famiglia"].include?(PERMESSI[session[:permessi]])
         @demografici_data["searchParams"] = {
           "cognomeNome" => session[:searchCognomeNome],
           "codiceFiscale" => session[:searchCF],
@@ -1194,10 +1193,11 @@ class ApplicationController < ActionController::Base
     return autorizzato
   end
 
+  #BOOKMARK carica_variabili_layout
   def carica_variabili_layout
 
     @nome = session[:nome]
-    @demografici_data = { "tipiCertificato" => {}, "esenzioniBollo" => {}, "cittadinanze" => {} }
+    @demografici_data = { "tipiCertificato" => {}, "esenzioniBollo" => {}, "cittadinanze" => {}, "ricercaEstesa" => false }
 
     tipiCertificato = []
     TipoCertificato.all.each do |tipoCertificato|
@@ -1228,8 +1228,9 @@ class ApplicationController < ActionController::Base
 
     if session[:permessi].nil?
       @demografici_data["cittadino"] = true
-    elsif
+    else
       @demografici_data["cittadino"] = PERMESSI[session[:permessi]] == "cittadino"
+      @demografici_data["ricercaEstesa"] = ["ricercare_anagrafiche","ricercare_anagrafiche_no_sensibili","elencare_anagrafiche_certificazione","vedere_solo_famiglia"].include?(PERMESSI[session[:permessi]])
     end
   
     @demografici_data = @demografici_data.to_json
