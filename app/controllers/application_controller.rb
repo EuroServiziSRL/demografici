@@ -548,19 +548,21 @@ class ApplicationController < ActionController::Base
           resultFamiglia = JSON.parse(resultFamiglia.response.body)
           famigliaArray = []
           resultFamiglia.each do |componente|
-            debug_message("looping through resultFamiglia, componente:", 3)
-            debug_message(componente, 3)
-            relazione = RelazioniParentela.where(id_relazione: componente["codiceRelazioneParentelaANPR"]).first
-            componente["relazioneParentela"] = relazione.descrizione
-            if !cittadino && !globale && !professionista
-              debug_message("removing codiceFiscale from:",1)
-              debug_message(componente,1)
-              componente = componente.except("codiceFiscale")
-              debug_message("componente now is:",1)
-              debug_message(componente,1)
+            if !componente["codiceRelazioneParentelaANPR"].nil?
+              debug_message("looping through resultFamiglia, componente:", 3)
+              debug_message(componente, 3)
+              relazione = RelazioniParentela.where(id_relazione: componente["codiceRelazioneParentelaANPR"]).first
+              componente["relazioneParentela"] = relazione.descrizione
+              if !cittadino && !globale && !professionista
+                debug_message("removing codiceFiscale from:",1)
+                debug_message(componente,1)
+                componente = componente.except("codiceFiscale")
+                debug_message("componente now is:",1)
+                debug_message(componente,1)
+              end
+              famigliaArray << componente["codiceFiscale"]
+              famiglia << componente
             end
-            famigliaArray << componente["codiceFiscale"]
-            famiglia << componente
           end
           session[:famiglia] = famigliaArray.to_json
           result["famiglia"] = famiglia
