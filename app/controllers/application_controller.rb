@@ -941,10 +941,12 @@ class ApplicationController < ActionController::Base
       resultFamiglia = JSON.parse(resultFamiglia.response.body)
       @famiglia = []
       resultFamiglia.each do |componente|
-        relazione = RelazioniParentela.where(id_relazione: componente["codiceRelazioneParentelaANPR"]).first
-        debug_message("TYPEOF ", 3)
-        debug_message(relazione.inspect, 3)
-        componente["relazioneParentela"] = relazione.descrizione
+        if !componente["codiceRelazioneParentelaANPR"].nil?
+          relazione = RelazioniParentela.where(id_relazione: componente["codiceRelazioneParentelaANPR"]).first
+          componente["relazioneParentela"] = relazione.descrizione
+        else
+          componente["relazioneParentela"] = ""
+        end
 
         @famiglia << {
           "nome" => componente["nome"],
