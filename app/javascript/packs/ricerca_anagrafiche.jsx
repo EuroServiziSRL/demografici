@@ -317,13 +317,22 @@ class RicercaAnagrafiche extends React.Component{
     console.log("endDate is ");
     var endDate = this.state.dataNascitaAl
     console.log(endDate);
+    console.log("selected cittadinanza ", demograficiData.searchParams.cittadinanza);
 
     var selectCittadinanze = []
-    selectCittadinanze.push(<option key="none" value=""></option>)
     for(var e in demograficiData.cittadinanze) {
-      selectCittadinanze.push(<option key={demograficiData.cittadinanze[e].id} value={demograficiData.cittadinanze[e].id}>{demograficiData.cittadinanze[e].cittadinanza}</option>)
+      var cittadinanzaString = demograficiData.cittadinanze[e].Cittadinanza;
+      if(cittadinanzaString!= demograficiData.cittadinanze[e].Descrizione) {
+        cittadinanzaString = demograficiData.cittadinanze[e].Descrizione+' ('+demograficiData.cittadinanze[e].Cittadinanza+')';
+      }
+      if(demograficiData.cittadinanze[e].Cittadinanza == "ITALIANA") {
+        selectCittadinanze.unshift(<option key={demograficiData.cittadinanze[e].Id} value={demograficiData.cittadinanze[e].Id}>{cittadinanzaString}</option>);
+      } else {
+        selectCittadinanze.push(<option key={demograficiData.cittadinanze[e].Id} value={demograficiData.cittadinanze[e].Id}>{cittadinanzaString}</option>);
+      }
     }
-    selectCittadinanze = <select className="form-control" defaultValue="" name="idCittadinanza">{selectCittadinanze}</select>
+    selectCittadinanze.unshift(<option key="none" value=""></option>)
+    selectCittadinanze = <select className="form-control" defaultValue={parseInt(demograficiData.searchParams.cittadinanza)} name="idCittadinanza">{selectCittadinanze}</select>
 
     var formRows = [];
     formRows.push([

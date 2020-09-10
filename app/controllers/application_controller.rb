@@ -49,6 +49,9 @@ class ApplicationController < ActionController::Base
       @page_app = "dettagli_persona"
     else
       @page_app = "ricerca_anagrafiche"
+      debug_message("redirecting to /ricerca_anagrafiche", 3)
+      redirect_to "/ricerca_anagrafiche"
+      return
     end
      
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
@@ -151,10 +154,11 @@ class ApplicationController < ActionController::Base
 
   # BOOKMARK ricerca_anagrafiche
   def ricerca_anagrafiche
+    debug_message("ricerca_anagrafiche",3)
     @page_app = "ricerca_anagrafiche"
     @nome = session[:nome]
-    debug_message("session[:searchDataDal] is #{session[:searchDataDal]}", 1)
-    debug_message("session[:searchDataAl] is #{session[:searchDataAl]}", 1)
+    debug_message("session[:searchDataDal] is #{session[:searchDataDal]}", 3)
+    debug_message("session[:searchDataAl] is #{session[:searchDataAl]}", 3)
     
     if PERMESSI[session[:permessi]] == "cittadino"
       debug_message("redirecting to /", 3)
@@ -163,42 +167,50 @@ class ApplicationController < ActionController::Base
     else 
       # session[:cf_visualizzato] = params["codice_fiscale"]
       webapi_localita = @@api_url.sub("Demografici","Localita")
-      # TODO capire che parametri passare alla ricerca
       @demografici_data = JSON.parse(@demografici_data)
-      result = HTTParty.post(
-        "#{webapi_localita}/RicercaNazione?v=1.0", 
-        :body => {"model" => ""}.to_json,
-        :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
-        :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
-      )   
-      if(!result.blank? && !result.response.blank? && !result.response.body.blank?)
-        result = JSON.parse(result.response.body)
-        debug_message("Localita/Localita_RicercaNazione result:",3)
-        debug_message(result,3)
-        @demografici_data["cittadinanze"] = result["result"]
-        @demografici_data["searchParams"] = {
-          "cognomeNome" => session[:searchCognomeNome],
-          "codiceFiscale" => session[:searchCF],
-          "dataNascitaDal" => session[:searchDataDal],
-          "dataNascitaAl" => session[:searchDataAl],
-          "sesso" => session[:searchSesso],
-          "cittadinanza" => session[:searchCit],
-        } 
-        debug_message('@demografici_data["searchParams"] set to',1)
-        debug_message(@demografici_data["searchParams"],1)
-        
-        @demografici_data = @demografici_data.to_json
-        @demografici_data = @demografici_data.html_safe
+      
+      pageNumber = 1
+      arrayCittadinanze = []
 
-        debug_message('@demografici_data set to',1)
-        debug_message(@demografici_data,1)
-
-      else
-        result = { 
-          "errore": true, 
-          "messaggio_errore": "Si è verificato un problema di connessione al servizio.", 
-        }
+      if session[:token].nil? || session[:token].blank?
+        get_bearer_token()
       end
+      if !session[:token].blank?
+        begin
+          result = HTTParty.post(
+            "#{webapi_localita}/RicercaNazione?v=1.0", 
+            :body => {"denominazioneNazione" => "%", "CurrentPage" => pageNumber}.to_json,
+            :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
+            :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
+          ) 
+          if !result.blank? && !result.response.blank? && !result.response.body.blank?
+            jsonResult = JSON.parse(result.response.body)
+            debug_message('RicercaNazione jsonResult',3)
+            debug_message(jsonResult,3)
+            debug_message('size',3)
+            debug_message(jsonResult["Result"]["Result"].length(),3)
+            arrayCittadinanze = arrayCittadinanze + jsonResult["Result"]["Result"]
+          end
+          pageNumber = pageNumber+1
+        end while !result.blank? && !result.response.blank? && !result.response.body.blank? && jsonResult["Result"]["Result"].length() > 0 && pageNumber < 10
+      end
+      @demografici_data["cittadinanze"] = arrayCittadinanze
+      @demografici_data["searchParams"] = {
+        "cognomeNome" => session[:searchCognomeNome],
+        "codiceFiscale" => session[:searchCF],
+        "dataNascitaDal" => session[:searchDataDal],
+        "dataNascitaAl" => session[:searchDataAl],
+        "sesso" => session[:searchSesso],
+        "cittadinanza" => session[:searchCit],
+      } 
+      debug_message('@demografici_data["searchParams"] set to',3)
+      debug_message(@demografici_data["searchParams"],3)
+      
+      @demografici_data = @demografici_data.to_json
+      @demografici_data = @demografici_data.html_safe
+
+      debug_message('@demografici_data set to',3)
+      debug_message(@demografici_data,3)
       render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
     end
   end
@@ -208,6 +220,15 @@ class ApplicationController < ActionController::Base
     debug_message("authenticate - session[:cf]: "+session[:cf], 3)
     debug_message("authenticate - params[\"codice_fiscale\"]: "+params["codice_fiscale"].to_s, 3)
     debug_message("authenticate - session[:cf_visualizzato]: "+session[:cf_visualizzato].to_s, 3)
+    
+    # result["url"] = oauthURL
+    # result["params"] = params
+    result = get_bearer_token()
+
+    render :json => result
+  end  
+
+  def get_bearer_token
     requestParams = {
       "resource": "#{@@api_resource.sub("https","http")}", 
       "tenant": "#{session[:api_next_tenant]}",
@@ -240,17 +261,15 @@ class ApplicationController < ActionController::Base
         }
       end
     end
-    
-    # result["url"] = oauthURL
-    # result["params"] = params
-
-    render :json => result
-  end  
+    return result
+  end
 
   # BOOKMARK ricerca_anagrafiche_individui
   def ricerca_anagrafiche_individui
     debug_message("ricerca_anagrafiche_individui", 3)
     debug_message("PERMESSI[session[:permessi]]: "+PERMESSI[session[:permessi]], 3)
+    debug_message("params is", 1)
+    debug_message(params, 1)
     debug_message("params[:sesso] is #{params[:sesso]}", 1)
 
     session[:searchCognomeNome] = params[:cognomeNome]
@@ -258,8 +277,10 @@ class ApplicationController < ActionController::Base
     session[:searchDataDal] = params[:dataNascitaDal]
     session[:searchDataAl] = params[:dataNascitaAl]
     session[:searchSesso] = params[:sesso]
-    session[:searchCit] = params[:cittadinanza]
+    session[:searchCit] = params[:idCittadinanza]
 
+    debug_message("session[:searchCognomeNome] set to #{session[:searchCognomeNome]}", 1)
+    debug_message("session[:searchCit] set to #{session[:searchCit]}", 1)
     debug_message("session[:searchSesso] set to #{session[:searchSesso]}", 1)
 
     if !params[:cognomeNome].nil? || !params[:cognomeNome].blank?
@@ -295,17 +316,17 @@ class ApplicationController < ActionController::Base
         "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
         :body => params.to_json,
         :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
-        :debug_output => @@log_to_output && @@log_level>0 ? $stdout : nil
+        :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
       )   
-      puts result
+      # puts result
       result = JSON.parse(result.response.body)
       if PERMESSI[session[:permessi]]!="elencare_anagrafiche"
         base_url = '/dettagli_persona?codice_fiscale='
 
         result.each_with_index do |anagrafica,index|
           if !anagrafica.empty?
-            puts "test"
-            puts anagrafica
+            # puts "test"
+            # puts anagrafica
             cf = anagrafica["codiceFiscale"]
             anagrafica["codiceFiscale"] = "<a href='#{base_url}#{cf}'>#{cf}</a>".html_safe
             result[index] = anagrafica
@@ -320,6 +341,20 @@ class ApplicationController < ActionController::Base
 
       result = { "data": result }
     end
+
+    @demografici_data = JSON.parse(@demografici_data)
+    @demografici_data["searchParams"] = {
+      "cognomeNome" => session[:searchCognomeNome],
+      "codiceFiscale" => session[:searchCF],
+      "dataNascitaDal" => session[:searchDataDal],
+      "dataNascitaAl" => session[:searchDataAl],
+      "sesso" => session[:searchSesso],
+      "cittadinanza" => session[:searchCit],
+    } 
+    debug_message('@demografici_data["searchParams"] set to',3)
+    debug_message(@demografici_data["searchParams"],3)      
+    @demografici_data = @demografici_data.to_json
+    @demografici_data = @demografici_data.html_safe
 
     traccia_operazione(tipologia_richiesta)
 
@@ -553,11 +588,11 @@ class ApplicationController < ActionController::Base
               relazione = RelazioniParentela.where(id_relazione: componente["codiceRelazioneParentelaANPR"]).first
               componente["relazioneParentela"] = relazione.descrizione
               if !cittadino && !globale && !professionista
-                debug_message("removing codiceFiscale from:",1)
-                debug_message(componente,1)
+                debug_message("removing codiceFiscale from:",3)
+                debug_message(componente,3)
                 componente = componente.except("codiceFiscale")
-                debug_message("componente now is:",1)
-                debug_message(componente,1)
+                debug_message("componente now is:",3)
+                debug_message(componente,3)
               end
               famigliaArray << componente["codiceFiscale"]
               famiglia << componente
@@ -603,7 +638,7 @@ class ApplicationController < ActionController::Base
                 verificaPagamento = verifica_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.id)
                 debug_message("verifica pagamento response",3)
                 debug_message(verificaPagamento,3)
-                debug_message("richiesta_certificato.documento is #{richiesta_certificato.documento}",1)
+                debug_message("richiesta_certificato.documento is #{richiesta_certificato.documento}",3)
                 if(!verificaPagamento.nil? && verificaPagamento["esito"]=="ok" && (verificaPagamento["pagato"]==1) && !richiesta_certificato.documento.nil? && !richiesta_certificato.documento.blank?)
                   debug_message("pagato!",3)
                   # pagato, lascio scaricare il documento
@@ -1302,7 +1337,7 @@ class ApplicationController < ActionController::Base
             # BOOKMARK impostazione dati in sessione
             # inserisco dati in sessione uno per uno per evitare conversione oggetti e cookie overflow
             debug_message(jwt_data,3)
-            debug_message("Received permessi: "+jwt_data["permessi"].to_s,1)
+            debug_message("Received permessi: "+jwt_data["permessi"].to_s,3)
             if jwt_data["permessi"].nil?
               jwt_data["permessi"] = "cittadino"
             end
