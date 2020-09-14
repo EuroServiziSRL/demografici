@@ -6,7 +6,7 @@ import { faCircleNotch, faShoppingCart, faCheck, faExclamation, faFileArchive, f
 
 demograficiData.dominio = window.location.protocol+"//"+window.location.hostname+(window.location.port!=""?":"+window.location.port:"");
 // TODO chiedere elenco stati a giambanco
-demograficiData.descrizioniStatus = {"D":"DECEDUTO", "R":"RESIDENTE", "A":"RESIDENTE AIRE", "I":"IRREPERIBILE", "E":"EMIGRATO"};
+demograficiData.descrizioniStatus = {"D":"DECEDUTO", "R":"RESIDENTE", "A":"RESIDENTE AIRE", "I":"IRREPERIBILE", "E":"EMIGRATO", "C":"ELIMINATO APR CAMBIO DOMICILIO"};
 // export {demograficiData};
 if(typeof(demograficiData.searchParams)=="undefined") {
   demograficiData.searchParams = {}
