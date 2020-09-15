@@ -1060,6 +1060,7 @@ class ApplicationController < ActionController::Base
   end
   
   def sconosciuto
+    debug_message("sconosciuto called by "+caller[0], 1)
     render html: '<DOCTYPE html><html><head><title>Pagina non trovata</title></head><body>Pagina non trovata</body></html>'.html_safe
     return
   end
@@ -1267,7 +1268,7 @@ class ApplicationController < ActionController::Base
       @demografici_data["cittadino"] = true
     else
       @demografici_data["cittadino"] = PERMESSI[session[:permessi]] == "cittadino"
-      @demografici_data["ricercaEstesa"] = ["ricercare_anagrafiche","ricercare_anagrafiche_no_sensibili","elencare_anagrafiche_certificazione","vedere_solo_famiglia"].include?(PERMESSI[session[:permessi]])
+      @demografici_data["ricercaEstesa"] = ["ricercare_anagrafiche","ricercare_anagrafiche_no_sensibili","vedere_solo_famiglia"].include?(PERMESSI[session[:permessi]])
     end
   
     @demografici_data = @demografici_data.to_json
@@ -1283,9 +1284,9 @@ class ApplicationController < ActionController::Base
       if !hash_params['c_id'].blank? && session[:client_id] != hash_params['c_id']
         reset_session
       end
-      if session.blank? || session[:user_id].blank? || false #controllo se ho fatto login
-        debug_message("received hash params", 3)
-        debug_message(hash_params, 3)
+      # ATTENZIONE! se si mette a true per resettare la sessione in test, poi rimettere a false senò fa il check su ogni pagina e incasina i redirect
+      # il controllo su layout è fatto per ricaricare i dati di sessione al primo caricamento da portal, per individuare eventuali modifiche al 
+      if session.blank? || session[:user_id].blank? || hash_params.key?("layout") || false #controllo se ho fatto login
         #se ho la sessione vuota devo ottenere una sessione dal portale
         #se arriva un client_id (parametro c_id) e id_utente lo uso per richiedere sessione
         if !hash_params['c_id'].blank? && !hash_params['u_id'].blank?
@@ -1334,6 +1335,7 @@ class ApplicationController < ActionController::Base
           #se ho risultato con stato ok ricavo dati dal portale e salvo in sessione 
           #impostare durata sessione in application.rb: ora dura 30 minuti
           if !hash_result.blank? && !hash_result["stato"].nil? && hash_result["stato"] == 'ok'
+            debug_message("RELOAD SESSION - ricarico i dati di sessione (dati utente, permessi etc)", 1)
             jwt_data = JsonWebToken.decode(hash_result['token'])
 
             # BOOKMARK impostazione dati in sessione
@@ -1371,11 +1373,11 @@ class ApplicationController < ActionController::Base
           else
             #se ho problemi ritorno su portale con parametro di errore
             unless @dominio.blank?
-              debug_message("redirecting to "+@dominio+"/?err", 3)
+              debug_message("get_dominio_sessione_utente 1390 redirecting to "+@dominio+"/?err", 3)
               redirect_to @dominio+"/?err"
               return
             else
-              debug_message("redirecting to sconosciuto", 3)
+              debug_message("get_dominio_sessione_utente 1394 redirecting to sconosciuto", 3)
               sconosciuto
               return   
             end
@@ -1385,11 +1387,11 @@ class ApplicationController < ActionController::Base
 
           unless @dominio.blank?
             #mando a fare autenticazione sul portal
-              debug_message("redirecting to "+@dominio+"/autenticazione", 3)
+              debug_message("get_dominio_sessione_utente 1404 redirecting to "+@dominio+"/autenticazione", 3)
             redirect_to @dominio+"/autenticazione"
             return
           else
-            debug_message("redirecting to sconosciuto", 3)
+            debug_message("get_dominio_sessione_utente 1408 redirecting to sconosciuto", 3)
             sconosciuto
             return    
           end
@@ -1470,12 +1472,19 @@ class ApplicationController < ActionController::Base
   def test_variables
     # TEST disabilitare prima di testare per prod
     if Rails.env.development?
+      # Consultare le anagrafiche dei cittadini:
       # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche")
+      # Consultare le anagrafiche dei cittadini (No dati sensibili):
       # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche_no_sensibili")
+      # Vedere l'elenco delle anagrafiche dei cittadini:
       # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche")
-      # session[:permessi]=PERMESSI.find_index("professionisti")
+      # Vedere l'elenco delle anagrafiche dei cittadini ed emissione certificato:
       # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche_certificazione")
+      # Consultare anagrafiche ed emissione certificato:
+      # session[:permessi]=PERMESSI.find_index("professionisti")
+      # Consultare le anagrafiche dei cittadini ma vedere solo lo stato famiglia:
       # session[:permessi]=PERMESSI.find_index("vedere_solo_famiglia")
+      # Nessun permesso impostato:
       # session[:permessi]=PERMESSI.find_index("cittadino")
     end
   end

@@ -229,8 +229,12 @@ class RicercaAnagrafiche extends React.Component{
     });
     var state = this.state;
     state.dati = undefined;
+    state.page = 1;
+    demograficiData.searchParams.page = 1;
+
     state.loading = undefined;
     this.setState(state);
+    $("#page").val(1);
     $("#buttonClear").attr("disabled","disabled");
     this.validateForm();
   }
