@@ -19,10 +19,10 @@
     "prop-types": "^15.7.2",
     "react": "^16.8.6",
     "react-bootstrap-table-next": "^3.1.5",
+    "react-bootstrap-typeahead": "^5.1.1",
     "react-dom": "^16.8.6",
     "react-router": "^5.0.0",
     "react-router-dom": "^5.0.0",
-    "react-select": "^3.0.4",
     "resolve-url-loader": "^3.1.0",
     "webpack": "4.43.0",
     "webpack-cli": "^3.3.2"

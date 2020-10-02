@@ -152,6 +152,43 @@ class ApplicationController < ActionController::Base
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
   end
 
+  # BOOKMARK ricerca_indirizzi
+  def ricerca_indirizzi
+    arrayIndirizzi = []
+    debug_message('params["indirizzo"]',1)
+    debug_message(params["indirizzo"],1)
+    if !params["indirizzo"].nil?
+      webapi_toponomastica = @@api_url.sub("Demografici","Toponomastica")
+      @demografici_data = JSON.parse(@demografici_data)
+      
+      if session[:token].nil? || session[:token].blank?
+        get_bearer_token()
+      end
+      if !session[:token].blank?
+        
+        result = HTTParty.post(
+          "#{webapi_toponomastica}/RecuperoVie?v=1.0", 
+          :body => {"denominazione" => "%#{params["indirizzo"]}%"}.to_json,
+          :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
+          :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
+        ) 
+        if !result.blank? && !result.response.blank? && !result.response.body.blank?
+          jsonResult = JSON.parse(result.response.body)
+          debug_message('RecuperoVie jsonResult',3)
+          debug_message(jsonResult,1)
+          debug_message('size',1)
+          debug_message(jsonResult["Result"]["Result"].length(),3)
+          jsonResult["Result"]["Result"].each do |indirizzo|
+            arrayIndirizzi << {"id": indirizzo["Id"], "descrizione": "#{indirizzo["Toponimo"]["Descrizione"]} #{indirizzo["Denominazione"]}" }
+          end
+        end
+          
+      end
+    end
+
+    render :json => arrayIndirizzi
+  end
+
   # BOOKMARK ricerca_anagrafiche
   def ricerca_anagrafiche
     debug_message("ricerca_anagrafiche",3)
@@ -202,6 +239,8 @@ class ApplicationController < ActionController::Base
         "dataNascitaAl" => session[:searchDataAl],
         "sesso" => session[:searchSesso],
         "cittadinanza" => session[:searchCit],
+        "idStrada" => session[:searchVia],
+        "nomeVia" => session[:searchNomeVia],
       } 
       debug_message('@demografici_data["searchParams"] set to',3)
       debug_message(@demografici_data["searchParams"],3)
@@ -278,6 +317,8 @@ class ApplicationController < ActionController::Base
     session[:searchDataAl] = params[:dataNascitaAl]
     session[:searchSesso] = params[:sesso]
     session[:searchCit] = params[:idCittadinanza]
+    session[:searchVia] = params[:idStrada]
+    session[:searchNomeVia] = params[:nomeVia]
 
     debug_message("session[:searchCognomeNome] set to #{session[:searchCognomeNome]}", 1)
     debug_message("session[:searchCit] set to #{session[:searchCit]}", 1)
@@ -350,6 +391,8 @@ class ApplicationController < ActionController::Base
       "dataNascitaAl" => session[:searchDataAl],
       "sesso" => session[:searchSesso],
       "cittadinanza" => session[:searchCit],
+      "idStrada" => session[:searchVia],
+      "nomeVia" => session[:searchNomeVia],
     } 
     debug_message('@demografici_data["searchParams"] set to',3)
     debug_message(@demografici_data["searchParams"],3)      

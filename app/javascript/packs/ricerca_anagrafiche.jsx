@@ -6,9 +6,9 @@ import ReactDOM from 'react-dom';
 import BootstrapTable from 'react-bootstrap-table-next';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faCircleNotch } from '@fortawesome/free-solid-svg-icons'
-import { DemograficiForm } from './demografici_form'
 import { linkAnagraficaFormatter } from './demografici'
 import { posizioneAnagraficaFormatter } from './demografici'
+import { AsyncTypeahead } from 'react-bootstrap-typeahead';
 
 class RicercaAnagrafiche extends React.Component{
 
@@ -19,9 +19,12 @@ class RicercaAnagrafiche extends React.Component{
     dati: undefined,   
     dataNascitaDal: undefined, 
     dataNascitaAl: undefined,
+    defaultVia: [],
+    vieLoading: false,
     loading: undefined,
     csrf: "",
-    page: 1
+    page: 1,
+    enableSearch: true
   } 
 
   columns = [
@@ -38,6 +41,17 @@ class RicercaAnagrafiche extends React.Component{
 
   constructor(props){
     super(props);
+    var selectedVia = [];
+    if(demograficiData.searchParams.idStrada!=null && demograficiData.searchParams.idStrada!="" && demograficiData.searchParams.nomeVia !=null &&  demograficiData.searchParams.nomeVia!="") {
+      selectedVia.push(
+        {
+          "id": demograficiData.searchParams.idStrada,
+          "descrizione": demograficiData.searchParams.nomeVia
+        }
+      );
+    }
+    console.log("set selectedvia to",selectedVia);
+    this.state.defaultVia = selectedVia;
     
     this.authenticate();
   }
@@ -110,12 +124,15 @@ class RicercaAnagrafiche extends React.Component{
     var self = this;
     var state = self.state;
     state.loading = true;
+    state.enableSearch = false;
     // state.dati = undefined;
     self.setState(state);
     console.log("ricercaAnagrafiche...");    
     self.disableForm(true,false); 
     var serialized = $('#formRicercaAnagrafiche').serialize();
     self.disableForm(true,true);
+    console.log("idStrada",$("#idStrada").val());
+    console.log("nomeVia",$("#nomeVia").val());
     $.get(demograficiData.dominio+"/ricerca_anagrafiche_individui", serialized).done(function( response ) {
       console.log("ricercaAnagrafiche response is loaded");
       console.log(response);
@@ -138,6 +155,7 @@ class RicercaAnagrafiche extends React.Component{
           state.error_message = response.messaggio_errore;
         }
         state.loading = false;
+        state.enableSearch = true;
         self.setState(state);
         console.log("state.dati");
         console.log(self.state.dati);
@@ -176,6 +194,10 @@ class RicercaAnagrafiche extends React.Component{
   validateForm() {
     var searchValues = [];
     var formError = false;
+    var state = this.state;
+    state.enableSearch = false;
+    this.setState(state);
+
     var $submit = $("#formRicercaAnagrafiche").find("input[type=submit]");
     $submit.parent().parent().next().hide();
     $("#formRicercaAnagrafiche").find("input[type=text],input[type=date],input[type=radio]:checked,select").each(function(){
@@ -205,7 +227,9 @@ class RicercaAnagrafiche extends React.Component{
     }
     console.log("formError",formError);
     if(formError!==false) {
-      $submit.attr("disabled","disabled");
+      var state = this.state;
+      state.enableSearch = false;
+      this.setState(state);
       if($submit.parent().parent().next().find(".error").length < 1) {
         $('<div class="form-group"><div class="col-lg-offset-2 col-lg-4"><p class="text-danger error"></p></div></div>').insertAfter($submit.parent().parent());
       }
@@ -215,11 +239,47 @@ class RicercaAnagrafiche extends React.Component{
       }
     } else {
       $("#buttonClear").removeAttr("disabled");
-      $submit.removeAttr("disabled");
+      if(searchValues.length>0) {
+        var state = this.state;
+        state.enableSearch = true;
+        this.setState(state);
+      }
     }
   }  
 
+  ricercaVie(query) {
+    console.log("ricercaVie query", query);
+    var self = this;
+    self.state.vieLoading = true;
+    this.setState(self.state);
+
+    $.get(demograficiData.dominio+"/ricerca_indirizzi?indirizzo="+query).done(function( response ) {
+      console.log("got response", response);
+      self.state.vieLoading = false;
+      self.state.listaVie = response;
+      self.setState(self.state);
+    });
+  }
+
+  selezionaVia(selectedOptions) {
+    console.log("selectedOptions",selectedOptions);
+    var state = this.state;
+    state.defaultVia = selectedOptions;
+    state.listaVie = selectedOptions;
+    this.setState(state);
+    // if(selectedOptions!=null && selectedOptions.length>0) {
+    //   console.log("setting idStrada to ", selectedOptions[0].id+"");
+    //   $("#idStrada").val(selectedOptions[0].id+"");
+    //   console.log("setting nomeVia to ", selectedOptions[0].descrizione);
+    //   $("#nomeVia").val(selectedOptions[0].descrizione);
+    // } else {
+    //   $("#idStrada").val("");
+    //   $("#nomeVia").val("");
+    // }
+  }
+
   clearForm() {
+    console.log("clearForm");
     $("#formRicercaAnagrafiche").find("input[type=text],input[type=date],input[type=radio]:checked,select").each(function(){
       if($(this).attr("type")=="radio") {
         $(this).prop("checked", false);
@@ -227,20 +287,27 @@ class RicercaAnagrafiche extends React.Component{
         $(this).val(null);
       }
     });
+    $("#idStrada").val(null);
+    $("#nomeVia").val(null);
+    $("#indirizzo").find(".rbt-input-main").val("");
     var state = this.state;
+    state.defaultVia = [];
     state.dati = undefined;
+    state.enableSearch = true;
     state.page = 1;
     demograficiData.searchParams.page = 1;
 
     state.loading = undefined;
     this.setState(state);
+    console.log("state changed to",this.state);
     $("#page").val(1);
+    console.log("disabling buttonClear");
     $("#buttonClear").attr("disabled","disabled");
     this.validateForm();
   }
 
   render() {
-    console.log("rendering");
+    console.log("rendering ricerca_anagrafiche");
     var loading = <p className="text-center" id={this.state.dati?"loading":""}><FontAwesomeIcon icon={faCircleNotch} size="2x" spin /><span className="sr-only">caricamento...</span></p>;
     var table = "";
     if (this.state.dati && this.state.dati.length > 0) {
@@ -336,44 +403,88 @@ class RicercaAnagrafiche extends React.Component{
       }
     }
     selectCittadinanze.unshift(<option key="none" value=""></option>)
-    selectCittadinanze = <select className="form-control" defaultValue={parseInt(demograficiData.searchParams.cittadinanza)} name="idCittadinanza">{selectCittadinanze}</select>
-
-    var formRows = [];
-    formRows.push([
-      { name: "", value: <input type="hidden" id="page" name="pageNumber" value={this.state.page} defaultValue={demograficiData.searchParams.page}/>, html: true }
-    ]);
-    formRows.push([
-      { name:"cognomeNome", label:"Cognome/Nome", value: <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="cognomeNome" id="cognomeNome" defaultValue={demograficiData.searchParams.cognomeNome}/>, html: true },
-      { name:"codiceFiscale", label:"Codice Fiscale", value: <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="codiceFiscale" id="codiceFiscale" defaultValue={demograficiData.searchParams.codiceFiscale}/>, html: true },
-    ]);
-    if(demograficiData.ricercaEstesa) {
-      formRows.push([
-        { name:"cittadinanza", value:selectCittadinanze, html: true },
-        { name:"sesso", value: <>
-        <label className="radio-inline">
-              <input type="radio" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} name="sesso" id="sessoM" defaultValue="M"/> maschio
-            </label>
-            <label className="radio-inline">
-              <input type="radio" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} name="sesso" id="sessoF" defaultValue="F"/> femmina
-            </label>
-      </>, html: true }
-      ]);
-      formRows.push([
-        { name:"dataNascitaDal", label:"Data di nascita", value: <input type="date" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control form-control-datetime" name="dataNascitaDal" id="dataNascitaDal" defaultValue={demograficiData.searchParams.dataNascitaDal}/>, html: true },
-        { name:"dataNascitaAl", label:"al", value: <input type="date" className="form-control form-control-datetime" name="dataNascitaAl" id="dataNascitaAl" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} defaultValue={demograficiData.searchParams.dataNascitaAl}/>, html: true },
-      ]);
-    }
-    formRows.push([
-      { name:"", value: <><input type="submit" name="invia" className="btn btn-primary mr10" disabled={this.state.loading} value="Cerca" title="Specifica almeno un criterio di ricerca"/><button type="button" className="btn btn-default" id="buttonClear" onClick={this.clearForm.bind(this)}>Cancella</button></>, html: true },
-      { name: "", value: <input type="hidden" name="authenticity_token" value={this.state.csrf}/>, html: true }
-    ]);
+    var cittadinanzaDefault = parseInt(demograficiData.searchParams.cittadinanza);
+    if(isNaN(cittadinanzaDefault)) {cittadinanzaDefault=null;}
+    console.log("selectCittadinanze",selectCittadinanze);
 
     var content = <div>
       {this.state.csrf=="" ? <div className="row"><div className="col-lg-12"><p className="alert alert-info">Caricamento...</p></div></div> : <><form method="post" action="" className="row form-ricerca form-horizontal" onSubmit={this.ricercaAnagrafiche.bind(this)} id="formRicercaAnagrafiche">
         <div className="col-lg-12 col-md-12 col-sm-12 col-xs-12">
           <h3>Ricerca anagrafiche</h3>
-          <div className="panel panel-default">
-            <DemograficiForm rows={formRows}/>
+          <div className="panel panel-default col-lg-12">
+
+            <div className="form-group">
+              <input type="hidden" id="page" name="pageNumber" value={this.state.page} defaultValue={demograficiData.searchParams.page}/>
+              <input type="hidden" name="idStrada" id="idStrada" value={this.state.defaultVia.length>0?this.state.defaultVia[0].id:''}/>
+              <input type="hidden" name="nomeVia" id="nomeVia" value={this.state.defaultVia.length>0?this.state.defaultVia[0].descrizione:''}/>
+              <input type="hidden" name="authenticity_token" value={this.state.csrf}/>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="cognomeNome" className="col-lg-2 control-label">Cognome/Nome</label>
+              <div className="col-lg-4" id="cognomeNome">
+                <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="cognomeNome" id="cognomeNome" defaultValue={demograficiData.searchParams.cognomeNome}/>
+              </div>
+              <label htmlFor="codiceFiscale" className="col-lg-2 control-label">Codice Fiscale</label>
+              <div className="col-lg-4" id="codiceFiscale">
+                <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="codiceFiscale" id="codiceFiscale" defaultValue={demograficiData.searchParams.codiceFiscale}/>
+              </div>
+            </div>
+
+            {demograficiData.ricercaEstesa?<><div className="form-group">
+              <label htmlFor="cittadinanza" className="col-lg-2 control-label">Cittadinanza</label>
+              <div className="col-lg-4" id="cittadinanza">
+                <select className="form-control" defaultValue={cittadinanzaDefault} name="idCittadinanza">{selectCittadinanze}</select>
+              </div>
+              <label htmlFor="sesso" className="col-lg-2 control-label">Sesso</label>
+              <div className="col-lg-4" id="sesso">
+                <label className="radio-inline">
+                  <input type="radio" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} name="sesso" id="sessoM" defaultValue="M"/> maschio
+                </label>
+                <label className="radio-inline">
+                  <input type="radio" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} name="sesso" id="sessoF" defaultValue="F"/> femmina
+                </label>
+              </div>
+            </div> 
+            
+            <div className="form-group">
+              <label htmlFor="dataNascitaDal" className="col-lg-2 control-label">Data di nascita</label>
+              <div className="col-lg-4" id="dataNascitaDal">
+                <input type="date" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control form-control-datetime" name="dataNascitaDal" id="dataNascitaDal" defaultValue={demograficiData.searchParams.dataNascitaDal}/>
+              </div>
+              <label htmlFor="dataNascitaAl" className="col-lg-2 control-label">al</label>
+              <div className="col-lg-4" id="dataNascitaAl">
+                <input type="date" className="form-control form-control-datetime" name="dataNascitaAl" id="dataNascitaAl" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} defaultValue={demograficiData.searchParams.dataNascitaAl}/>
+              </div>
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="indirizzo" className="col-lg-2 control-label">Indirizzo</label>
+              <div className="col-lg-10" id="indirizzo">
+              <AsyncTypeahead
+                id="typeaheadVie"
+                isLoading={this.state.vieLoading}
+                labelKey={(option) => `${option.descrizione}`}
+                name="typeaheadVie"
+                minLength={3}
+                onSearch={this.ricercaVie.bind(this)}
+                options={this.state.listaVie}
+                onChange={this.selezionaVia.bind(this)}
+                selected={this.state.defaultVia}
+                promptText="Inizia a scrivere per cercare..."
+                searchText="Caricamento..."
+                emptyLabel="Nessun risultato"
+              />
+              </div>
+            </div></>:<></>}            
+            
+            <div className="form-group">
+              <div className="col-lg-10 col-lg-offset-2" id="indirizzo">
+                <input type="submit" name="invia" id="buttonSearch" className="btn btn-primary mr10" disabled={!this.state.enableSearch} value="Cerca" title="Specifica almeno un criterio di ricerca"/>
+                <button type="button" className="btn btn-default" id="buttonClear" onClick={this.clearForm.bind(this)}>Cancella</button>
+              </div>
+            </div>
+            
           </div>
         </div>
       </form></>}

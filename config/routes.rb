@@ -10,6 +10,7 @@ Rails.application.routes.draw do
   # get '/ricerca_anagrafiche' => 'application#ricerca_anagrafiche', :as => :ricerca_anagrafiche
   # post '/ricerca_anagrafiche' => 'application#ricerca_anagrafiche', :as => :ricerca_anagrafiche
   match '/ricerca_anagrafiche' => 'application#ricerca_anagrafiche', via: [:get, :post]
+  match '/ricerca_indirizzi' => 'application#ricerca_indirizzi', via: [:get, :post]
   get '/ricerca_anagrafiche_individui' => 'application#ricerca_anagrafiche_individui', :as => :ricerca_anagrafiche_individui
   get '/authenticate' => 'application#authenticate', :as => :authenticate
   get '/ricerca_individui' => 'application#ricerca_individui', :as => :ricerca_individui
