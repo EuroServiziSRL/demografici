@@ -24,7 +24,7 @@ class RicercaAnagrafiche extends React.Component{
     loading: undefined,
     csrf: "",
     page: 1,
-    enableSearch: true
+    enableSearch: false
   } 
 
   columns = [

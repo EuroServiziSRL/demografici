@@ -56,14 +56,14 @@ module ApplicationHelper
     return JSON.parse(response.body)
   end
   
-  def verifica_pagamento(urlPagamenti,idAvviso)
+  def verifica_pagamento(urlPagamenti,idAvviso, tipoDovuto)
     uri = URI(urlPagamenti)
     http = Net::HTTP.new(uri.host, uri.port)
     
 
     requestParams = { 
       'applicazione' => "pagamenti",
-      'tipo_dovuto' => "certificazione_td",
+      'tipo_dovuto' => tipoDovuto,
       'id_univoco_dovuto' => idAvviso,
       'mbd' => 1
     }
@@ -76,6 +76,29 @@ module ApplicationHelper
     :timeout => 500 )
                      
     return JSON.parse(response.body)
+  end
+
+  def invia_multidovuto(urlPagamenti, arrayDati) 
+    uri = URI(urlPagamenti)
+    http = Net::HTTP.new(uri.host, uri.port)
+    
+    requestParams = { 
+      'applicazione' => "pagamenti",
+      'numero' => tipoDovuto, # valorizzato con il numero di pagamenti caricati e contenuti nell'array. E’ di fatto il numero degli IUV che verranno  generati/gestiti.
+      'nome_flusso' => idAvviso, # Valorizzare a “0” per chiamate con flusso a singolo pagamento (APP)
+      'caricament_da_confermare' => "false",
+      'content_json' => arrayDati.to_json # Elenco dovuti compresso in formato ZIP e da caricare in base 64
+    }
+
+    response = HTTParty.post(urlPagamenti,
+    :body => requestParams,
+    :headers => { 'Content-Type' => 'application/x-www-form-urlencoded', 'Authorization' => 'Bearer '+get_jwt_token_authhub },
+    # :debug_output => $stdout ,
+    :follow_redirects => false,
+    :timeout => 500 )
+                     
+    return JSON.parse(response.body)
+
   end
 
 

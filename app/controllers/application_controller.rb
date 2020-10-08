@@ -82,6 +82,7 @@ class ApplicationController < ActionController::Base
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
   end
 
+  # BOOKMARK richiedi_certificato
   def richiedi_certificato
 
     # ricevo dal portale del cittadino una richiesta di certificato
@@ -404,6 +405,7 @@ class ApplicationController < ActionController::Base
     render :json => result
   end
 
+  # BOOKMARK inserisci_pagamento
   def inserisci_pagamento
     searchParams = {}
     searchParams[:tenant] = session[:api_next_tenant]
@@ -417,25 +419,35 @@ class ApplicationController < ActionController::Base
     if !richiesta_certificato.diritti_importo.nil?
       importo = importo+richiesta_certificato.diritti_importo
     end
+    hashMarcaBollo = Base64.strict_encode64(OpenSSL::Digest::SHA256.new(File.read(richiesta_certificato.documento)).to_s)
     parametri = {
       importo: "#{importo}",
       descrizione: "Certificato #{richiesta_certificato.nome_certificato} per #{richiesta_certificato.codice_fiscale} - n.#{richiesta_certificato.id}",
       codice_applicazione: "demografici", # CHECK va bene questo codice applicazione?
       url_back: request.protocol + request.host_with_port,
       idext: richiesta_certificato.id,
-      tipo_elemento: "certificazione_td",
+      tipo_elemento: richiesta_certificato.bollo ? "bollo_td" : "certificazione_td" ,
       nome_versante: session[:nome],
       cognome_versante: session[:cognome],
       codice_fiscale_versante: session[:cf],
       nome_pagatore: session[:nome],
       cognome_pagatore: session[:cognome],
-      codice_fiscale_pagatore: session[:cf]
+      codice_fiscale_pagatore: session[:cf],
+      hashdocumento_bollo: hashMarcaBollo,
     }
     
-    queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore].map{ |chiave|
+    if richiesta_certificato.bollo
+      queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore, :hashdocumento_bollo].map{ |chiave|
         val = parametri[chiave] 
         "#{chiave}=#{val}"
-    }.join('&')
+      }.join('&')
+    else
+      queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore].map{ |chiave|
+        val = parametri[chiave] 
+        "#{chiave}=#{val}"
+      }.join('&')
+    end
+    puts "queryString is "+queryString
     
     # debug_message("query string for sha1 is [#{queryString.strip}]", 3)
     fullquerystring = URI.unescape(queryString)
@@ -678,7 +690,8 @@ class ApplicationController < ActionController::Base
               
               if !scaduto && richiesta_certificato.stato == "da_pagare"
                 # statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
-                verificaPagamento = verifica_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.id)
+                tipoPagamento = richiesta_certificato.bollo ? "bollo" : "certificazione_td"
+                verificaPagamento = verifica_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.id, tipoPagamento)
                 debug_message("verifica pagamento response",3)
                 debug_message(verificaPagamento,3)
                 debug_message("richiesta_certificato.documento is #{richiesta_certificato.documento}",3)
@@ -734,31 +747,40 @@ class ApplicationController < ActionController::Base
                       if !richiesta_certificato.diritti_importo.nil?
                         importo = importo+richiesta_certificato.diritti_importo
                       end
+                      hashMarcaBollo = Base64.strict_encode64(OpenSSL::Digest::SHA256.new(File.read(richiesta_certificato.documento)).to_s)
                       parametri = {
                         importo: "#{importo}",
                         descrizione: "Certificato #{richiesta_certificato.nome_certificato} per #{richiesta_certificato.codice_fiscale} - n.#{richiesta_certificato.id}",
                         codice_applicazione: "demografici", # CHECK va bene questo codice applicazione?
                         url_back: request.protocol + request.host_with_port,
                         idext: richiesta_certificato.id,
-                        tipo_elemento: "certificazione_td",
+                        tipo_elemento: richiesta_certificato.bollo ? "bollo_td" : "certificazione_td" ,
                         nome_versante: session[:nome],
                         cognome_versante: session[:cognome],
                         codice_fiscale_versante: session[:cf],
                         nome_pagatore: session[:nome],
                         cognome_pagatore: session[:cognome],
-                        codice_fiscale_pagatore: session[:cf]
+                        codice_fiscale_pagatore: session[:cf],
+                        hashdocumento_bollo: hashMarcaBollo
                       }
                       
-                      queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore].map{ |chiave|
+                      if richiesta_certificato.bollo
+                        queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore, :hashdocumento_bollo].map{ |chiave|
                           val = parametri[chiave] 
                           "#{chiave}=#{val}"
-                      }.join('&')
+                        }.join('&')
+                      else
+                        queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore].map{ |chiave|
+                          val = parametri[chiave] 
+                          "#{chiave}=#{val}"
+                        }.join('&')
+                      end
                       
                       # debug_message("query string for sha1 is [#{queryString.strip}]", 3)
 
-                      fullquerystring = URI.unescape(queryString)
+                      fullquerystring = URI.unescape(queryString).strip
                       # qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
-                      qs = queryString+"3ur0s3rv1z1"
+                      qs = (fullquerystring.strip)+"3ur0s3rv1z1"
                       hqs = OpenSSL::Digest::SHA1.new(qs)
                       url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa.json?#{queryString}&hqs=#{hqs}&id_utente=#{session[:user_id]}&sid=#{session[:user_sid]}"
                     end
@@ -1541,3 +1563,4 @@ class ApplicationController < ActionController::Base
   end
 
 end
+
