@@ -75,11 +75,12 @@ class ApiController < ActionController::Base
           prenotazioni << {
             "tenant": richiesta_certificato.tenant,
             "codice_fiscale": richiesta_certificato.codice_fiscale,
-            "codici_certificato": array_codici, # ottenuti da compilazione form da parte del cittadino, questi verranno ottenuti da ws che restituisce elenco tipi certificato
-            "bollo": richiesta_certificato.bollo, # ottenuti da compilazione form da parte del cittadino, sì/no
+            "codici_certificato": array_codici,
+            "bollo": richiesta_certificato.bollo,
+            "marca_bollo_digitale": richiesta_certificato.bollo > 0,
             "bollo_esenzione": richiesta_certificato.bollo_esenzione,
-            "diritti_importo": richiesta_certificato.diritti_importo, # ottenuti da compilazione form da parte del cittadino, sì/no
-            "uso": richiesta_certificato.uso, # ottenuti da compilazione form da parte del cittadino, probabilmente recuperati da ws?
+            "diritti_importo": richiesta_certificato.diritti_importo,
+            "uso": richiesta_certificato.uso,
             "richiedente_cf": richiesta_certificato.richiedente_cf,
             "richiedente_nome": richiesta_certificato.richiedente_nome,
             "richiedente_cognome": richiesta_certificato.richiedente_cognome,
