@@ -78,6 +78,7 @@ module ApplicationHelper
     return JSON.parse(response.body)
   end
 
+  # TODO finire di implementare invia_multidovuto e sostituire aggiungi_pagamento_pagopa
   def invia_multidovuto(urlPagamenti, arrayDati) 
     uri = URI(urlPagamenti)
     http = Net::HTTP.new(uri.host, uri.port)
@@ -101,6 +102,7 @@ module ApplicationHelper
 
   end
 
+  #TODO implementare avvia_pagamento oltre a vai al carrello
 
   def get_jwt_token_authhub
 

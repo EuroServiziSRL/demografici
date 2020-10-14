@@ -1545,7 +1545,7 @@ class ApplicationController < ActionController::Base
       # Vedere l'elenco delle anagrafiche dei cittadini:
       # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche")
       # Vedere l'elenco delle anagrafiche dei cittadini ed emissione certificato:
-      session[:permessi]=PERMESSI.find_index("elencare_anagrafiche_certificazione")
+      # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche_certificazione")
       # Consultare anagrafiche ed emissione certificato:
       # session[:permessi]=PERMESSI.find_index("professionisti")
       # Consultare le anagrafiche dei cittadini ma vedere solo lo stato famiglia:
