@@ -523,7 +523,8 @@ class DettagliPersona extends React.Component{
       ],[
         { name:"certificatoTipo", label: "Tipo certificato*", labelCols:4, valueSize:5, value: selectTipiCertificato, html: true }
       ],[
-        { name:"cartaLiberaBollo", label: "Il certificato dovrà essere rilasciato in Carta Libera o in Bollo?", labelCols:4, valueSize:5, value: <>
+        { name:null, value: <p className="alert alert-info">Ogni certificato è in carta resa legale e prevede il pagamento dell'imposta di bollo nella misura di Euro 16,00. È possibile sottomettere una richiesta in carta libera, specificando qui sotto il motivo dell'esenzione:</p>, html: true }
+        /*{ name:"cartaLiberaBollo", label: "Il certificato dovrà essere rilasciato in Carta Libera o in Bollo?", labelCols:4, valueSize:5, value: <>
           <label className="radio-inline">
                 <input type="radio" name="certificatoBollo" id="carta_libera" defaultValue="false"/>Carta Libera
               </label>
@@ -531,7 +532,7 @@ class DettagliPersona extends React.Component{
                 <input type="radio" name="certificatoBollo" id="bollo" defaultValue="true" defaultChecked="checked"/>
                 Bollo
               </label>
-        </>, html: true }
+        </>, html: true }*/
       ],[
         { name:"certificatoEsenzione", label: "Esenzione", labelCols:4, valueSize:5, value: selectEsenzioni, html: true }
       ],[

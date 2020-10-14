@@ -104,10 +104,11 @@ class ApplicationController < ActionController::Base
       nome_certificato = tipo_certificato.descrizione
     end
 
-    cartaLibera = !params[:certificatoBollo].nil? && !params[:certificatoBollo].blank? &&  params[:certificatoBollo] != "true"
+    # cartaLibera = !params[:certificatoBollo].nil? && !params[:certificatoBollo].blank? &&  params[:certificatoBollo] != "true"
     esenzioneBollo = !params[:esenzioneBollo].nil? && !params[:esenzioneBollo].blank? &&  params[:esenzioneBollo] != "0"
+    cartaLibera = esenzioneBollo 
     # WAIT implementare recupero diritti segreteria da api quando sarà disponibile
-    if cartaLibera || esenzioneBollo
+    if esenzioneBollo
       importo_bollo = 0 # importo bollo è 0 su carta libera o se è specificata esenzione
     else
       importo_bollo = 16 # altrimenti è 16 (importo fisso)
@@ -115,10 +116,10 @@ class ApplicationController < ActionController::Base
     
     # WAIT recuperare diritti segreteria da api quando sarà disponibile
     # i diritti di segreteria sono solitamente 0.26 per carta libera e 0.52 per bollo, se vengono applicati
-    importo_segreteria = ( rand(2)>0 ? 0 : 0.52 )
-    if cartaLibera
-      importo_segreteria = ( rand(2)>0 ? 0 : 0.26 )
-    end
+    # importo_segreteria = ( rand(2)>0 ? 0 : 0.52 )
+    # if cartaLibera
+    #   importo_segreteria = ( rand(2)>0 ? 0 : 0.26 )
+    # end
 
     certificato = {
       tenant: session[:api_next_tenant],
@@ -1544,7 +1545,7 @@ class ApplicationController < ActionController::Base
       # Vedere l'elenco delle anagrafiche dei cittadini:
       # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche")
       # Vedere l'elenco delle anagrafiche dei cittadini ed emissione certificato:
-      # session[:permessi]=PERMESSI.find_index("elencare_anagrafiche_certificazione")
+      session[:permessi]=PERMESSI.find_index("elencare_anagrafiche_certificazione")
       # Consultare anagrafiche ed emissione certificato:
       # session[:permessi]=PERMESSI.find_index("professionisti")
       # Consultare le anagrafiche dei cittadini ma vedere solo lo stato famiglia:
