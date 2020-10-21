@@ -178,8 +178,10 @@ class ApiController < ActionController::Base
           richiesta_certificato.data_inserimento = Time.now
           richiesta_certificato.descrizione_errore = params[:errore_descrizione]
           richiesta_certificato.save
-          nome_richiedente = richiesta_certificato.richiedente_nome ? richiesta_certificato.richiedente_nome : richiesta_certificato.nome
-          ApplicationMailer.cert_failed(richiesta_certificato.mail, nome_richiedente, richiesta_certificato.nome_certificato).deliver
+
+          cf = richiesta_certificato.richiedente_cf == richiesta_certificato.codice_fiscale ? nil : richiesta_certificato.codice_fiscale
+          ApplicationMailer.cert_failed(richiesta_certificato.email, "#{richiesta_certificato.richiedente_nome} #{richiesta_certificato.richiedente_cognome}", cf, richiesta_certificato.nome_certificato).deliver
+
           array_json << {
             "codice_esito": "002-Richiesta aggiornata"
           }
@@ -205,8 +207,10 @@ class ApiController < ActionController::Base
           richiesta_certificato.descrizione_errore = params[:errore_descrizione]
           richiesta_certificato.data_inserimento = Time.now
           richiesta_certificato.save
-          nome_richiedente = richiesta_certificato.richiedente_nome ? richiesta_certificato.richiedente_nome : richiesta_certificato.nome
-          ApplicationMailer.cert_failed(richiesta_certificato.mail, nome_richiedente, richiesta_certificato.nome_certificato).deliver
+          
+          cf = richiesta_certificato.richiedente_cf == richiesta_certificato.codice_fiscale ? nil : richiesta_certificato.codice_fiscale
+          ApplicationMailer.cert_failed(richiesta_certificato.email, "#{richiesta_certificato.richiedente_nome} #{richiesta_certificato.richiedente_cognome}", cf, richiesta_certificato.nome_certificato).deliver
+
           array_json << {
             "codice_esito": "002-Richiesta aggiornata"
           }
@@ -229,8 +233,9 @@ class ApiController < ActionController::Base
           # richiesta_certificato.save
           richiesta_certificato.stato = "nuovo"
           richiesta_certificato.save
-          nome_richiedente = richiesta_certificato.richiedente_nome ? richiesta_certificato.richiedente_nome : richiesta_certificato.nome
-          ApplicationMailer.cert_failed(richiesta_certificato.mail, nome_richiedente, richiesta_certificato.nome_certificato).deliver
+          # non devo mandare mail in questo caso perchè lo rimetto in stato nuovo, l'errore è del backend
+          # nome_richiedente = richiesta_certificato.richiedente_nome ? richiesta_certificato.richiedente_nome : richiesta_certificato.nome
+          # ApplicationMailer.cert_failed(richiesta_certificato.mail, nome_richiedente, richiesta_certificato.nome_certificato).deliver
           array_json << {
             "codice_esito": "003-Errore generico",
             "errore_descrizione": "il certificato non può essere vuoto"
@@ -271,7 +276,6 @@ class ApiController < ActionController::Base
           }
         else
           basedir = createPath( [params[:tenant], Time.now.year.to_s, Time.now.month.to_s] )
-          puts basedir
 
           # creo file 
           prefix = richiesta_certificato.codici_certificato
@@ -292,13 +296,9 @@ class ApiController < ActionController::Base
           richiesta_certificato.data_inserimento = Time.now
           richiesta_certificato.save
 
-          nome_richiedente = richiesta_certificato.richiedente_nome ? richiesta_certificato.richiedente_nome : richiesta_certificato.nome
+          cf = richiesta_certificato.richiedente_cf == richiesta_certificato.codice_fiscale ? nil : richiesta_certificato.codice_fiscale
 
-          if importo>0
-            ApplicationMailer.cert_received_pay(richiesta_certificato.mail, nome_richiedente, richiesta_certificato.nome_certificato).deliver
-          else
-            ApplicationMailer.cert_received_download(richiesta_certificato.mail, nome_richiedente, richiesta_certificato.nome_certificato).deliver
-          end
+          ApplicationMailer.cert_available(richiesta_certificato.email, "#{richiesta_certificato.richiedente_nome} #{richiesta_certificato.richiedente_cognome}", cf, richiesta_certificato.data_prenotazione, richiesta_certificato.nome_certificato, importo>0).deliver
           
           array_json << {
             "codice_esito": "000-Certificato inserito"

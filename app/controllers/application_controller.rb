@@ -148,7 +148,9 @@ class ApplicationController < ActionController::Base
     }
 
     Certificati.create(certificato)    
-    ApplicationMailer.cert_req_sent(session[:email], session[:nome], nome_certificato).deliver
+    cf = session[:cf] == cf_certificato ? nil : cf_certificato
+
+    ApplicationMailer.cert_req_sent(session[:email], "#{session[:nome]} #{session[:cognome]}", cf, nome_certificato).deliver
 
     # session[:cf_visualizzato] = params["codice_fiscale"]
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"

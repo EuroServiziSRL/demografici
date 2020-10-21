@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content='text/html; charset=UTF-8' http-equiv='Content-Type' />
+  </head>
+  <body>
+    <p>Gentile <%= @nome %></p>
+    <p>
+      il certificato <%= @certificato %><%= @intestatario %> richiesto in data <%= @data_prenotazione %>  è ora disponibile.<br>
+      Lo troverai nella medesima sezione dove hai effettuato la richiesta.
+    </p>
+    <%= @pagamento_html.html_safe %>
+    <hr>
+    <p>Cordiali saluti<br>
+  </body>
+</html>
