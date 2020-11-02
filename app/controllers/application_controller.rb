@@ -1543,7 +1543,7 @@ class ApplicationController < ActionController::Base
     # TEST disabilitare prima di testare per prod
     if Rails.env.development?
       # Consultare le anagrafiche dei cittadini:
-      session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche")
+      # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche")
       # Consultare le anagrafiche dei cittadini (No dati sensibili):
       # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche_no_sensibili")
       # Vedere l'elenco delle anagrafiche dei cittadini:

@@ -11,6 +11,7 @@ import { posizioneAnagraficaFormatter } from './demografici'
 import { AsyncTypeahead } from 'react-bootstrap-typeahead';
 
 class RicercaAnagrafiche extends React.Component{
+  typeahead = null;
 
   state = {
     token:false,
@@ -200,10 +201,11 @@ class RicercaAnagrafiche extends React.Component{
 
     var $submit = $("#formRicercaAnagrafiche").find("input[type=submit]");
     $submit.parent().parent().next().hide();
-    $("#formRicercaAnagrafiche").find("input[type=text],input[type=date],input[type=radio]:checked,select").each(function(){
+    $("#formRicercaAnagrafiche").find("input[type=text],input[type=date],input[name=idStrada],input[name=nomeVia],input[type=radio]:checked,select").each(function(){
       var value = $(this).val()?$(this).val().trim():"";
       var name = $(this).attr("name");
       var error = false;
+      console.log("checking field "+name,value);
       demograficiData.searchParams[name] = value;
       $(this).next(".error").hide();
       if ($(this).attr("required") && value === "") {
@@ -215,7 +217,13 @@ class RicercaAnagrafiche extends React.Component{
         $(this).next(".error").html(error).show();
         console.log("formError",formError);
         console.log("error",error);
-      } else if ( value !== "") {
+      } else if (name=="idStrada" && value == "") {
+        demograficiData.searchParams[name] = state.defaultVia.length>0?state.defaultVia[0].id:'';
+        if(state.defaultVia.length>0) {
+          searchValues.push(state.defaultVia[0].id);        
+        }  
+      } else if ( value !== "" && typeof(name)!="undefined") {
+        console.log("search value for "+name+" is valid", value);
         searchValues.push(value);
       }
       // $(this).parent().toggleClass("has-success", error===false);
@@ -262,12 +270,35 @@ class RicercaAnagrafiche extends React.Component{
   }
 
   selezionaVia(selectedOptions) {
-    console.log("selectedOptions",selectedOptions);
+    console.log("selezionaVia selectedOptions",selectedOptions);
     var state = this.state;
     state.defaultVia = selectedOptions;
     state.listaVie = selectedOptions;
     this.setState(state);
-    this.validateForm()
+    this.validateForm();
+    // if(selectedOptions!=null && selectedOptions.length>0) {
+    //   console.log("setting idStrada to ", selectedOptions[0].id+"");
+    //   $("#idStrada").val(selectedOptions[0].id+"");
+    //   console.log("setting nomeVia to ", selectedOptions[0].descrizione);
+    //   $("#nomeVia").val(selectedOptions[0].descrizione);
+    // } else {
+    //   $("#idStrada").val("");
+    //   $("#nomeVia").val("");
+    // }
+  }
+
+  validaVia(event) {
+    console.log("validaVia (blur) event",event);
+    if(typeof(this.state.listaVie)=="undefined" || typeof(this.state.defaultVia)=="undefined" || this.state.listaVie.length<1 || this.state.defaultVia.length<1) {
+      console.log("this.typeahead",this.typeahead);
+      this.typeahead.clear();
+    }
+    this.validateForm();
+    // var state = this.state;
+    // state.defaultVia = selectedOptions;
+    // state.listaVie = selectedOptions;
+    // this.setState(state);
+    // this.validateForm()
     // if(selectedOptions!=null && selectedOptions.length>0) {
     //   console.log("setting idStrada to ", selectedOptions[0].id+"");
     //   $("#idStrada").val(selectedOptions[0].id+"");
@@ -467,9 +498,10 @@ class RicercaAnagrafiche extends React.Component{
             </div>
             
             <div className="form-group">
-              <label htmlFor="indirizzo" className="col-lg-2 control-label">Indirizzo</label>
+              <label htmlFor="indirizzo" className="col-lg-2 control-label">Indirizzo (senza toponimo)</label>
               <div className="col-lg-4" id="indirizzo">
               <AsyncTypeahead
+                ref={(ref) => this.typeahead = ref}
                 id="typeaheadVie"
                 isLoading={this.state.vieLoading}
                 labelKey={(option) => `${option.descrizione}`}
@@ -478,6 +510,7 @@ class RicercaAnagrafiche extends React.Component{
                 onSearch={this.ricercaVie.bind(this)}
                 options={this.state.listaVie}
                 onChange={this.selezionaVia.bind(this)}
+                onBlur={this.validaVia.bind(this)}
                 selected={this.state.defaultVia}
                 promptText="Inizia a scrivere per cercare..."
                 searchText="Caricamento..."
@@ -519,7 +552,7 @@ class RicercaAnagrafiche extends React.Component{
       {demograficiData.test?<pre style={{"whiteSpace": "break-spaces"}}><code>{this.state.debug?JSON.stringify(this.state.debug, null, 2):""}</code></pre>:""}
 
     </div>
-    this.validateForm
+    // this.validateForm()
     return content;
   }
 }
