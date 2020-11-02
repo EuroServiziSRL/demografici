@@ -245,6 +245,7 @@ class ApplicationController < ActionController::Base
         "cittadinanza" => session[:searchCit],
         "idStrada" => session[:searchVia],
         "nomeVia" => session[:searchNomeVia],
+        "statoAnagrafico" => session[:searchStatoAnagrafico],
       } 
       debug_message('@demografici_data["searchParams"] set to',3)
       debug_message(@demografici_data["searchParams"],3)
@@ -323,6 +324,7 @@ class ApplicationController < ActionController::Base
     session[:searchCit] = params[:idCittadinanza]
     session[:searchVia] = params[:idStrada]
     session[:searchNomeVia] = params[:nomeVia]
+    session[:searchStatoAnagrafico] = params[:statoAnagrafico]
 
     debug_message("session[:searchCognomeNome] set to #{session[:searchCognomeNome]}", 1)
     debug_message("session[:searchCit] set to #{session[:searchCit]}", 1)
@@ -1541,7 +1543,7 @@ class ApplicationController < ActionController::Base
     # TEST disabilitare prima di testare per prod
     if Rails.env.development?
       # Consultare le anagrafiche dei cittadini:
-      # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche")
+      session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche")
       # Consultare le anagrafiche dei cittadini (No dati sensibili):
       # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche_no_sensibili")
       # Vedere l'elenco delle anagrafiche dei cittadini:

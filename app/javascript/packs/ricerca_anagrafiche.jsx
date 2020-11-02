@@ -267,6 +267,7 @@ class RicercaAnagrafiche extends React.Component{
     state.defaultVia = selectedOptions;
     state.listaVie = selectedOptions;
     this.setState(state);
+    this.validateForm()
     // if(selectedOptions!=null && selectedOptions.length>0) {
     //   console.log("setting idStrada to ", selectedOptions[0].id+"");
     //   $("#idStrada").val(selectedOptions[0].id+"");
@@ -405,7 +406,14 @@ class RicercaAnagrafiche extends React.Component{
     selectCittadinanze.unshift(<option key="none" value=""></option>)
     var cittadinanzaDefault = parseInt(demograficiData.searchParams.cittadinanza);
     if(isNaN(cittadinanzaDefault)) {cittadinanzaDefault=null;}
-    console.log("selectCittadinanze",selectCittadinanze);
+
+    var selectStatiAnagrafici = []
+    selectStatiAnagrafici.push(<option key="empty" value=""></option>);
+    for(var e in demograficiData.statiAnagrafici) {
+      selectStatiAnagrafici.push(<option key={demograficiData.statiAnagrafici[e]} value={e}>{demograficiData.statiAnagrafici[e]}</option>);
+    }
+    var statoAnagraficoDefault = demograficiData.searchParams.statoAnagrafico;
+    if(!statoAnagraficoDefault) {statoAnagraficoDefault=null;}
 
     var content = <div>
       {this.state.csrf=="" ? <div className="row"><div className="col-lg-12"><p className="alert alert-info">Caricamento...</p></div></div> : <><form method="post" action="" className="row form-ricerca form-horizontal" onSubmit={this.ricercaAnagrafiche.bind(this)} id="formRicercaAnagrafiche">
@@ -434,7 +442,7 @@ class RicercaAnagrafiche extends React.Component{
             {demograficiData.ricercaEstesa?<><div className="form-group">
               <label htmlFor="cittadinanza" className="col-lg-2 control-label">Cittadinanza</label>
               <div className="col-lg-4" id="cittadinanza">
-                <select className="form-control" defaultValue={cittadinanzaDefault} name="idCittadinanza">{selectCittadinanze}</select>
+                <select className="form-control" defaultValue={cittadinanzaDefault} name="idCittadinanza" onChange={this.validateForm.bind(this)}>{selectCittadinanze}</select>
               </div>
               <label htmlFor="sesso" className="col-lg-2 control-label">Sesso</label>
               <div className="col-lg-4" id="sesso">
@@ -460,7 +468,7 @@ class RicercaAnagrafiche extends React.Component{
             
             <div className="form-group">
               <label htmlFor="indirizzo" className="col-lg-2 control-label">Indirizzo</label>
-              <div className="col-lg-10" id="indirizzo">
+              <div className="col-lg-4" id="indirizzo">
               <AsyncTypeahead
                 id="typeaheadVie"
                 isLoading={this.state.vieLoading}
@@ -476,7 +484,13 @@ class RicercaAnagrafiche extends React.Component{
                 emptyLabel="Nessun risultato"
               />
               </div>
-            </div></>:<></>}            
+              <label htmlFor="statoAnagrafico" className="col-lg-2 control-label">Stato anagrafico</label>
+              <div className="col-lg-4" id="statoAnagrafico">
+                <select className="form-control" defaultValue={statoAnagraficoDefault} name="statoAnagrafico" onChange={this.validateForm.bind(this)}>{selectStatiAnagrafici}</select>
+              </div>
+            </div>
+            
+            </>:<></>}            
             
             <div className="form-group">
               <div className="col-lg-10 col-lg-offset-2" id="indirizzo">
