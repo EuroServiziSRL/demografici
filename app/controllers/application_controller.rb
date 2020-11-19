@@ -1049,13 +1049,10 @@ class ApplicationController < ActionController::Base
       @famiglia = JSON.parse(json, object_class: OpenStruct)
       @famiglia.each_with_index do |membro,index|
         membro.data_nascita = AutocertDateTime.parse(membro.data_nascita).to_date
+        # se non lo converto in stringa, nel modulo viene visualizzata sempre la data dell'ultimo compente???
+        membro.data_nascita = membro.data_nascita.lformat(:short).to_s
         @famiglia[index] = membro
       end 
-      debug_message(@famiglia, 3)
-      # @famiglia.each do |indice,membro|
-      #   membro.data_nascita = AutocertDateTime.parse(membro.data_nascita).to_date
-      #   @famiglia[indice] = membro
-      # end
     end
 
     raise NotFound.new("Autocertificazione #{nome} formato '#{format}'") unless [:rtf, :pdf, :odt].include?(format)
@@ -1555,7 +1552,8 @@ class ApplicationController < ActionController::Base
       # Consultare le anagrafiche dei cittadini ma vedere solo lo stato famiglia:
       # session[:permessi]=PERMESSI.find_index("vedere_solo_famiglia")
       # Nessun permesso impostato:
-      # session[:permessi]=PERMESSI.find_index("cittadino")
+      session[:permessi]=PERMESSI.find_index("cittadino")
+      session[:cf]="VNCNNA65D68D508S"
     end
   end
 
