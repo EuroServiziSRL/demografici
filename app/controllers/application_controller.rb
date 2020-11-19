@@ -1552,8 +1552,8 @@ class ApplicationController < ActionController::Base
       # Consultare le anagrafiche dei cittadini ma vedere solo lo stato famiglia:
       # session[:permessi]=PERMESSI.find_index("vedere_solo_famiglia")
       # Nessun permesso impostato:
-      session[:permessi]=PERMESSI.find_index("cittadino")
-      session[:cf]="VNCNNA65D68D508S"
+      # session[:permessi]=PERMESSI.find_index("cittadino")
+      # session[:cf]="VNCNNA65D68D508S"
     end
   end
 
