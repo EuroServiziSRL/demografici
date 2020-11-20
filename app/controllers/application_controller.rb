@@ -1031,6 +1031,7 @@ class ApplicationController < ActionController::Base
       @persona = JSON.parse(json, object_class: OpenStruct)
 
       @persona.data_nascita = AutocertDateTime.parse(@persona.data_nascita).to_date
+      @persona.data_nascita = @persona.data_nascita.lformat(:short).to_s
       @persona.indirizzo_residenza = Indirizzo.new({ "indirizzo" => result["indirizzo"], "comune" => result["comuneResidenzaDescrizione"] })
 
       # debug_message("persona is", 3)
