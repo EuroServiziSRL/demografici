@@ -280,7 +280,7 @@ class ApplicationController < ActionController::Base
       "client_secret": "#{session[:api_next_secret]}",
       "grant_type": 'client_credentials'
     }
-
+    
     oauthURL = "https://login.microsoftonline.com/#{requestParams[:tenant]}/oauth2/token";
     result = HTTParty.post(oauthURL, 
       :body => requestParams.to_query,
@@ -1451,6 +1451,38 @@ class ApplicationController < ActionController::Base
             end
             
           end
+        elsif  !hash_params['c_id'].blank? && hash_params['u_id'].blank?
+          # non ho l'user id, qundi non sono loggato. Bisogna fare redirect su autenticazione portale
+          
+          #ricavo dominio da oauth2
+          url_oauth2_get_info = "https://login.soluzionipa.it/oauth/application/get_info_cid/"+hash_params['c_id']
+          #url_oauth2_get_info = "http://localhost:3001/oauth/application/get_info_cid/"+hash_params['c_id'] #PER TEST
+          result_info_ente = HTTParty.get(url_oauth2_get_info,
+            :headers => { 'Content-Type' => 'application/json', 'Accept' => 'application/json' } ,
+            :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
+          )
+          hash_result_info_ente = result_info_ente.parsed_response
+          debug_message("hash_result_info_ente", 1)
+          debug_message(hash_result_info_ente, 1)
+
+          @dominio = hash_result_info_ente['url_ente']
+          if @dominio.blank?
+            logger.error "Dominio non censito su applicazioni Oauth" 
+            servizio_non_disponibile
+            return
+          end
+
+          unless @dominio.blank?
+            #mando a fare autenticazione sul portal
+            debug_message("get_dominio_sessione_utente 1404 redirecting to "+@dominio+"/autenticazione", 3)
+            redirect_to @dominio+"/autenticazione"
+            return
+          else
+            debug_message("get_dominio_sessione_utente 1408 redirecting to sconosciuto", 3)
+            sconosciuto
+            return    
+          end
+
         else
 
           unless @dominio.blank?
