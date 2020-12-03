@@ -1474,8 +1474,8 @@ class ApplicationController < ActionController::Base
 
           unless @dominio.blank?
             #mando a fare autenticazione sul portal
-            debug_message("get_dominio_sessione_utente 1404 redirecting to "+@dominio+"/autenticazione", 3)
-            redirect_to @dominio+"/autenticazione"
+            debug_message("get_dominio_sessione_utente 1404 redirecting to "+@dominio+"/autenticazione/?redirect=%2Fportal%2Fservizi%2Fdemografici%3Flayout%3Dtrue", 3)
+            redirect_to @dominio+"/autenticazione/?redirect=%2Fportal%2Fservizi%2Fdemografici%3Flayout%3Dtrue"
             return
           else
             debug_message("get_dominio_sessione_utente 1408 redirecting to sconosciuto", 3)
@@ -1487,8 +1487,8 @@ class ApplicationController < ActionController::Base
 
           unless @dominio.blank?
             #mando a fare autenticazione sul portal
-              debug_message("get_dominio_sessione_utente 1404 redirecting to "+@dominio+"/autenticazione", 3)
-            redirect_to @dominio+"/autenticazione"
+              debug_message("get_dominio_sessione_utente 1404 redirecting to "+@dominio+"/autenticazione/?redirect=%2Fportal%2Fservizi%2Fdemografici%3Flayout%3Dtrue", 3)
+            redirect_to @dominio+"/autenticazione/?redirect=%2Fportal%2Fservizi%2Fdemografici%3Flayout%3Dtrue"
             return
           else
             debug_message("get_dominio_sessione_utente 1408 redirecting to sconosciuto", 3)
