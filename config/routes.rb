@@ -1,5 +1,6 @@
 Rails.application.routes.draw do
   get '/' => 'application#index', :as => :index
+  get '/sw.js' => 'application#ignore', :as => :ignore
   get '/portale' => 'application#portale', :as => :portale
   get '/self' => 'application#self', :as => :self
   get '/dettagli_persona' => 'application#dettagli_persona', :as => :dettagli_persona

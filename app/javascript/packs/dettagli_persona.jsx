@@ -273,11 +273,11 @@ class DettagliPersona extends React.Component{
       var cancellazione = datiAnagrafica.datiCancellazione;
       var rilascio = []
       result.dati.scheda_anagrafica.push([
-        { name:null, value: <h4>Dati iscrizione</h4>, html: true }
+        { name:null, value: <h4>Dati emigrazione/eliminazione</h4>, html: true }
       ],[
-        { name: "motivoCancellazione", label: "Motivo", value: cancellazione.motivo },
+        { name: "motivoCancellazione", label: "Motivazione", value: cancellazione.motivo },
         { name: "dataDecorrenzaCancellazione", label: "Data decorrenza", value: dateFormatter(cancellazione.dataDecorrenza) },
-        { name: "praticaCancellazione", label: "Pratica", value: "n."+cancellazione.numeroPratica+" proveniente da "+cancellazione.comuneProvenienza }
+        { name: "comuneCancellazione", label: "Comune di destinazione", value: cancellazione.comuneDestinazione }
       ]);
     }
 

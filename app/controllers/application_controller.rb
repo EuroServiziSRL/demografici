@@ -33,6 +33,9 @@ class ApplicationController < ActionController::Base
   @@log_to_output = true
   @@log_to_file = false
   before_action :get_dominio_sessione_utente, :get_layout_portale, :carica_variabili_layout, :test_variables
+
+  def ignore
+  end
   
   #ROOT della main_app
   def index
@@ -538,7 +541,9 @@ class ApplicationController < ActionController::Base
       searchParams[:MostraDatiMaternita] = !nascondi_sensibili
       searchParams[:MostraDatiPaternita] = !nascondi_sensibili
       searchParams[:MostraDatiProfessione] = !nascondi_sensibili
-      searchParams[:MostraDatiTitoloStudio] = !nascondi_sensibili      
+      searchParams[:MostraDatiTitoloStudio] = !nascondi_sensibili 
+      searchParams[:MostraDatiIscrizione] = true
+      searchParams[:MostraDatiCancellazione] = true
 
       debug_message("searchParams: ", 3)
       debug_message(searchParams, 3)
