@@ -1388,9 +1388,16 @@ class ApplicationController < ActionController::Base
           if Rails.env.development?
             iss = 'localhost:3000'
           end
+          #se ho inviato un id_servizio uso quello
+          if !hash_params['id_servizio'].blank?
+            id_servizio = hash_params['id_servizio']
+          else
+            id_servizio = 'demografici'
+          end
+
           hash_jwt_app = {
             iss: iss, #dominio finale dell'app demografici
-            id_app: 'demografici',
+            id_app: id_servizio,
             id_utente: hash_params['u_id'],
             sid: hash_params['sid'],
             api_next: true
