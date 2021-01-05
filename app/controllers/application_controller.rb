@@ -27,6 +27,7 @@ class ApplicationController < ActionController::Base
   # BOOKMARK variabili globali
   # @@api_resource = Rails.env.development? ? "https://api.civilianextdev.it" : "https://api.civilianext.it"
   @@api_resource = "https://api.civilianext.it"
+  # @@api_resource = "https://api.civilianextdev.it"
   @@api_url = "#{@@api_resource}/Demografici"
   PERMESSI = ["ricercare_anagrafiche", "ricercare_anagrafiche_no_sensibili", "elencare_anagrafiche", "vedere_solo_famiglia", "professionisti", "elencare_anagrafiche_certificazione", "cittadino"].freeze
   @@log_level = 1
@@ -100,40 +101,61 @@ class ApplicationController < ActionController::Base
     end
 
     @page_app = "richiedi_certificato"
-
-    nome_certificato = ""
-    tipo_certificato = TipoCertificato.find_by_id(params[:tipoCertificato])  
-    if !tipo_certificato.blank? || !tipo_certificato.nil?
-      nome_certificato = tipo_certificato.descrizione
-    end
-
+    
     # cartaLibera = !params[:certificatoBollo].nil? && !params[:certificatoBollo].blank? &&  params[:certificatoBollo] != "true"
     esenzioneBollo = !params[:esenzioneBollo].nil? && !params[:esenzioneBollo].blank? &&  params[:esenzioneBollo] != "0"
     cartaLibera = esenzioneBollo 
-    # WAIT implementare recupero diritti segreteria da api quando sarà disponibile
+
+    nome_certificato = ""
+    tipiCertificato = []
+    result = HTTParty.post(
+      "#{@@api_url}/Anpr/ElencoCertificatiPerPortale?v=1.0", 
+      # :body => {},
+      :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
+      :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
+    )    
+    if result.response.body.length > 0
+      fullResult = JSON.parse(result.response.body)
+      result = fullResult
+    else
+      result = ""
+    end
+    importo_segreteria = 0
+    puts params[:tipoCertificato]
+    if !result.nil? && result.length > 0
+      nome_certificato = ""
+      result.each do |tipoCertificato|
+        puts tipoCertificato
+        if params[:tipoCertificato] == tipoCertificato["CodiciCertificato"].join(",")
+          nome_certificato = tipoCertificato["Descrizione"]
+          if cartaLibera
+            importo_segreteria = tipoCertificato["CartaLibera"]
+          else
+            importo_segreteria = tipoCertificato["CartaResaLegale"]
+          end
+        end
+      end
+    else
+      tipo_certificato = TipoCertificato.find_by_id(params[:tipoCertificato])  
+      if !tipo_certificato.blank? || !tipo_certificato.nil?
+        nome_certificato = tipo_certificato.descrizione
+      end
+    end
+
     if esenzioneBollo
       importo_bollo = 0 # importo bollo è 0 su carta libera o se è specificata esenzione
     else
       importo_bollo = 16 # altrimenti è 16 (importo fisso)
     end
     
-    # WAIT recuperare diritti segreteria da api quando sarà disponibile
-    # i diritti di segreteria sono solitamente 0.26 per carta libera e 0.52 per bollo, se vengono applicati
-    # importo_segreteria = ( rand(2)>0 ? 0 : 0.52 )
-    # if cartaLibera
-    #   importo_segreteria = ( rand(2)>0 ? 0 : 0.26 )
-    # end
-
     certificato = {
       tenant: session[:api_next_tenant],
       codice_fiscale: cf_certificato,
-      codici_certificato: [params[:tipoCertificato].to_i],
+      codici_certificato: params[:tipoCertificato].split(/,/).map(&:to_i),
       bollo: importo_bollo,
       bollo_esenzione: params[:esenzioneBollo],
       nome_certificato: nome_certificato,
-      # WAIT aggiungere importo quando l'api lo fornirà
-      # diritti_importo: importo_segreteria,
-      diritti_importo: 0, # per ora sempre a 0 perchè non cè l'api
+      diritti_importo: importo_segreteria,
       uso: params[:motivoEsenzione],
       richiedente_cf: session[:cf],
       richiedente_nome: session[:nome],
@@ -1311,10 +1333,35 @@ class ApplicationController < ActionController::Base
     @demografici_data = { "tipiCertificato" => {}, "esenzioniBollo" => {}, "cittadinanze" => {}, "ricercaEstesa" => false }
 
     tipiCertificato = []
-    TipoCertificato.all.each do |tipoCertificato|
-      cert = { "id": tipoCertificato.id, "descrizione": tipoCertificato.descrizione }
-      tipiCertificato << cert
+    result = HTTParty.post(
+      "#{@@api_url}/Anpr/ElencoCertificatiPerPortale?v=1.0", 
+      # :body => {},
+      :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{session[:token]}" } ,
+      :debug_output => @@log_to_output && @@log_level>0 ? $stdout : nil
+    )    
+    if result.response.body.length > 0
+      fullResult = JSON.parse(result.response.body)
+      if !fullResult.nil?
+        result = fullResult
+      else
+        result = ""
+      end
+    else
+      result = ""
     end
+    if !result.nil? && result.length > 0
+      result.each do |tipoCertificato|
+        puts tipoCertificato
+        cert = { "id": tipoCertificato["CodiciCertificato"].join(","), "cartaLibera": tipoCertificato["CartaLibera"], "cartaResaLegale": tipoCertificato["CartaResaLegale"], "descrizione": tipoCertificato["Descrizione"] }
+        tipiCertificato << cert
+      end
+    else
+      TipoCertificato.all.each do |tipoCertificato|
+        cert = { "id": tipoCertificato.id, "descrizione": tipoCertificato.descrizione }
+        tipiCertificato << cert
+      end
+    end
+
     @demografici_data["tipiCertificato"] = tipiCertificato
 
     esenzioniBollo = []
@@ -1388,11 +1435,10 @@ class ApplicationController < ActionController::Base
           if Rails.env.development?
             iss = 'localhost:3000'
           end
+          id_servizio = 'demografici'
           #se ho inviato un id_servizio uso quello
-          if !hash_params['id_servizio'].blank?
+          if !hash_params['id_servizio'].blank? && false
             id_servizio = hash_params['id_servizio']
-          else
-            id_servizio = 'demografici'
           end
 
           hash_jwt_app = {
@@ -1445,6 +1491,11 @@ class ApplicationController < ActionController::Base
             session[:api_next_secret] = jwt_data["api_next"]["secret"]
             session[:client_id] = hash_params['c_id']
             session[:famiglia] = []
+
+            # TEST credenziali dev
+            # session[:api_next_tenant] =  "ba4785a1-abe2-4fcc-ac26-6cda29910c26"
+            # session[:api_next_client_id] = "0151dd1a-374a-48b3-9c04-be8983090b52"
+            # session[:api_next_secret] = "61zE9uVU6rmH.bSt*l/pW@btB[Y6nrCb"
             
 
             # WAIT gestire meglio il dominio, aspettiamo setup a db

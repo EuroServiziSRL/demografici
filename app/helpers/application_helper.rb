@@ -72,7 +72,7 @@ module ApplicationHelper
     :body => requestParams,
     :headers => { 'Content-Type' => 'application/x-www-form-urlencoded', 'Authorization' => 'Bearer '+get_jwt_token_authhub },
     # :debug_output => $stdout ,
-    :follow_redirects => false,
+    :follow_redirects => false, # se è a false va in errore su 302 found - document has moved (caso redirect da http a https), mettere a true solo per test civilianext
     :timeout => 500 )
                      
     return JSON.parse(response.body)
