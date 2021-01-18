@@ -18,6 +18,8 @@ Rails.application.routes.draw do
   post '/api/richiedi_prenotazioni' => 'api#richiedi_prenotazioni', :as => :richiedi_prenotazioni
   post '/api/ricevi_certificato' => 'api#ricevi_certificato', :as => :ricevi_certificato
   get '/api/genera_prenotazioni_test' => 'api#genera_prenotazioni_test', :as => :genera_prenotazioni_test
+  post '/api/famiglia' => 'api#famiglia', :as => :famiglia
+  post '/api/cittadino' => 'api#cittadino', :as => :cittadino
 
   get 'error_dati' => "application#error_dati", :as => :error_dati
 

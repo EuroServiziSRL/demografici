@@ -33,6 +33,7 @@ class ApiController < ActionController::Base
   # annullato -> quando si è verificato un errore durante la generazione del certificato da parte di CiviliaNext e non sarà possibile in alcun modo riprocessare la richiesta. Sarà da inviare una mail al cittadino (se presente) informandolo del problema e/o visualizzare la situazione nel cassetto delle prenotazioni. 
 
   # richiesta da backoffice ente
+  # BOOKMARK api/richiedi_prenotazioni
   def richiedi_prenotazioni
     autenticato = autentica_ente
 
@@ -128,6 +129,7 @@ class ApiController < ActionController::Base
   end
 
   # richiesta da backoffice ente
+  # BOOKMARK api/ricevi_certificato
   def ricevi_certificato    
     autenticato = autentica_ente
 
@@ -319,6 +321,7 @@ class ApiController < ActionController::Base
     # render plain: "OK"
   end
 
+  # BOOKMARK api/genera_prenotazioni_test
   def genera_prenotazioni_test
     array_json = []
     x = 0
@@ -391,6 +394,201 @@ class ApiController < ActionController::Base
     render :json => response
   end
 
+  # BOOKMARK api/famiglia
+  def famiglia
+    # parametri in ingresso
+    # tenant, codice_fiscale, codice_famiglia
+
+    esito = []   
+    autenticato = autentica_ente
+
+    if autenticato["esito"]=="ko"
+      esito << {
+        "codice_esito": "003-Errore generico",
+        "errore_descrizione": autenticato["msg_errore"]
+      }
+    else
+      api_next_resource = "https://api.civilianext.it"
+      token = ""
+  
+      requestParams = {
+        "resource": "#{api_next_resource.sub("https","http")}", 
+        "tenant": "#{params[:tenant]}",
+        "client_id": "#{params[:client_id]}",
+        "client_secret": "#{params[:secret]}",
+        "grant_type": 'client_credentials'
+      }
+  
+      autenticato = {}
+      
+      oauthURL = "https://login.microsoftonline.com/#{params[:tenant]}/oauth2/token";
+      result = HTTParty.post(oauthURL, 
+        :body => requestParams.to_query,
+        :headers => { 'Content-Type' => 'application/x-www-form-urlencoded','Accept' => 'application/json'  } ,
+        # :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
+      )
+  
+      if !result["access_token"].nil? && result["access_token"].length > 0
+        token = result["access_token"]
+        autenticato["esito"] = "ok"
+      elsif !result["message"].nil? && result["message"].length > 0
+        autenticato["esito"] = "ko"
+        autenticato["errore_descrizione"] = result["message"]
+      else
+        autenticato["esito"] = "ko"
+        autenticato["errore_descrizione"] = "Impossibile effettuare l'autenticazione"
+      end
+  
+      searchParams = {}
+  
+      famiglia = [] 
+  
+      if autenticato["esito"]=="ko"
+        esito << {
+          "codice_esito": "003-Errore generico",
+          "errore_descrizione": autenticato["msg_errore"]
+        }
+      else      
+        searchParams = {}
+  
+        ricercaFamiglia = !params[:codice_famiglia].nil? && !params[:codice_famiglia].blank?
+        ricercaCf = !params[:codice_fiscale].nil? && !params[:codice_fiscale].blank?
+        if ricercaCf && !ricercaFamiglia
+          # se non ho il codice famiglia devo fare una prima interrogazione all'api per ottenerlo
+          searchParams = { 
+            "codiceFiscaleComponente": params[:codice_fiscale], 
+          }
+          resultComponente = HTTParty.post(
+            "#{api_next_resource}/Demografici/Anagrafe/RicercaComponentiFamiglia?v=1.0", 
+            :body => searchParams.to_json,
+            :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{token}" } ,
+            :debug_output => $stdout
+          )
+          if !resultComponente.response.body.nil? && resultComponente.response.body.length > 0
+            resultComponente = JSON.parse(resultComponente.response.body)
+            if resultComponente.any?
+              params[:codice_famiglia] = resultComponente[0]["codiceAggregazione"]
+            else
+              esito << {
+                "codice_esito": "003-Errore generico",
+                "errore_descrizione": "Codice fiscale non trovato"
+              }
+            end
+          else
+            esito << {
+              "codice_esito": "003-Errore generico",
+              "errore_descrizione": "Errore durante la ricerca del codice fiscale"
+            }
+          end
+        end
+        indirizzo = false
+        comune = false
+        if !esito.any? && !params[:codice_famiglia].nil?
+          searchParams = { 
+            "codiceAggregazione": params[:codice_famiglia]
+          }
+          resultFamiglia = HTTParty.post(
+            "#{api_next_resource}/Demografici/Anagrafe/RicercaComponentiFamiglia?v=1.0", 
+            :body => searchParams.to_json,
+            :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{token}" } ,
+            :debug_output => $stdout
+          )
+          if !resultFamiglia.response.body.nil? && resultFamiglia.response.body.length > 0
+            resultFamiglia = JSON.parse(resultFamiglia.response.body)
+            # puts "RESULT IS"
+            # puts resultFamiglia
+            resultFamiglia.each do |componente|
+              # puts "COMPONENTE IS"
+              # puts componente
+              relazione = RelazioniParentela.where(id_relazione: componente["codiceRelazioneParentelaANPR"]).first
+
+              componenteFamiglia = {
+                "nominativo": "#{componente["cognome"]} #{componente["nome"]}", 
+                "cognome": componente["cognome"], 
+                "nome": componente["nome"], 
+                "codice_fiscale": componente["codiceFiscale"], 
+                "data_nascita": Date.parse(componente["dataNascita"]).strftime("%Y-%m-%d"), 
+                "comune_nascita": componente["comuneNascita"], 
+                "relazione_parentela": componente["codiceRelazioneParentelaANPR"], 
+                "rel_par_desc": relazione.descrizione, 
+                "comune_residenza": comune, 
+                "indirizzo_residenza": indirizzo, 
+              }
+  
+              if !indirizzo && !comune
+                # devo effettuare un'interrogazione completa in modo da ottenere tutti i dati
+                searchParamsIndividuo = { 
+                  "codiceFiscale": componente["codiceFiscale"], 
+                  # "codiceCittadino": componente["codiceCittadino"], 
+                  "mostraIndirizzo": true
+                }
+                resultComponente = HTTParty.post(
+                  "#{api_next_resource}/Demografici/Anagrafe/RicercaIndividui?v=1.0", 
+                  :body => searchParamsIndividuo.to_json,
+                  :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{token}" } ,
+                  :debug_output => $stdout
+                )  
+                if !resultComponente.response.body.nil? && resultComponente.response.body.length > 0
+                  resultComponente = JSON.parse(resultComponente.response.body)
+                  if resultComponente.nil? || resultComponente[0].nil?
+                    # nessun risultato, do nothing
+                  elsif !resultComponente[0]["codiceIstatComuneResidenzaItaliano"].nil? && !resultComponente[0]["codiceIstatComuneResidenzaItaliano"].blank?
+                    now = Time.now.strftime("%d/%m/%Y")
+                    dataEvento = Date.parse now
+                    comune = Comuni.where(codistat: resultComponente[0]["codiceIstatComuneResidenzaItaliano"]).where("dataistituzione <= ? AND datacessazione >= ? ", dataEvento, dataEvento).first
+                    if !comune.blank? && !comune.nil?
+                      comune = "#{comune.denominazione_it} (#{comune.siglaprovincia})"
+                    end
+                    indirizzo = resultComponente[0]["indirizzo"]   
+                  elsif !resultComponente[0]["descrizioneComuneResidenzaEstero"].nil? && !resultComponente[0]["descrizioneComuneResidenzaEstero"].blank?
+                    comune = "#{resultComponente[0]["descrizioneComuneResidenzaEstero"]} (#{resultComponente[0]["codiceIstatNazioneResidenzaEstero"]})"
+                    indirizzo = resultComponente[0]["indirizzo"]   
+                  end     
+                  componenteFamiglia["comune_residenza"] = comune
+                  componenteFamiglia["indirizzo_residenza"] = indirizzo      
+                end
+              end
+  
+              famiglia << componenteFamiglia
+            end
+          elsif !esito.any?
+            esito << {
+              "codice_esito": "003-Errore generico",
+              "errore_descrizione": "Si è verificato un errore"
+            }
+          end
+        elsif !esito.any?
+          # parametri insufficienti per effettuare la ricerca
+          esito << {
+            "codice_esito": "003-Errore generico",
+            "errore_descrizione": "Bisogna specificare almeno un parametro per la ricerca"
+          }
+        end
+  
+      end
+    end
+    
+    
+    if !esito.nil? && esito.any?
+      response = esito
+    else
+      response = {
+        "codice_famiglia": params[:codice_famiglia],
+        "indirizzo_residenza": indirizzo,
+        "comune_residenza": comune,
+        "componenti": famiglia
+      }
+    end 
+
+    # restituisco risposta
+    response = response.to_json  
+    render :json => response
+  end
+
+  # BOOKMARK api/cittadino
+  def cittadino
+  end
+
   # def inserisci_prenotazione
 
   private
@@ -437,9 +635,10 @@ class ApiController < ActionController::Base
     return string
   end
 
+  # BOOKMARK api/autentica_ente
   def autentica_ente
-    puts "autentica_ente"
-    if Rails.env.development?
+    # puts "autentica_ente"
+    if Rails.env.development? && false
       return { 'esito' => 'ok' }
     elsif !request.headers['HTTP_AUTHORIZATION'].blank? #authorization con token jwt
       token_jwt = request.headers['HTTP_AUTHORIZATION'].gsub('Bearer ','')
