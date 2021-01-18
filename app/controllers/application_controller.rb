@@ -875,7 +875,7 @@ class ApplicationController < ActionController::Base
           "errore": true, 
           "messaggio_errore": "Ente non abilitato all'utilizzo di questo servizio.", 
         }
-      elsif (!result.nil? && result.length == 0) || (responseCode==201 && result.nil? && cittadino)
+      elsif (!result.nil? && result.length == 0) || (responseCode==201 && result.nil? && cittadino) || (responseCode==200 && result.nil? && cittadino)
         result = { 
           "errore": true, 
           "messaggio_errore": "Impossibile trovare l'anagrafica richiesta.", 
@@ -885,7 +885,7 @@ class ApplicationController < ActionController::Base
           "errore": true, 
           "messaggio_errore": "Impossibile recuperare i dati.", 
         }
-      elsif !fullResult["message"].nil? && fullResult["message"].length > 0 && fullResult["message"] == "Authorization has been denied for this request."
+      elsif fullResult.any? && !fullResult["message"].nil? && fullResult["message"].length > 0 && fullResult["message"] == "Authorization has been denied for this request."
         result = { 
           "errore": true, 
           "messaggio_errore": "Si è verificato un problema di connessione al servizio. Si prega di riprovare più tardi.", 
