@@ -462,7 +462,7 @@ class ApiController < ActionController::Base
             "#{api_next_resource}/Demografici/Anagrafe/RicercaComponentiFamiglia?v=1.0", 
             :body => searchParams.to_json,
             :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{token}" } ,
-            :debug_output => $stdout
+            # :debug_output => $stdout
           )
           if !resultComponente.response.body.nil? && resultComponente.response.body.length > 0
             resultComponente = JSON.parse(resultComponente.response.body)
@@ -491,15 +491,11 @@ class ApiController < ActionController::Base
             "#{api_next_resource}/Demografici/Anagrafe/RicercaComponentiFamiglia?v=1.0", 
             :body => searchParams.to_json,
             :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{token}" } ,
-            :debug_output => $stdout
+            # :debug_output => $stdout
           )
           if !resultFamiglia.response.body.nil? && resultFamiglia.response.body.length > 0
             resultFamiglia = JSON.parse(resultFamiglia.response.body)
-            # puts "RESULT IS"
-            # puts resultFamiglia
             resultFamiglia.each do |componente|
-              # puts "COMPONENTE IS"
-              # puts componente
               relazione = RelazioniParentela.where(id_relazione: componente["codiceRelazioneParentelaANPR"]).first
 
               componenteFamiglia = {
@@ -511,22 +507,22 @@ class ApiController < ActionController::Base
                 "comune_nascita": componente["comuneNascita"], 
                 "relazione_parentela": componente["codiceRelazioneParentelaANPR"], 
                 "rel_par_desc": relazione.descrizione, 
-                "comune_residenza": comune, 
-                "indirizzo_residenza": indirizzo, 
+                # "comune_residenza": comune, 
+                # "indirizzo_residenza": indirizzo, 
               }
   
               if !indirizzo && !comune
                 # devo effettuare un'interrogazione completa in modo da ottenere tutti i dati
                 searchParamsIndividuo = { 
                   "codiceFiscale": componente["codiceFiscale"], 
-                  # "codiceCittadino": componente["codiceCittadino"], 
+                  # "codiceCittadino": componente["codiceCittadino"], # per qualche motivo non funziona?
                   "mostraIndirizzo": true
                 }
                 resultComponente = HTTParty.post(
                   "#{api_next_resource}/Demografici/Anagrafe/RicercaIndividui?v=1.0", 
                   :body => searchParamsIndividuo.to_json,
                   :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json', 'Authorization' => "Bearer #{token}" } ,
-                  :debug_output => $stdout
+                  # :debug_output => $stdout
                 )  
                 if !resultComponente.response.body.nil? && resultComponente.response.body.length > 0
                   resultComponente = JSON.parse(resultComponente.response.body)
@@ -544,8 +540,8 @@ class ApiController < ActionController::Base
                     comune = "#{resultComponente[0]["descrizioneComuneResidenzaEstero"]} (#{resultComponente[0]["codiceIstatNazioneResidenzaEstero"]})"
                     indirizzo = resultComponente[0]["indirizzo"]   
                   end     
-                  componenteFamiglia["comune_residenza"] = comune
-                  componenteFamiglia["indirizzo_residenza"] = indirizzo      
+                  # componenteFamiglia["comune_residenza"] = comune
+                  # componenteFamiglia["indirizzo_residenza"] = indirizzo      
                 end
               end
   
