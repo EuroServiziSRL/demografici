@@ -507,11 +507,10 @@ class ApiController < ActionController::Base
                 "comune_nascita": componente["comuneNascita"], 
                 "relazione_parentela": componente["codiceRelazioneParentelaANPR"], 
                 "rel_par_desc": relazione.descrizione, 
-                # "comune_residenza": comune, 
-                # "indirizzo_residenza": indirizzo, 
               }
   
-              if !indirizzo && !comune
+              # TODO rimuovere quando saranno disponibili le informazioni su RicercaComponentiFamiglia
+              if !indirizzo && !comune && false
                 # devo effettuare un'interrogazione completa in modo da ottenere tutti i dati
                 searchParamsIndividuo = { 
                   "codiceFiscale": componente["codiceFiscale"], 
@@ -539,9 +538,7 @@ class ApiController < ActionController::Base
                   elsif !resultComponente[0]["descrizioneComuneResidenzaEstero"].nil? && !resultComponente[0]["descrizioneComuneResidenzaEstero"].blank?
                     comune = "#{resultComponente[0]["descrizioneComuneResidenzaEstero"]} (#{resultComponente[0]["codiceIstatNazioneResidenzaEstero"]})"
                     indirizzo = resultComponente[0]["indirizzo"]   
-                  end     
-                  # componenteFamiglia["comune_residenza"] = comune
-                  # componenteFamiglia["indirizzo_residenza"] = indirizzo      
+                  end
                 end
               end
   
@@ -570,8 +567,10 @@ class ApiController < ActionController::Base
     else
       response = {
         "codice_famiglia": params[:codice_famiglia],
-        "indirizzo_residenza": indirizzo,
-        "comune_residenza": comune,
+        # "indirizzo_residenza": indirizzo,
+        "indirizzo_residenza": nil,
+        # "comune_residenza": comune,
+        "comune_residenza": nil,
         "componenti": famiglia
       }
     end 
