@@ -468,7 +468,7 @@ class ApiController < ActionController::Base
           )
           if !resultComponente.response.body.nil? && resultComponente.response.body.length > 0
             resultComponente = JSON.parse(resultComponente.response.body)
-            if resultComponente.any?
+            if !resultComponente.nil? && resultComponente.any? && !resultComponente[0].nil? && !resultComponente[0]["codiceAggregazione"].nil?
               params[:codice_famiglia] = resultComponente[0]["codiceAggregazione"]
             else
               esito << {
@@ -565,7 +565,8 @@ class ApiController < ActionController::Base
     
     
     if !esito.nil? && esito.any?
-      response = esito
+      #response = esito
+      response = {}
     else
       response = {
         "codice_famiglia": params[:codice_famiglia],
