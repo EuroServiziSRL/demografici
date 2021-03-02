@@ -435,7 +435,7 @@ class DettagliPersona extends React.Component{
     if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.unioneCivile) {
       var datiUnioneCivile = datiAnagrafica.datiStatoCivile.unioneCivile;
       result.dati.unione_civile.push([
-        { name: "coniugeUnioneCivile", label: "Unito civilmente", value: (datiUnioneCivile.unitoCivilmente.cognome?datiUnioneCivile.unitoCivilmente.cognome:"")+" "+(datiUnioneCivile.unitoCivilmente.nome?datiUnioneCivile.unitoCivilmente.nome:"") },
+        { name: "coniugeUnioneCivile", label: "Unito civilmente", value: (datiUnioneCivile.unito.cognome?datiUnioneCivile.unito.cognome:"")+" "+(datiUnioneCivile.unito.nome?datiUnioneCivile.unito.nome:"") },
         { name: "comuneUnioneCivile", label: "Comune unione civile", value: datiUnioneCivile.comune },
         { name: "dataUnioneCivile", label: "Data unione civile", value: dateFormatter(datiUnioneCivile.data) },
       ]);
@@ -445,7 +445,7 @@ class DettagliPersona extends React.Component{
     if(datiAnagrafica.datiStatoCivile && datiAnagrafica.datiStatoCivile.scioglimentoUnione) {
       var datiScioglimento = datiAnagrafica.datiStatoCivile.scioglimentoUnione;
       result.dati.scioglimento_unione_civile.push([
-        { name: "coniugeScioglimentoUnione", label: "Unito civilmente", value: (datiUniondatiScioglimentoeCivile.unitoCivilmente.cognome?datiScioglimento.unitoCivilmente.cognome:"")+" "+(datiScioglimento.unitoCivilmente.nome?datiScioglimento.unitoCivilmente.nome:"") },
+        { name: "coniugeScioglimentoUnione", label: "Unito civilmente", value: (datiUniondatiScioglimentoeCivile.unito.cognome?datiScioglimento.unito.cognome:"")+" "+(datiScioglimento.unito.nome?datiScioglimento.unito.nome:"") },
         { name: "comuneScioglimentoUnione", label: "Comune scioglimento", value: datiScioglimento.comune },
         { name: "dataScioglimentoUnione", label: "Data scioglimento", value: dateFormatter(datiScioglimento.data) },
       ]);
