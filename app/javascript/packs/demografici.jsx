@@ -133,6 +133,9 @@ function hash(s){
 export {hash};
 
 $(document).ready(function(){
+  if($(".header_nuova").length>0) {
+    $("#portal_container").css("margin-top","225px");
+  }
   if(!$("#ciaoUtente").length) {
     var $links = $("#topbar").find(".row");
     $links.find("div").last().remove();
