@@ -3,19 +3,19 @@ class ApplicationMailer < ActionMailer::Base
   layout 'mailer'
 
   # la richiesta di certificato è stata ricevuta dal sistema
-  def cert_req_sent(email, richiedente_nome, codice_fiscale, certificato)
+  def cert_req_sent(email, richiedente_nome, codice_fiscale, certificato, mittente)
     @nome = richiedente_nome
     @certificato = certificato
     @intestatario = !codice_fiscale.nil? ? " per "+codice_fiscale : ""
     if !email.blank?
-      mail(to: email, subject: 'Richiesta certificato inviata')
+      mail(to: email, subject: 'Richiesta certificato inviata', from: mittente)
     else
       logger.error "can't send email to blank email address"
     end
   end
 
   # il certificato è arrivato ed è disponibile per il download
-  def cert_available(email, richiedente_nome, codice_fiscale, data_prenotazione, certificato, da_pagare)
+  def cert_available(email, richiedente_nome, codice_fiscale, data_prenotazione, certificato, da_pagare, mittente)
     @data_prenotazione = data_prenotazione.strftime("%d/%m/%Y")
     @nome = richiedente_nome
     @certificato = certificato
@@ -27,19 +27,19 @@ class ApplicationMailer < ActionMailer::Base
     @pagamento_html = da_pagare ? "<p>"+avviso_pagamento+"</p>" : "";
 
     if !email.blank?
-      mail(to: email, subject: 'Il tuo certificato è disponibile')
+      mail(to: email, subject: 'Il tuo certificato è disponibile', from: mittente)
     else
       logger.error "can't send email to blank email address"
     end
   end
 
   # la ricezione del certificato è fallita
-  def cert_failed(email, richiedente_nome, codice_fiscale, certificato)
+  def cert_failed(email, richiedente_nome, codice_fiscale, certificato, mittente)
     @nome = richiedente_nome
     @certificato = certificato
     @intestatario = !codice_fiscale.nil? ? " per "+codice_fiscale : ""
     if !email.blank?
-      mail(to: email, subject: 'Errore richiesta certificato')
+      mail(to: email, subject: 'Errore richiesta certificato', from: mittente)
     else
       logger.error "can't send email to blank email address"
     end

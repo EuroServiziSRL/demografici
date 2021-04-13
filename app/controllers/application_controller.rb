@@ -169,13 +169,14 @@ class ApplicationController < ActionController::Base
       data_prenotazione: Time.now,
       email: session[:email],
       id_utente: session[:user_id],
+      email_mittente: session[:email_mittente]
       # documento: "", # il certificato che verrà inserito dall'ente
     }
 
     Certificati.create(certificato)    
     cf = session[:cf] == cf_certificato ? nil : cf_certificato
 
-    ApplicationMailer.cert_req_sent(session[:email], "#{session[:nome]} #{session[:cognome]}", cf, nome_certificato).deliver
+    ApplicationMailer.cert_req_sent(session[:email], "#{session[:nome]} #{session[:cognome]}", cf, nome_certificato, session[:email_mittente]).deliver
 
     # session[:cf_visualizzato] = params["codice_fiscale"]
     render :template => "application/index" , :layout => "layout_portali/#{session[:nome_file_layout]}"
@@ -226,7 +227,7 @@ class ApplicationController < ActionController::Base
     debug_message("session[:searchDataDal] is #{session[:searchDataDal]}", 3)
     debug_message("session[:searchDataAl] is #{session[:searchDataAl]}", 3)
     
-    if PERMESSI[session[:permessi]] == "cittadino"
+    if PERMESSI[session[:permessi]] == "cittadino" && !session[:certificazione]
       debug_message("redirecting to /", 3)
       redirect_to "/"
       return
@@ -534,9 +535,9 @@ class ApplicationController < ActionController::Base
 
       permessi_no_sensibili = ["ricercare_anagrafiche_no_sensibili","vedere_solo_famiglia","elencare_anagrafiche_certificazione"]
       nascondi_sensibili = !is_self && permessi_no_sensibili.include?(PERMESSI[session[:permessi]])
-      solo_certificati = PERMESSI[session[:permessi]] == "elencare_anagrafiche_certificazione"
       solo_famiglia = PERMESSI[session[:permessi]] == "vedere_solo_famiglia"
       cittadino = PERMESSI[session[:permessi]] == "cittadino"
+      solo_certificati = PERMESSI[session[:permessi]] == "elencare_anagrafiche_certificazione" || ( cittadino && !is_self && !is_family && session[:certificazione] )
       professionista = ["professionisti","elencare_anagrafiche_certificazione"].include?(PERMESSI[session[:permessi]])
       globale = ["ricercare_anagrafiche","ricercare_anagrafiche_no_sensibili","elencare_anagrafiche","vedere_solo_famiglia"].include?(PERMESSI[session[:permessi]])
 
@@ -708,7 +709,7 @@ class ApplicationController < ActionController::Base
               importo = importo+richiesta_certificato.diritti_importo
             end
 
-            if richiesta_certificato.stato == "pagato" || richiesta_certificato.stato == "da_pagare"
+            if richiesta_certificato.stato == "pagato" || richiesta_certificato.stato == "da_pagare" || ( richiesta_certificato.stato == "scaricato" && richiesta_certificato.data_download >= DateTime.now.days_ago(7) )
               url = richiesta_certificato.documento
               scaduto = false
               debug_message("data inserimento", 3)
@@ -820,7 +821,7 @@ class ApplicationController < ActionController::Base
                     debug_message("verificaPagamento OK", 3)
                   end
                 end
-              elsif !scaduto && richiesta_certificato.stato == "pagato" && !richiesta_certificato.documento.blank?
+              elsif !scaduto && ( richiesta_certificato.stato == "pagato" || richiesta_certificato.data_download > DateTime.now.days_ago(7) ) && !richiesta_certificato.documento.blank?
                 url = "/scarica_certificato?id=#{richiesta_certificato.id}"
               else
                 url = ""
@@ -855,7 +856,7 @@ class ApplicationController < ActionController::Base
 
         end
 
-        if PERMESSI[session[:permessi]]=="cittadino"
+        if PERMESSI[session[:permessi]]=="cittadino" && ( is_self || is_family )
           # recupero anche le autocertificazioni
           files = Dir.glob("#{Rails.root}/autocertificazioni/odt/*")
           result["autocertificazioni"] = []
@@ -876,10 +877,21 @@ class ApplicationController < ActionController::Base
           "messaggio_errore": "Ente non abilitato all'utilizzo di questo servizio.", 
         }
       elsif (!result.nil? && result.length == 0) || (responseCode==201 && result.nil? && cittadino) || (responseCode==200 && result.nil? && cittadino)
-        result = { 
-          "errore": true, 
-          "messaggio_errore": "Impossibile trovare l'anagrafica richiesta.", 
-        }
+        if cittadino && session[:certificazione] 
+          session[:residente] = false
+        end
+
+        if cittadino && session[:certificazione] && is_self
+          result = { 
+            "errore": true, 
+            "messaggio_errore": "redirect", 
+          }
+        else
+          result = { 
+            "errore": true, 
+            "messaggio_errore": "Impossibile trovare l'anagrafica richiesta.", 
+          }
+        end
       elsif result.nil? && fullResult.nil?
         result = { 
           "errore": true, 
@@ -912,15 +924,26 @@ class ApplicationController < ActionController::Base
     tipologia_richiesta = "download certificato richiesta id #{params["id"]}"
     if verifica_permessi("scarica_certificato")
       richiesta_certificato = Certificati.find_by_id(params["id"])
+      scaduto = false
+      if 180.days.ago >= richiesta_certificato.data_inserimento
+        scaduto = true
+      end
       if richiesta_certificato.blank? || richiesta_certificato.nil?
         traccia_operazione("#{tipologia_richiesta} (richiesta non trovata)")
         sconosciuto
+      elsif scaduto || ( richiesta_certificato.stato == "scaricato" && richiesta_certificato.data_download <= DateTime.now.days_ago(7) )
+        traccia_operazione("#{tipologia_richiesta} (download scaduto)")
+        render html: '<DOCTYPE html><html><head><title>Download scaduto</title></head><body>Questo link per il download &egrave; scaduto.</body></html>'.html_safe
       elsif(File.exist?("#{Rails.root}/#{richiesta_certificato.documento}"))
         traccia_operazione(tipologia_richiesta)
+        if richiesta_certificato.stato != "scaricato"
+          richiesta_certificato.data_download = Time.now
+        end
         richiesta_certificato.stato = "scaricato"
         richiesta_certificato.save
         send_file "#{Rails.root}/#{richiesta_certificato.documento}", type: "application/pdf", x_sendfile: true
       else
+        puts "file #{Rails.root}/#{richiesta_certificato.documento} does not exist"
         traccia_operazione("#{tipologia_richiesta} (file non trovato)")
         sconosciuto
       end
@@ -1290,11 +1313,12 @@ class ApplicationController < ActionController::Base
     return PERMESSI[session[:permessi]] != "cittadino"
   end
 
+  # BOOKMARK verifica_permessi
   def verifica_permessi(azione)
     autorizzato = false
 
     globale = can_see_others
-    cittadino = is_self || is_family
+    cittadino = is_self || is_family || session[:certificazione]
 
     debug_message("requesting authorization for #{azione} - permissions level is #{PERMESSI[session[:permessi]]}", 3)
     debug_message("globale: #{globale} cittadino: #{cittadino}", 3)
@@ -1315,10 +1339,14 @@ class ApplicationController < ActionController::Base
       elsif PERMESSI[session[:permessi]] == "vedere_solo_famiglia"
         autorizzato = globale # quando entra nella scheda può vedere solo la famiglia e i dati non sensibili
       else
-        autorizzato = cittadino # utente cittadino, può vedere solo la sua anagrafica e quelle dei familiari
+        autorizzato = cittadino # utente cittadino, può vedere solo la sua anagrafica e quelle dei familiari o quelle di terzi per richiesta certificato se certificazione è true
       end
     elsif azione == "ricerca_anagrafiche"
-      autorizzato = globale
+      if PERMESSI[session[:permessi]] != "cittadino"
+        autorizzato = globale
+      else
+        autorizzato = cittadino # utente cittadino, può vedere solo la sua anagrafica e quelle dei familiari o quelle di terzi per richiesta certificato se certificazione è true
+      end
     elsif azione == "scarica_certificato"
       autorizzato = cittadino || globale
     end
@@ -1330,7 +1358,7 @@ class ApplicationController < ActionController::Base
   def carica_variabili_layout
 
     @nome = session[:nome]
-    @demografici_data = { "tipiCertificato" => {}, "esenzioniBollo" => {}, "cittadinanze" => {}, "ricercaEstesa" => false }
+    @demografici_data = { "tipiCertificato" => {}, "esenzioniBollo" => {}, "cittadinanze" => {}, "ricercaEstesa" => false, "certificazione" => session[:certificazione], "residente" => session[:residente] }
 
     tipiCertificato = []
     result = HTTParty.post(
@@ -1471,6 +1499,9 @@ class ApplicationController < ActionController::Base
             if jwt_data["permessi"].nil?
               jwt_data["permessi"] = "cittadino"
             end
+            if jwt_data[:email_mittente].nil? || jwt_data[:email_mittente].blank?
+              jwt_data[:email_mittente] = "noreply@soluzionipa.it"
+            end
             session[:user_id] = jwt_data["id"]
             session[:permessi] = PERMESSI.find_index(jwt_data["permessi"]) # uso un indice numerico per ridurre la dimensione del cookie
             if session[:permessi].nil?
@@ -1481,6 +1512,7 @@ class ApplicationController < ActionController::Base
             session[:cognome] = jwt_data[:cognome]
             session[:email] = jwt_data[:email]
             session[:cf] = jwt_data[:cf]
+            session[:email_mittente] = jwt_data[:email_mittente]
             session[:certificazione] = jwt_data[:certificazione]
             session[:data_nascita] = jwt_data["data_nascita"]
             session[:tipo_documento] = jwt_data["tipo_documento"]
@@ -1491,6 +1523,7 @@ class ApplicationController < ActionController::Base
             session[:api_next_secret] = jwt_data["api_next"]["secret"]
             session[:client_id] = hash_params['c_id']
             session[:famiglia] = []
+            session[:residente] = true # di default a true, lo impostiamo a false se non troviamo l'anagrafica
 
             # TEST credenziali dev
             # session[:api_next_tenant] =  "ba4785a1-abe2-4fcc-ac26-6cda29910c26"
@@ -1649,7 +1682,10 @@ class ApplicationController < ActionController::Base
       # session[:permessi]=PERMESSI.find_index("vedere_solo_famiglia")
       # Nessun permesso impostato:
       # session[:permessi]=PERMESSI.find_index("cittadino")
-      # session[:cf]="VNCNNA65D68D508S"
+      # session[:cf]="LBNMRA54E04G141M" # ortona
+      # session[:cf]="RSSMRA80A41F206D" # civilianext
+      # session[:certificazione] = false
+      # session[:cf]="VNCNNA65D68D508S" 
     end
   end
 

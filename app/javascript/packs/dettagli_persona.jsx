@@ -47,6 +47,7 @@ class DettagliPersona extends React.Component{
     datiCittadino: [],
     isSelf:false, 
     loading: true,
+    redirect: false,
     form: {
       fields: {},
       valid: false
@@ -120,8 +121,7 @@ class DettagliPersona extends React.Component{
       console.log(response);
       if(response == null) {
         console.log("response is null");
-      }
-      else if(response.length && response.hasError) {
+      } else if(response.length && response.hasError) {
         console.log("response error");
       } else {
         var state = self.state;
@@ -134,8 +134,17 @@ class DettagliPersona extends React.Component{
           state.isSelf = response.isSelf;
           state.datiRichiedente = response.datiRichiedente;
         } else {
-          state.error = true;
-          state.error_message = response.messaggio_errore;
+          // caso cittadino e certificazione attiva, faccio redirect su ricerca
+          if(demograficiData.cittadino && demograficiData.certificazione && response.messaggio_errore == "redirect") {
+            console.log("cittadino non residente + certificazione, redirect su ricerca anagrafiche");
+            window.location.replace(demograficiData.dominio+"/ricerca_anagrafiche");
+            state.redirect = true;
+            state.error = false;
+          } else {
+            console.log("nessun redirect, errore");
+            state.error = true;
+            state.error_message = response.messaggio_errore;
+          }
         }
         state.loading = false;
         self.setState(state);
@@ -567,7 +576,7 @@ class DettagliPersona extends React.Component{
     
       if(datiAnagrafica.certificati && datiAnagrafica.certificati.length) {
         result.dati.certificati.push([
-          { name:null, value: <p className="alert alert-warning">Attenzione: si informa che i certificati sono scaricabili una volta sola.</p>, html: true }
+          { name:null, value: <p className="alert alert-warning">Attenzione: si informa che i certificati sono scaricabili solamente nei 7 giorni successivi alla data del primo download.</p>, html: true }
         ]);
         result.dati.certificati.push([
           { name:"", labelCols:1, valueSize:10, value: <div className="text-center"><a className="btn btn-primary hidden" id="btnCarrello" href={urlCarrello}>Vai al carrello</a></div>, html: true }
@@ -643,6 +652,23 @@ class DettagliPersona extends React.Component{
     return <div className="tab-content">{panelsHtml}</div>
   }
 
+  displayButtons() {
+    return <div className="bottoni_pagina mb20">
+      <div className="row">
+        <div className="col-lg-6 col-md-6 col-sm-12 col-xs-12">
+          <div className="back">
+            {this.state.backToSearch&&!demograficiData.cittadino?<a className="btn" href="/ricerca_anagrafiche">Torna alla ricerca</a>:<a className="btn" href="/portale">Torna al portale</a>}
+            
+          </div>
+          {!this.state.isSelf&&demograficiData.cittadino&&demograficiData.residente?<a className="btn btn-default ml10" href="/self">Torna alla tua anagrafica</a>:""}
+          {!this.state.isSelf&&demograficiData.cittadino&&!demograficiData.residente?<a className="btn btn-default ml10" href="/ricerca_anagrafiche">Torna alla ricerca</a>:""}
+          {demograficiData.cittadino?"":<a className="btn btn-default ml10" href="/ricerca_anagrafiche">Ricerca anagrafiche</a>}
+          {this.state.isSelf&&demograficiData.cittadino&&demograficiData.certificazione?<a className="btn btn-default ml10" href="/ricerca_anagrafiche">Richiedi certificato per terzi</a>:""}
+        </div>
+      </div>
+    </div>;
+  }
+
   render() {
     console.log("state", this.state);
     // console.log(datiAnagrafica);
@@ -650,12 +676,19 @@ class DettagliPersona extends React.Component{
     var returnVal = <div className="alert alert-warning">Dati contribuente non presenti nel sistema</div>
     
     if(typeof(this.state) == "undefined") {
-      returnVal = <div className="alert alert-danger">Si è verificato un errore, si prega di riprovare.</div>
+      returnVal = <div>
+        <div className="alert alert-danger">Si è verificato un errore, si prega di riprovare.</div>
+        {this.displayButtons()}
+      </div>
     } else if(this.state.loading) {
       returnVal = <div className="alert alert-info">Caricamento...</div>
-    }
-    else if(this.state.error) {
-      returnVal = <div className="alert alert-danger">{this.state.error_message}</div>
+    } else if(this.state.redirect) {
+      returnVal = <div className="alert alert-info">Caricamento...</div>
+    } else if(this.state.error) {
+      returnVal = <div>
+        <div className="alert alert-danger">{this.state.error_message}</div>
+        {this.displayButtons()}
+      </div>
     } else if(found) {
       returnVal =       <div itemID="app_demografici">
         <h3>Dettagli persona</h3>
@@ -671,18 +704,7 @@ class DettagliPersona extends React.Component{
 
         </div>
 
-        <div className="bottoni_pagina mb20">
-          <div className="row">
-            <div className="col-lg-6 col-md-6 col-sm-12 col-xs-12">
-              <div className="back">
-                {this.state.backToSearch&&!demograficiData.cittadino?<a className="btn" href="/ricerca_anagrafiche">Torna alla ricerca</a>:<a className="btn" href="/portale">Torna al portale</a>}
-                
-              </div>
-              {!this.state.isSelf&&demograficiData.cittadino?<a className="btn btn-default ml10" href="/self">Torna alla tua anagrafica</a>:""}
-              {demograficiData.cittadino?"":<a className="btn btn-default ml10" href="/ricerca_anagrafiche">Ricerca anagrafiche</a>}              
-            </div>
-          </div>
-        </div>
+        {this.displayButtons()}
 
         {demograficiData.test?<pre style={{"whiteSpace": "break-spaces"}}><code>{this.state.debug?JSON.stringify(this.state.debug, null, 2):""}</code></pre>:""}
 
