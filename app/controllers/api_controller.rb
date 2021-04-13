@@ -182,7 +182,7 @@ class ApiController < ActionController::Base
           richiesta_certificato.save
 
           cf = richiesta_certificato.richiedente_cf == richiesta_certificato.codice_fiscale ? nil : richiesta_certificato.codice_fiscale
-          ApplicationMailer.cert_failed(richiesta_certificato.email, "#{richiesta_certificato.richiedente_nome} #{richiesta_certificato.richiedente_cognome}", cf, richiesta_certificato.nome_certificato).deliver
+          ApplicationMailer.cert_failed(richiesta_certificato.email, "#{richiesta_certificato.richiedente_nome} #{richiesta_certificato.richiedente_cognome}", cf, richiesta_certificato.nome_certificato, richiesta_certificato.email_mittente).deliver
 
           array_json << {
             "codice_esito": "002-Richiesta aggiornata"
@@ -211,7 +211,7 @@ class ApiController < ActionController::Base
           richiesta_certificato.save
           
           cf = richiesta_certificato.richiedente_cf == richiesta_certificato.codice_fiscale ? nil : richiesta_certificato.codice_fiscale
-          ApplicationMailer.cert_failed(richiesta_certificato.email, "#{richiesta_certificato.richiedente_nome} #{richiesta_certificato.richiedente_cognome}", cf, richiesta_certificato.nome_certificato).deliver
+          ApplicationMailer.cert_failed(richiesta_certificato.email, "#{richiesta_certificato.richiedente_nome} #{richiesta_certificato.richiedente_cognome}", cf, richiesta_certificato.nome_certificato, richiesta_certificato.email_mittente).deliver
 
           array_json << {
             "codice_esito": "002-Richiesta aggiornata"
@@ -300,7 +300,7 @@ class ApiController < ActionController::Base
 
           cf = richiesta_certificato.richiedente_cf == richiesta_certificato.codice_fiscale ? nil : richiesta_certificato.codice_fiscale
 
-          ApplicationMailer.cert_available(richiesta_certificato.email, "#{richiesta_certificato.richiedente_nome} #{richiesta_certificato.richiedente_cognome}", cf, richiesta_certificato.data_prenotazione, richiesta_certificato.nome_certificato, importo>0).deliver
+          ApplicationMailer.cert_available(richiesta_certificato.email, "#{richiesta_certificato.richiedente_nome} #{richiesta_certificato.richiedente_cognome}", cf, richiesta_certificato.data_prenotazione, richiesta_certificato.nome_certificato, importo>0, richiesta_certificato.email_mittente).deliver
           
           array_json << {
             "codice_esito": "000-Certificato inserito"

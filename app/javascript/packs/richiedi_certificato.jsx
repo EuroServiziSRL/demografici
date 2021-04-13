@@ -10,10 +10,16 @@ class RichiediCertificato extends React.Component{
   }
 
   render() {
-    return <div><p className="alert alert-success">La tua richiesta è stata inviata</p><p className="text-center"><a href='/dettagli_persona' className="btn btn-default">Torna indietro</a></p></div>;
+    return <div><p className="alert alert-success">La tua richiesta è stata inviata.<br/>L'emissione del certificato potrebbe richiedere qualche minuto. Riceverai una mail non appena sar&agrave; disponibile.<br/>Per visualizzare in tempo reale lo stato della richiesta nonch&egrave; scaricare il certificato quando disponibile, puoi ricaricare la pagina dove hai eseguito la richiesta.</p><p className="text-center"><a href='/dettagli_persona' className="btn btn-default">Torna indietro</a></p></div>;
   }
 }
 
 if(document.getElementById('app_demografici_container') !== null){
   ReactDOM.render(<RichiediCertificato />, document.getElementById('app_demografici_container') );
 }
+
+$(document).ready(function(){
+  if($(".header_nuova").length>0) {
+    $("#portal_container").css("margin-top","225px");
+  }
+});

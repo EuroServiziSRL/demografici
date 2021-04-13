@@ -460,10 +460,10 @@ class RicercaAnagrafiche extends React.Component{
             </div>
 
             <div className="form-group">
-              <label htmlFor="cognomeNome" className="col-lg-2 control-label">Cognome/Nome</label>
+              {demograficiData.cittadino?<></>:<><label htmlFor="cognomeNome" className="col-lg-2 control-label">Cognome/Nome</label>
               <div className="col-lg-4" id="cognomeNome">
                 <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="cognomeNome" id="cognomeNome" defaultValue={demograficiData.searchParams.cognomeNome}/>
-              </div>
+              </div></>}
               <label htmlFor="codiceFiscale" className="col-lg-2 control-label">Codice Fiscale</label>
               <div className="col-lg-4" id="codiceFiscale">
                 <input type="text" onChange={this.validateForm.bind(this)} onBlur={this.validateForm.bind(this)} className="form-control" name="codiceFiscale" id="codiceFiscale" defaultValue={demograficiData.searchParams.codiceFiscale}/>
@@ -544,6 +544,7 @@ class RicercaAnagrafiche extends React.Component{
             <div className="back">
               <a className="btn" href="/portale">Torna al portale</a>              
             </div>
+            {demograficiData.cittadino&&demograficiData.residente?<a className="btn btn-default ml10" href="/self">Torna alla tua anagrafica</a>:""}
             {/* <a className="btn btn-default ml10" href="/self">Torna alla tua anagrafica</a> */}
           </div>
         </div>

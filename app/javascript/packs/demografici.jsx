@@ -98,7 +98,7 @@ function dateFormatter(dateTimeString) {
   if(dateTimeString) {
     var dateString = dateTimeString.replace(/-/g,"/").replace(/T.*/g," ").replace(/\.\d{3}Z/g,"");
     var date = new Date(dateString);
-    formatted = date.toLocaleDateString("IT");
+    formatted = date.toLocaleDateString("IT", {month: "2-digit", day: "2-digit", year: "numeric"});
   }
   return formatted;
 }
@@ -136,11 +136,28 @@ $(document).ready(function(){
   if($(".header_nuova").length>0) {
     $("#portal_container").css("margin-top","225px");
   }
-  if(!$("#ciaoUtente").length) {
+  // nuova grafica
+  console.log("checking for old menu");
+  if($("#topbar").length && !$("#ciaoUtente").length) {
+    console.log("old menu present and no ciaoUtente, adding");
     var $links = $("#topbar").find(".row");
     $links.find("div").last().remove();
     $links.find("div").first().removeClass("col-lg-offset-3").removeClass("col-md-offset-3");
     $links.append('<div class="col-lg-2 col-md-2 text-center"><a id="ciaoUtente" href="/portale" title="Sezione Privata">CIAO<br>'+$("#nome_utente").text()+'</a></div>');
     $links.append('<div class="col-lg-1 col-md-1 logout_link"><a href="logout" title="Logout"><span class="glyphicon glyphicon-log-out" aria-hidden="true"></span></a></div>');
+  }
+  // grafica covid
+  console.log("checking for new menu");
+  if($("#menu_orizzontale").length && !$("#menu_orizzontale a[title='Sezione Privata']").length) {
+    console.log("new menu present and no ciaoUtente, adding");
+    var $links = $("#menu_orizzontale").find("ul");
+    $links.find("li:contains('ACCEDI')").remove();
+    $links.append('<li><a href="/portale" title="Sezione Privata" tabindex="11">CIAO '+$("#nome_utente").text()+'</a></li>');
+    $links.append('<li><a href="logout" title="Logout" tabindex="13" aria-label="Esegui il logout"><span class="glyphicon glyphicon-log-out" aria-hidden="true"></span></a></li>');
+    if($("#menu_orizzontale #gdpr").length) {
+      var $gdpr = $("#menu_orizzontale #gdpr").parent().clone();
+      $("#menu_orizzontale #gdpr").parent().remove();
+      $links.append($gdpr);
+    }
   }
  });
