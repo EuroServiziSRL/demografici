@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_06_26_064146) do
+ActiveRecord::Schema.define(version: 2021_04_07_072536) do
 
   create_table "certificati", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
     t.string "tenant"
@@ -37,6 +37,8 @@ ActiveRecord::Schema.define(version: 2020_06_26_064146) do
     t.decimal "diritti_importo", precision: 4, scale: 2
     t.string "codici_certificato"
     t.string "descrizione_errore"
+    t.datetime "data_download"
+    t.string "email_mittente"
   end
 
   create_table "comuni", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
