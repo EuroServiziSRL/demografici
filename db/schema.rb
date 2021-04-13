@@ -12,10 +12,10 @@
 
 ActiveRecord::Schema.define(version: 2021_04_07_072536) do
 
-  create_table "certificati", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "certificati", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci", force: :cascade do |t|
     t.string "tenant"
     t.string "codice_fiscale"
-    t.decimal "bollo", precision: 4, scale: 2
+    t.decimal "bollo", precision: 10
     t.string "uso"
     t.string "richiedente_cf"
     t.string "richiesta"
@@ -34,99 +34,24 @@ ActiveRecord::Schema.define(version: 2021_04_07_072536) do
     t.date "richiedente_data_nascita"
     t.string "richiedente_doc_riconoscimento"
     t.date "richiedente_doc_data"
-    t.decimal "diritti_importo", precision: 4, scale: 2
+    t.decimal "diritti_importo", precision: 10
     t.string "codici_certificato"
-    t.string "descrizione_errore"
     t.datetime "data_download"
     t.string "email_mittente"
   end
 
-  create_table "comuni", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.date "dataistituzione"
-    t.date "datacessazione"
-    t.integer "codistat"
-    t.string "codcatastale"
-    t.string "denominazione_it"
-    t.string "denomtraslitterata"
-    t.string "altradenominazione"
-    t.string "altradenomtraslitterata"
-    t.integer "idprovincia"
-    t.integer "idregione"
-    t.string "idprefettura"
-    t.string "stato"
-    t.string "siglaprovincia"
-    t.string "fonte"
-    t.date "dataultimoagg"
-    t.integer "cod_denom"
-    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
-    t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
-  end
-
-  create_table "demografici__traccia", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
+  create_table "demografici_traccia", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci", force: :cascade do |t|
     t.datetime "obj_created"
     t.datetime "obj_modified"
     t.integer "utente_id"
     t.string "ip"
     t.string "pagina"
-    t.text "parametri"
+    t.string "parametri"
     t.string "id_transazione_app"
     t.string "tipologia_servizio"
     t.string "tipologia_richiesta"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "tenant"
-  end
-
-  create_table "esenzione_bollo", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.string "descrizione"
-    t.boolean "esenzione_diritto_di_segreteria"
-    t.integer "ordinamento"
-    t.date "datainiziovalidita"
-    t.date "datafinevalidita"
-    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
-    t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
-  end
-
-  create_table "relazioni_parentela", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.integer "id_relazione", null: false
-    t.string "descrizione"
-    t.integer "ordinamento"
-    t.date "datainiziovalidita"
-    t.date "datafinevalidita"
-    t.string "note"
-    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
-    t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
-  end
-
-  create_table "stati_esteri", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.string "denominazione"
-    t.string "denominazioneistat"
-    t.string "denominazioneistat_en"
-    t.date "datainiziovalidita"
-    t.date "datafinevalidita"
-    t.string "codiso3166_1_alpha3"
-    t.integer "codmae"
-    t.integer "codmin"
-    t.string "codat"
-    t.string "codistat"
-    t.boolean "cittadinanza"
-    t.boolean "nascita"
-    t.boolean "residenza"
-    t.string "fonte"
-    t.string "tipo"
-    t.string "codisosovrano"
-    t.date "dataultimoagg"
-    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
-    t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
-  end
-
-  create_table "tipo_certificato", options: "ENGINE=InnoDB DEFAULT CHARSET=utf8", force: :cascade do |t|
-    t.string "descrizione"
-    t.integer "ordinamento"
-    t.date "datainiziovalidita"
-    t.date "datafinevalidita"
-    t.datetime "created_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
-    t.datetime "updated_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
   end
 
 end
