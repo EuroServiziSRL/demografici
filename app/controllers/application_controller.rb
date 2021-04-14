@@ -709,7 +709,7 @@ class ApplicationController < ActionController::Base
               importo = importo+richiesta_certificato.diritti_importo
             end
 
-            if richiesta_certificato.stato == "pagato" || richiesta_certificato.stato == "da_pagare" || ( richiesta_certificato.stato == "scaricato" && richiesta_certificato.data_download >= DateTime.now.days_ago(7) )
+            if richiesta_certificato.stato == "pagato" || richiesta_certificato.stato == "da_pagare" || ( richiesta_certificato.stato == "scaricato" && (richiesta_certificato.data_download.nil? || ( richiesta_certificato.data_download >= DateTime.now.days_ago(7) ) ) )
               url = richiesta_certificato.documento
               scaduto = false
               debug_message("data inserimento", 3)
@@ -821,7 +821,7 @@ class ApplicationController < ActionController::Base
                     debug_message("verificaPagamento OK", 3)
                   end
                 end
-              elsif !scaduto && ( richiesta_certificato.stato == "pagato" || richiesta_certificato.data_download > DateTime.now.days_ago(7) ) && !richiesta_certificato.documento.blank?
+              elsif !scaduto && ( richiesta_certificato.stato == "pagato" || richiesta_certificato.data_download.nil? || richiesta_certificato.data_download > DateTime.now.days_ago(7) ) && !richiesta_certificato.documento.blank?
                 url = "/scarica_certificato?id=#{richiesta_certificato.id}"
               else
                 url = ""
@@ -931,12 +931,12 @@ class ApplicationController < ActionController::Base
       if richiesta_certificato.blank? || richiesta_certificato.nil?
         traccia_operazione("#{tipologia_richiesta} (richiesta non trovata)")
         sconosciuto
-      elsif scaduto || ( richiesta_certificato.stato == "scaricato" && richiesta_certificato.data_download <= DateTime.now.days_ago(7) )
+      elsif scaduto || ( richiesta_certificato.stato == "scaricato" && ( richiesta_certificato.data_download.nil? || (richiesta_certificato.data_download <= DateTime.now.days_ago(7)) ) )
         traccia_operazione("#{tipologia_richiesta} (download scaduto)")
         render html: '<DOCTYPE html><html><head><title>Download scaduto</title></head><body>Questo link per il download &egrave; scaduto.</body></html>'.html_safe
       elsif(File.exist?("#{Rails.root}/#{richiesta_certificato.documento}"))
         traccia_operazione(tipologia_richiesta)
-        if richiesta_certificato.stato != "scaricato"
+        if richiesta_certificato.stato != "scaricato" || richiesta_certificato.data_download.nil?
           richiesta_certificato.data_download = Time.now
         end
         richiesta_certificato.stato = "scaricato"
