@@ -374,6 +374,7 @@ class ApplicationController < ActionController::Base
     end
     
     params[:MostraIndirizzo] = true
+    params[:EscludiStatoAnagraficoOccasionale ] = true
 
     tipologia_richiesta = "ricerca anagrafiche"
 
@@ -567,6 +568,7 @@ class ApplicationController < ActionController::Base
       searchParams[:MostraDatiTitoloStudio] = !nascondi_sensibili 
       searchParams[:MostraDatiIscrizione] = true
       searchParams[:MostraDatiCancellazione] = true
+      searchParams[:EscludiStatoAnagraficoOccasionale ] = true
 
       debug_message("searchParams: ", 3)
       debug_message(searchParams, 3)
@@ -585,6 +587,7 @@ class ApplicationController < ActionController::Base
       else
         result = ""
       end
+
       if !result.nil? && result.length > 0
         famiglia = []
         session[:famiglia] = []
@@ -876,7 +879,7 @@ class ApplicationController < ActionController::Base
           "errore": true, 
           "messaggio_errore": "Ente non abilitato all'utilizzo di questo servizio.", 
         }
-      elsif (!result.nil? && result.length == 0) || (responseCode==201 && result.nil? && cittadino) || (responseCode==200 && result.nil? && cittadino)
+      elsif (!fullResult.nil? && fullResult.empty?) || (!result.nil? && result.length == 0) || (responseCode==201 && result.nil? && cittadino) || (responseCode==200 && result.nil? && cittadino)
         if cittadino && session[:certificazione] 
           session[:residente] = false
         end
@@ -990,6 +993,7 @@ class ApplicationController < ActionController::Base
     searchParams[:MostraIndirizzo] = true
     searchParams[:MostraConiuge] = true
     searchParams[:MostraDatiStatoCivile] = true
+    searchParams[:EscludiStatoAnagraficoOccasionale ] = true
 
     result = HTTParty.post(
       "#{@@api_url}/Anagrafe/RicercaIndividui?v=1.0", 
