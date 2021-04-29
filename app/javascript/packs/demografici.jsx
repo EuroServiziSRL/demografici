@@ -25,7 +25,7 @@ function buttonFormatter(cell,row) {
   else if(cell.indexOf("scarica_certificato")>-1) { 
     var icon = <FontAwesomeIcon icon={faFilePdf} size='2x' />
     var title = "Scarica certificato pdf"
-    if(cell.indexOf(".zip")>-1) {
+    if(cell.indexOf("type=zip")>-1) {
       icon = <FontAwesomeIcon icon={faFileArchive} size='2x' />
       title = "Scarica certificato e marca da bollo digitale"
     }
