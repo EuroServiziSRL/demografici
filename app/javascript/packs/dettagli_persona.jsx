@@ -127,11 +127,11 @@ class DettagliPersona extends React.Component{
         var state = self.state;
         state.error = false;
         state.debug = response;
+        state.isSelf = response.isSelf;
         if(!response.errore) {
           response = self.formatData(response);
           state.dati = response.dati;
           state.datiCittadino = response.datiCittadino;
-          state.isSelf = response.isSelf;
           state.datiRichiedente = response.datiRichiedente;
         } else {
           // caso cittadino e certificazione attiva, faccio redirect su ricerca
@@ -653,17 +653,22 @@ class DettagliPersona extends React.Component{
   }
 
   displayButtons() {
+    var indietroRicerca = this.state.backToSearch&&!demograficiData.cittadino;
+    var tornaAnagrafica = !this.state.isSelf&&demograficiData.cittadino&&demograficiData.residente;
+    var tornaRicerca =!this.state.isSelf&&demograficiData.cittadino&&!demograficiData.residente;
+    var ricerca = !demograficiData.cittadino&&demograficiData.certificazione;
+    var richiediCert = this.state.isSelf&&demograficiData.cittadino&&demograficiData.certificazione;
     return <div className="bottoni_pagina mb20">
       <div className="row">
         <div className="col-lg-6 col-md-6 col-sm-12 col-xs-12">
           <div className="back">
-            {this.state.backToSearch&&!demograficiData.cittadino?<a className="btn" href="/ricerca_anagrafiche">Torna alla ricerca</a>:<a className="btn" href="/portale">Torna al portale</a>}
+            {indietroRicerca?<a className="btn" href="/ricerca_anagrafiche">Torna alla ricerca</a>:<a className="btn" href="/portale">Torna al portale</a>}
             
           </div>
-          {!this.state.isSelf&&demograficiData.cittadino&&demograficiData.residente?<a className="btn btn-default ml10" href="/self">Torna alla tua anagrafica</a>:""}
-          {!this.state.isSelf&&demograficiData.cittadino&&!demograficiData.residente?<a className="btn btn-default ml10" href="/ricerca_anagrafiche">Torna alla ricerca</a>:""}
-          {demograficiData.cittadino?"":<a className="btn btn-default ml10" href="/ricerca_anagrafiche">Ricerca anagrafiche</a>}
-          {this.state.isSelf&&demograficiData.cittadino&&demograficiData.certificazione?<a className="btn btn-default ml10" href="/ricerca_anagrafiche">Richiedi certificato per terzi</a>:""}
+          {tornaAnagrafica?<a className="btn btn-default ml10" href="/self">Torna alla tua anagrafica</a>:""}
+          {tornaRicerca?<a className="btn btn-default ml10" href="/ricerca_anagrafiche">Torna alla ricerca</a>:""}
+          {ricerca?<a className="btn btn-default ml10" href="/ricerca_anagrafiche">Ricerca anagrafiche</a>:""}
+          {richiediCert?<a className="btn btn-default ml10" href="/ricerca_anagrafiche">Richiedi certificato per terzi</a>:""}
         </div>
       </div>
     </div>;

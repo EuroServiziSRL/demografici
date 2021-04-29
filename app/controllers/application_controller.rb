@@ -760,9 +760,9 @@ class ApplicationController < ActionController::Base
                     end
                     richiesta_certificato.documento = zip_path
 
-                    url = "/scarica_certificato?file=#{zip_path.sub('./','')}"
+                    url = "/scarica_certificato?id=#{richiesta_certificato.id}&type=zip"
                   else
-                    url = "/scarica_certificato?file=#{richiesta_certificato.documento.sub('./','')}"
+                    url = "/scarica_certificato?id=#{richiesta_certificato.id}&type=pdf"
                   end
 
                   richiesta_certificato.save
@@ -825,7 +825,11 @@ class ApplicationController < ActionController::Base
                   end
                 end
               elsif !scaduto && ( richiesta_certificato.stato == "pagato" || richiesta_certificato.data_download.nil? || richiesta_certificato.data_download > DateTime.now.days_ago(7) ) && !richiesta_certificato.documento.blank?
-                url = "/scarica_certificato?id=#{richiesta_certificato.id}"
+                type = "pdf"
+                if richiesta_certificato.documento.end_with?(".zip")
+                  type = "zip"
+                end
+                url = "/scarica_certificato?id=#{richiesta_certificato.id}&type=#{type}"
               else
                 url = ""
               end
@@ -880,7 +884,7 @@ class ApplicationController < ActionController::Base
           "messaggio_errore": "Ente non abilitato all'utilizzo di questo servizio.", 
         }
       elsif (!fullResult.nil? && fullResult.empty?) || (!result.nil? && result.length == 0) || (responseCode==201 && result.nil? && cittadino) || (responseCode==200 && result.nil? && cittadino)
-        if cittadino && session[:certificazione] 
+        if cittadino && is_self
           session[:residente] = false
         end
 
@@ -895,11 +899,13 @@ class ApplicationController < ActionController::Base
             "messaggio_errore": "Impossibile trovare l'anagrafica richiesta.", 
           }
         end
+        result["isSelf"] = is_self
       elsif result.nil? && fullResult.nil?
         result = { 
           "errore": true, 
           "messaggio_errore": "Impossibile recuperare i dati.", 
         }
+        result["isSelf"] = is_self
       elsif fullResult.any? && !fullResult["message"].nil? && fullResult["message"].length > 0 && fullResult["message"] == "Authorization has been denied for this request."
         result = { 
           "errore": true, 
@@ -944,7 +950,11 @@ class ApplicationController < ActionController::Base
         end
         richiesta_certificato.stato = "scaricato"
         richiesta_certificato.save
-        send_file "#{Rails.root}/#{richiesta_certificato.documento}", type: "application/pdf", x_sendfile: true
+        mime = "application/pdf"
+        if richiesta_certificato.documento.end_with?(".zip") 
+          mime = "application/zip"
+        end
+        send_file "#{Rails.root}/#{richiesta_certificato.documento}", type: mime, x_sendfile: true
       else
         puts "file #{Rails.root}/#{richiesta_certificato.documento} does not exist"
         traccia_operazione("#{tipologia_richiesta} (file non trovato)")
@@ -1672,6 +1682,7 @@ class ApplicationController < ActionController::Base
   def test_variables
     # TEST disabilitare prima di testare per prod
     if Rails.env.development?
+      # session[:certificazione] = false
       # Consultare le anagrafiche dei cittadini:
       # session[:permessi]=PERMESSI.find_index("ricercare_anagrafiche")
       # Consultare le anagrafiche dei cittadini (No dati sensibili):
