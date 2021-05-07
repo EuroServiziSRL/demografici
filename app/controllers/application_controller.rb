@@ -727,7 +727,7 @@ class ApplicationController < ActionController::Base
               if !scaduto && richiesta_certificato.stato == "da_pagare"
                 # statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
                 tipoPagamento = richiesta_certificato.bollo ? "bollo_td" : "certificazione_td"
-                verificaPagamento = verifica_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.id, tipoPagamento)
+                verificaPagamento = verifica_pagamento("#{session[:dominio]}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.id, tipoPagamento)
                 debug_message("verifica pagamento response",3)
                 debug_message(verificaPagamento,3)
                 debug_message("richiesta_certificato.documento is #{richiesta_certificato.documento}",3)
