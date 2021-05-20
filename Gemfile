@@ -10,7 +10,7 @@ gem 'mysql2', '= 0.5.2'
 
 gem 'rake', '= 12.3.3'
 gem 'loofah', '= 2.5.0'
-gem 'nokogiri', '= 1.10.9'
+gem 'nokogiri', '1.11.4'
 gem 'rubyzip', '= 1.3.0'
 
 
