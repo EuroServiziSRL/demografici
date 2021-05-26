@@ -7,6 +7,7 @@ Rails.application.routes.draw do
   get '/scarica_certificato' => 'application#scarica_certificato', :as => :scarica_certificato
   get '/scarica_autocertificazione' => 'application#scarica_autocertificazione', :as => :scarica_autocertificazione
   # get '/inserisci_pagamento' => 'application#inserisci_pagamento', :as => :inserisci_pagamento  
+  get '/inserisci_pagamento_multidovuto' => 'application#inserisci_pagamento_multidovuto', :as => :inserisci_pagamento_multidovuto 
   post '/richiedi_certificato' => 'application#richiedi_certificato', :as => :richiedi_certificato
   # get '/ricerca_anagrafiche' => 'application#ricerca_anagrafiche', :as => :ricerca_anagrafiche
   # post '/ricerca_anagrafiche' => 'application#ricerca_anagrafiche', :as => :ricerca_anagrafiche

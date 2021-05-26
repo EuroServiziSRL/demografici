@@ -34,6 +34,7 @@ class DettagliPersona extends React.Component{
     // "elettorale":[],
     "documenti":[],
     "famiglia":[],
+    "vicende":[],
     "autocertificazioni":[],
     "certificati":[],
     // "richiedi_certificato":[],
@@ -264,6 +265,22 @@ class DettagliPersona extends React.Component{
         { name: "professione", label: "Professione", value: datiAnagrafica.datiProfessione!=null?datiAnagrafica.datiProfessione.descrizione:"" },
         { name: "", value: "" },
       ]);
+    }
+
+    result.dati.vicende = [];
+    if(datiAnagrafica.datiStoricoIndirizziNelComune!=null && !datiAnagrafica.nascondiAnagrafica) {
+      result.dati.vicende.push([
+        { name:null, value: <h4>Cambi indirizzo all'interno del Comune</h4>, html: true }
+      ]);
+      for (var index in datiAnagrafica.datiStoricoIndirizziNelComune.indirizzi) {
+        var storicoIndirizzo = datiAnagrafica.datiStoricoIndirizziNelComune.indirizzi[index];
+        console.log("storico",storicoIndirizzo);
+        result.dati.vicende.push([
+          { name: "indirizzoStorico", label: "Indirizzo", value: storicoIndirizzo.indirizzo },
+          { name: "dataInizioStorico", label: "Data inizio", value: dateFormatter(storicoIndirizzo.dataInizio) },
+          { name: "dataFineStorico", label: "Data fine", value: storicoIndirizzo.dataFine=="9999-01-01T00:00:00"?"-":dateFormatter(storicoIndirizzo.dataFine) },
+        ]);
+      }
     }
 
     if(datiAnagrafica.datiIscrizione!=null && !datiAnagrafica.nascondiAnagrafica) {
@@ -748,7 +765,7 @@ if(document.getElementById('app_demografici_container') !== null){
     
     console.log("doing request on "+url);
     $.ajax({   
-      type: "POST",
+      type: "GET",
       url: url,
       dataType: 'json',
       crossDomain: true,
@@ -757,7 +774,7 @@ if(document.getElementById('app_demografici_container') !== null){
       console.log("request done");
       console.log(response);      
       $wait.hide();
-      if(response.ok) {
+      if(response.esito && response.esito == "ok") {
         $done.show();
       } else {
         $error.show();

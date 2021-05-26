@@ -437,62 +437,70 @@ class ApplicationController < ActionController::Base
     render :json => result
   end
 
-  # BOOKMARK inserisci_pagamento
-  def inserisci_pagamento
+  # BOOKMARK inserisci_pagamento_multidovuto
+  def inserisci_pagamento_multidovuto
     searchParams = {}
     searchParams[:tenant] = session[:api_next_tenant]
     searchParams[:id_utente] = session[:user_id]
     searchParams[:id] = params[:id]
     richiesta_certificato = Certificati.where("id = :id AND tenant = :tenant AND id_utente = :id_utente", searchParams).first
-    importo = 0
-    if !richiesta_certificato.bollo.nil?
-      importo = importo+richiesta_certificato.bollo
-    end
-    if !richiesta_certificato.diritti_importo.nil?
-      importo = importo+richiesta_certificato.diritti_importo
-    end
     hashMarcaBollo = Base64.strict_encode64(OpenSSL::Digest::SHA256.new(File.read(richiesta_certificato.documento)).to_s)
-    parametri = {
-      importo: "#{importo}",
-      descrizione: "Certificato #{richiesta_certificato.nome_certificato} per #{richiesta_certificato.codice_fiscale} - n.#{richiesta_certificato.id}",
-      codice_applicazione: "demografici", # CHECK va bene questo codice applicazione?
-      url_back: request.protocol + request.host_with_port,
-      idext: richiesta_certificato.id,
-      tipo_elemento: richiesta_certificato.bollo ? "bollo_td" : "certificazione_td" ,
-      nome_versante: session[:nome],
-      cognome_versante: session[:cognome],
-      codice_fiscale_versante: session[:cf],
-      nome_pagatore: session[:nome],
-      cognome_pagatore: session[:cognome],
-      codice_fiscale_pagatore: session[:cf],
-      hashdocumento_bollo: hashMarcaBollo,
-    }
-    
-    if richiesta_certificato.bollo
-      queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore, :hashdocumento_bollo].map{ |chiave|
-        val = parametri[chiave] 
-        "#{chiave}=#{val}"
-      }.join('&')
-    else
-      queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore].map{ |chiave|
-        val = parametri[chiave] 
-        "#{chiave}=#{val}"
-      }.join('&')
+    array_dovuti = []
+    if !richiesta_certificato.bollo.nil? && richiesta_certificato.bollo > 0
+      array_dovuti << {
+        tipo_dovuto: "bollo_td", #obbligatorio
+        id_univoco_dovuto: "bollo_td_#{richiesta_certificato.id}", #obbligatorio
+        causale: "Pagamento bollo per certificato #{richiesta_certificato.nome_certificato} n.#{richiesta_certificato.id}", #obbligatorio
+        importo: richiesta_certificato.bollo.to_f, #obbligatorio
+        hashdocumento_bollo: hashMarcaBollo
+      }
     end
-    puts "queryString is "+queryString
-    
-    # debug_message("query string for sha1 is [#{queryString.strip}]", 3)
-    fullquerystring = URI.unescape(queryString)
-    # qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
-    qs = queryString+"3ur0s3rv1z1"
-    hqs = OpenSSL::Digest::SHA1.new(qs)
-    url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa.json?#{queryString}&hqs=#{hqs}&id_utente=#{session[:user_id]}&sid=#{session[:user_sid]}"
-    result = HTTParty.post(
-      url, 
-      :headers => { 'Content-Type' => 'application/json','Accept' => 'application/json' } ,
-      :debug_output => @@log_to_output && @@log_level>2 ? $stdout : nil
-    )   
-    result = JSON.parse(result.response.body)
+    if !richiesta_certificato.diritti_importo.nil? && richiesta_certificato.diritti_importo > 0
+      array_dovuti << {
+        tipo_dovuto: "certificazione_td", #obbligatorio
+        id_univoco_dovuto: "certificazione_td_#{richiesta_certificato.id}", #obbligatorio
+        causale: "Pagamento diritti segreteria per certificato #{richiesta_certificato.nome_certificato} n.#{richiesta_certificato.id}", #obbligatorio
+        importo: richiesta_certificato.diritti_importo.to_f, #obbligatorio
+        hashdocumento_bollo: hashMarcaBollo
+      }
+    end
+    dati_multidovuto = [
+      {
+        pagatore: {
+          tipo_persona: "F", # CHECK sempre F?
+          nome: session[:nome],
+          cognome: session[:cognome],
+          cf: session[:cf],
+          email: richiesta_certificato.email
+        },
+        rate: [
+          {
+            tipo_rata: "U",
+            id_univoco_versamento: nil,
+            dovuti: array_dovuti
+          }
+        ]
+      }
+    ]
+    result = invia_multidovuto("#{session[:dominio]}/servizi/pagamenti/ws/10/invia_multidovuto", dati_multidovuto) # CHECK giusto quest'url?
+
+    # TODO recuperare IUV da risultato e inserire in db
+    if result["esito"] == "ok"
+      json_decoded = Base64.strict_decode64(result["content_json"])
+      stream = nil
+			Zip::InputStream.open(StringIO.new(json_decoded)) do |zip_file|
+				while entry = zip_file.get_next_entry
+					stream = zip_file.read
+				end
+			end
+      json_parsed = JSON.parse(stream)[0]
+      # pagamento aggiunto al carrello
+      iuv = json_parsed["rate"][0]["id_univoco_versamento"]
+      richiesta_certificato.iuv = iuv
+      richiesta_certificato.save
+    else
+      # pagamento non aggiunto al carrello
+    end
     render :json => result
   end
 
@@ -568,7 +576,8 @@ class ApplicationController < ActionController::Base
       searchParams[:MostraDatiTitoloStudio] = !nascondi_sensibili 
       searchParams[:MostraDatiIscrizione] = true
       searchParams[:MostraDatiCancellazione] = true
-      searchParams[:EscludiStatoAnagraficoOccasionale ] = true
+      searchParams[:EscludiStatoAnagraficoOccasionale] = true
+      searchParams[:MostraStoricoIndirizziNelComune] = true
 
       debug_message("searchParams: ", 3)
       debug_message(searchParams, 3)
@@ -726,24 +735,51 @@ class ApplicationController < ActionController::Base
               
               if !scaduto && richiesta_certificato.stato == "da_pagare"
                 # statoPagamenti = stato_pagamento("#{session[:dominio].gsub("https","http")}/servizi/pagamenti/ws/stato_pagamenti",richiesta_certificato.id)
-                tipoPagamento = richiesta_certificato.bollo ? "bollo_td" : "certificazione_td"
-                verificaPagamento = verifica_pagamento("#{session[:dominio]}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.id, tipoPagamento)
-                debug_message("verifica pagamento response",3)
-                debug_message(verificaPagamento,3)
+                bolloPagato = false
+                dirittiPagati = false
+                statoPagamentoBollo = ""
+                statoPagamentoDiritti = ""
+                marcaDaBollo = nil
+                debug_message("certificato #{richiesta_certificato.id}, iuv #{richiesta_certificato.iuv}",1)
+                if !richiesta_certificato.bollo.nil? && richiesta_certificato.bollo>0 && !richiesta_certificato.iuv.nil?
+                  verificaPagamento = verifica_pagamento("#{session[:dominio]}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.iuv, "bollo_td")
+                  debug_message("verifica pagamento bollo response for certificato #{richiesta_certificato.id}",1)
+                  debug_message(verificaPagamento,1)
+                  puts "stato: #{verificaPagamento["stato"]}"
+                  if (!verificaPagamento.nil? && verificaPagamento["esito"]=="ok" )
+                    bolloPagato = verificaPagamento["pagato"]==1
+                    statoPagamentoBollo = verificaPagamento["stato"]
+                  end
+                  if !verificaPagamento["mbd"].nil? && !verificaPagamento["mbd"].blank?
+                    marcaDaBollo = verificaPagamento["mbd"]
+                  end
+                end
+                if !richiesta_certificato.diritti_importo.nil? && richiesta_certificato.diritti_importo>0 && !richiesta_certificato.iuv.nil?
+                  verificaPagamento = verifica_pagamento("#{session[:dominio]}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.iuv, "certificazione_td")
+                  debug_message("verifica pagamento diritti response for certificato #{richiesta_certificato.id}",1)
+                  debug_message(verificaPagamento,1)
+                  puts "stato: #{verificaPagamento["stato"]}"
+                  if (!verificaPagamento.nil? && verificaPagamento["esito"]=="ok" )
+                    dirittiPagati = verificaPagamento["pagato"]==1
+                    statoPagamentoDiritti = verificaPagamento["stato"]
+                  end
+                end
+                puts "statoPagamentoBollo: #{statoPagamentoBollo}"
+                puts "statoPagamentoDiritti: #{statoPagamentoDiritti}"
                 debug_message("richiesta_certificato.documento is #{richiesta_certificato.documento}",3)
-                if(!verificaPagamento.nil? && verificaPagamento["esito"]=="ok" && (verificaPagamento["pagato"]==1) && !richiesta_certificato.documento.nil? && !richiesta_certificato.documento.blank?)
+                if ( bolloPagato && dirittiPagati && !richiesta_certificato.documento.nil? && !richiesta_certificato.documento.blank? )
                   debug_message("pagato!",3)
                   # pagato, lascio scaricare il documento
                   richiesta_certificato.stato = "pagato"
                   pdf_name = File.basename(richiesta_certificato.documento)
                   
-                  if !verificaPagamento["mbd"].nil? && !verificaPagamento["mbd"].blank?
+                  if !marcaDaBollo.nil? && !marcaDaBollo.blank?
                     debug_message("mbd present, saving zip", 1)
                     folder = File.dirname(richiesta_certificato.documento)
                     mdb_name = pdf_name.sub('.pdf','.xml')
                     zip_name = pdf_name.sub('.pdf','.zip')
                     mdb_path = File.join(folder, mdb_name)
-                    File.open(mdb_path, "wb") { |f| f.write(Base64.decode64(verificaPagamento["mbd"])) }
+                    File.open(mdb_path, "wb") { |f| f.write(Base64.decode64(marcaDaBollo)) }
                     debug_message("zip_name: #{zip_name}, mdb_name: #{mdb_name}, pdf_name: #{pdf_name}", 1)
 
                     input_filenames =  [pdf_name, mdb_name]
@@ -768,58 +804,11 @@ class ApplicationController < ActionController::Base
                   richiesta_certificato.save
 
                 else                  
-                  url = "#{session[:dominio]}/servizi/pagamenti/"
-                  debug_message("stato pagamenti response",3)
+                  url = "/inserisci_pagamento_multidovuto?id=#{richiesta_certificato.id}"    
                   # debug_message(statoPagamenti,3)
-                  if(verificaPagamento.nil? || verificaPagamento["esito"]!="ok")
+                  if ( statoPagamentoBollo == "pendente" || statoPagamentoDiritti == "pendente" )
                     debug_message("verificaPagamento NOT OK", 3)
-                    if false
-                      url = "/inserisci_pagamento?id=#{richiesta_certificato.id}"
-                    else
-                      importo = 0
-                      if !richiesta_certificato.bollo.nil?
-                        importo = importo+richiesta_certificato.bollo
-                      end
-                      if !richiesta_certificato.diritti_importo.nil?
-                        importo = importo+richiesta_certificato.diritti_importo
-                      end
-                      hashMarcaBollo = Base64.strict_encode64(OpenSSL::Digest::SHA256.new(File.read(richiesta_certificato.documento)).to_s)
-                      parametri = {
-                        importo: "#{importo}",
-                        descrizione: "Certificato #{richiesta_certificato.nome_certificato} per #{richiesta_certificato.codice_fiscale} - n.#{richiesta_certificato.id}",
-                        codice_applicazione: "demografici", # CHECK va bene questo codice applicazione?
-                        url_back: request.protocol + request.host_with_port,
-                        idext: richiesta_certificato.id,
-                        tipo_elemento: richiesta_certificato.bollo ? "bollo_td" : "certificazione_td" ,
-                        nome_versante: session[:nome],
-                        cognome_versante: session[:cognome],
-                        codice_fiscale_versante: session[:cf],
-                        nome_pagatore: session[:nome],
-                        cognome_pagatore: session[:cognome],
-                        codice_fiscale_pagatore: session[:cf],
-                        hashdocumento_bollo: hashMarcaBollo
-                      }
-                      
-                      if richiesta_certificato.bollo
-                        queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore, :hashdocumento_bollo].map{ |chiave|
-                          val = parametri[chiave] 
-                          "#{chiave}=#{val}"
-                        }.join('&')
-                      else
-                        queryString = [:importo, :descrizione, :codice_applicazione, :url_back, :idext, :tipo_elemento, :nome_versante, :cognome_versante, :codice_fiscale_versante, :nome_pagatore, :cognome_pagatore, :codice_fiscale_pagatore].map{ |chiave|
-                          val = parametri[chiave] 
-                          "#{chiave}=#{val}"
-                        }.join('&')
-                      end
-                      
-                      # debug_message("query string for sha1 is [#{queryString.strip}]", 3)
-
-                      fullquerystring = URI.unescape(queryString).strip
-                      # qs = fullquerystring.sub(/&hqs=\w*/,"").strip+"3ur0s3rv1z1"
-                      qs = (fullquerystring.strip)+"3ur0s3rv1z1"
-                      hqs = OpenSSL::Digest::SHA1.new(qs)
-                      url = "#{session[:dominio]}/servizi/pagamenti/aggiungi_pagamento_pagopa.json?#{queryString}&hqs=#{hqs}&id_utente=#{session[:user_id]}&sid=#{session[:user_sid]}"
-                    end
+                    url = "#{session[:dominio]}/servizi/pagamenti/"              
                   else
                     debug_message("verificaPagamento OK", 3)
                   end
@@ -863,7 +852,7 @@ class ApplicationController < ActionController::Base
 
         end
 
-        if PERMESSI[session[:permessi]]=="cittadino" && ( is_self || is_family )
+        if (PERMESSI[session[:permessi]]=="cittadino" && ( is_self || is_family )) || professionista
           # recupero anche le autocertificazioni
           files = Dir.glob("#{Rails.root}/autocertificazioni/odt/*")
           result["autocertificazioni"] = []

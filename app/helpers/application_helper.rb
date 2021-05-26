@@ -1,4 +1,6 @@
 require 'httparty'
+require "base64"
+require 'zip'
 module ApplicationHelper
   
   def stato_pagamento2(urlPagamenti,idAvviso)
@@ -64,7 +66,7 @@ module ApplicationHelper
     requestParams = { 
       'applicazione' => "pagamenti",
       'tipo_dovuto' => tipoDovuto,
-      'id_univoco_dovuto' => idAvviso,
+      'iuv' => idAvviso,
       'mbd' => 1
     }
 
@@ -78,17 +80,28 @@ module ApplicationHelper
     return JSON.parse(response.body)
   end
 
-  # TODO finire di implementare invia_multidovuto e sostituire aggiungi_pagamento_pagopa
   def invia_multidovuto(urlPagamenti, arrayDati) 
+
+    puts "invia_multidovuto"
     uri = URI(urlPagamenti)
     http = Net::HTTP.new(uri.host, uri.port)
     
+    stringio = Zip::OutputStream::write_buffer do |zio|
+      zio.put_next_entry("array_json")
+          zio.write arrayDati.to_json
+      end
+    stringio.rewind
+    c_enc64 = Base64.strict_encode64(stringio.sysread)	
+    
+    # compressed_data = Zlib::Deflate.deflate(arrayDati.to_json)
+    # encoded_data = Base64.encode64(compressed_data)
+    
     requestParams = { 
       'applicazione' => "pagamenti",
-      'numero' => tipoDovuto, # valorizzato con il numero di pagamenti caricati e contenuti nell'array. E’ di fatto il numero degli IUV che verranno  generati/gestiti.
-      'nome_flusso' => idAvviso, # Valorizzare a “0” per chiamate con flusso a singolo pagamento (APP)
+      'numero' => 1, # valorizzato con il numero di pagamenti caricati e contenuti nell'array. E’ di fatto il numero degli IUV che verranno  generati/gestiti.
+      'nome_flusso' => 0, # Valorizzare a “0” per chiamate con flusso a singolo pagamento (APP)
       'caricament_da_confermare' => "false",
-      'content_json' => arrayDati.to_json # Elenco dovuti compresso in formato ZIP e da caricare in base 64
+      'content_json' => c_enc64 # Elenco dovuti compresso in formato ZIP e da caricare in base 64
     }
 
     response = HTTParty.post(urlPagamenti,
