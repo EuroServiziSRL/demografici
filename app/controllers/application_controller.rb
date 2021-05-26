@@ -461,7 +461,7 @@ class ApplicationController < ActionController::Base
         id_univoco_dovuto: "certificazione_td_#{richiesta_certificato.id}", #obbligatorio
         causale: "Pagamento diritti segreteria per certificato #{richiesta_certificato.nome_certificato} n.#{richiesta_certificato.id}", #obbligatorio
         importo: richiesta_certificato.diritti_importo.to_f, #obbligatorio
-        hashdocumento_bollo: nil
+        hashdocumento_bollo: ""
       }
     end
     dati_multidovuto = [
