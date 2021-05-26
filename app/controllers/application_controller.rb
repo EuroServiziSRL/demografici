@@ -461,7 +461,7 @@ class ApplicationController < ActionController::Base
         id_univoco_dovuto: "certificazione_td_#{richiesta_certificato.id}", #obbligatorio
         causale: "Pagamento diritti segreteria per certificato #{richiesta_certificato.nome_certificato} n.#{richiesta_certificato.id}", #obbligatorio
         importo: richiesta_certificato.diritti_importo.to_f, #obbligatorio
-        hashdocumento_bollo: hashMarcaBollo
+        hashdocumento_bollo: nil
       }
     end
     dati_multidovuto = [
@@ -740,11 +740,11 @@ class ApplicationController < ActionController::Base
                 statoPagamentoBollo = ""
                 statoPagamentoDiritti = ""
                 marcaDaBollo = nil
-                debug_message("certificato #{richiesta_certificato.id}, iuv #{richiesta_certificato.iuv}",1)
+                debug_message("certificato #{richiesta_certificato.id}, iuv #{richiesta_certificato.iuv}",3)
                 if !richiesta_certificato.bollo.nil? && richiesta_certificato.bollo>0 && !richiesta_certificato.iuv.nil?
                   verificaPagamento = verifica_pagamento("#{session[:dominio]}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.iuv, "bollo_td")
-                  debug_message("verifica pagamento bollo response for certificato #{richiesta_certificato.id}",1)
-                  debug_message(verificaPagamento,1)
+                  debug_message("verifica pagamento bollo response for certificato #{richiesta_certificato.id}",3)
+                  debug_message(verificaPagamento,3)
                   puts "stato: #{verificaPagamento["stato"]}"
                   if (!verificaPagamento.nil? && verificaPagamento["esito"]=="ok" )
                     bolloPagato = verificaPagamento["pagato"]==1
@@ -756,8 +756,8 @@ class ApplicationController < ActionController::Base
                 end
                 if !richiesta_certificato.diritti_importo.nil? && richiesta_certificato.diritti_importo>0 && !richiesta_certificato.iuv.nil?
                   verificaPagamento = verifica_pagamento("#{session[:dominio]}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.iuv, "certificazione_td")
-                  debug_message("verifica pagamento diritti response for certificato #{richiesta_certificato.id}",1)
-                  debug_message(verificaPagamento,1)
+                  debug_message("verifica pagamento diritti response for certificato #{richiesta_certificato.id}",3)
+                  debug_message(verificaPagamento,3)
                   puts "stato: #{verificaPagamento["stato"]}"
                   if (!verificaPagamento.nil? && verificaPagamento["esito"]=="ok" )
                     dirittiPagati = verificaPagamento["pagato"]==1
