@@ -929,7 +929,7 @@ class ApplicationController < ActionController::Base
       if richiesta_certificato.blank? || richiesta_certificato.nil?
         traccia_operazione("#{tipologia_richiesta} (richiesta non trovata)")
         sconosciuto
-      elsif scaduto || ( richiesta_certificato.stato == "scaricato" && ( richiesta_certificato.data_download.nil? || (richiesta_certificato.data_download <= DateTime.now.days_ago(7)) ) )
+      elsif scaduto || ( richiesta_certificato.stato == "scaricato" && ( !richiesta_certificato.data_download.nil? && (richiesta_certificato.data_download <= DateTime.now.days_ago(7)) ) )
         traccia_operazione("#{tipologia_richiesta} (download scaduto)")
         render html: '<DOCTYPE html><html><head><title>Download scaduto</title></head><body>Questo link per il download &egrave; scaduto.</body></html>'.html_safe
       elsif(File.exist?("#{Rails.root}/#{richiesta_certificato.documento}"))
