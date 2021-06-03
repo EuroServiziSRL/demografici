@@ -745,7 +745,7 @@ class ApplicationController < ActionController::Base
                   verificaPagamento = verifica_pagamento("#{session[:dominio]}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.iuv, "bollo_td")
                   debug_message("verifica pagamento bollo response for certificato #{richiesta_certificato.id}",3)
                   debug_message(verificaPagamento,3)
-                  puts "stato: #{verificaPagamento["stato"]}"
+                  debug_message("stato: #{verificaPagamento["stato"]}",3)
                   if (!verificaPagamento.nil? && verificaPagamento["esito"]=="ok" )
                     bolloPagato = verificaPagamento["pagato"]==1
                     statoPagamentoBollo = verificaPagamento["stato"]
@@ -753,19 +753,23 @@ class ApplicationController < ActionController::Base
                   if !verificaPagamento["mbd"].nil? && !verificaPagamento["mbd"].blank?
                     marcaDaBollo = verificaPagamento["mbd"]
                   end
+                elsif !richiesta_certificato.iuv.nil?
+                  bolloPagato = true # se bollo è a 0 oppure non c'è, lo considero pagato
                 end
                 if !richiesta_certificato.diritti_importo.nil? && richiesta_certificato.diritti_importo>0 && !richiesta_certificato.iuv.nil?
                   verificaPagamento = verifica_pagamento("#{session[:dominio]}/servizi/pagamenti/ws/10/verifica_pagamento",richiesta_certificato.iuv, "certificazione_td")
                   debug_message("verifica pagamento diritti response for certificato #{richiesta_certificato.id}",3)
                   debug_message(verificaPagamento,3)
-                  puts "stato: #{verificaPagamento["stato"]}"
+                  debug_message("stato: #{verificaPagamento["stato"]}",3)
                   if (!verificaPagamento.nil? && verificaPagamento["esito"]=="ok" )
                     dirittiPagati = verificaPagamento["pagato"]==1
                     statoPagamentoDiritti = verificaPagamento["stato"]
                   end
+                elsif !richiesta_certificato.iuv.nil?
+                  dirittiPagati = true # se diritti è a 0 oppure non c'è, lo considero pagato
                 end
-                puts "statoPagamentoBollo: #{statoPagamentoBollo}"
-                puts "statoPagamentoDiritti: #{statoPagamentoDiritti}"
+                debug_message("statoPagamentoBollo: #{statoPagamentoBollo}",3)
+                debug_message("statoPagamentoDiritti: #{statoPagamentoDiritti}",3)
                 debug_message("richiesta_certificato.documento is #{richiesta_certificato.documento}",3)
                 if ( bolloPagato && dirittiPagati && !richiesta_certificato.documento.nil? && !richiesta_certificato.documento.blank? )
                   debug_message("pagato!",3)
