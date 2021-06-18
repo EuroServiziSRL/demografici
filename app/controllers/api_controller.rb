@@ -508,7 +508,7 @@ class ApiController < ActionController::Base
                 "data_nascita": Date.parse(componente["dataNascita"]).strftime("%Y-%m-%d"), 
                 "comune_nascita": componente["comuneNascita"], 
                 "relazione_parentela": componente["codiceRelazioneParentelaANPR"], 
-                "rel_par_desc": relazione.descrizione, 
+                "rel_par_desc": relazione.descrizione unless relazione.blank?, 
               }
   
               # TODO rimuovere quando saranno disponibili le informazioni su RicercaComponentiFamiglia
